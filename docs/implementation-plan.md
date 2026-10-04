@@ -2,7 +2,7 @@
 
 *How far along the engine is, what is in flight, what is left, and the drift log. Update it in the same change that moves any item.*
 
-**Status on 4 Oct 2026:** steps 1-4 (keyword pass) and 6 built, plus the CLI: the engine can run on the laptop (`test-feeds`, `fetch --all`). Next: the first live run on the laptop, then scoring (5), the scheduler (7), outputs (8) and the AI pass (needs the founder on open questions 1-2). Before that: set up only. Zuko bootstrapped (Python-adapted CI and hooks), inputs and brief in the repo, a smoke test on the input files (5 passing), the panel project's reusable code copied to `reference/riffi-feeds/`. No engine code yet. Building continues in a Claude Code cloud session (founder's cloud credits, expire 5 Nov 2026); live feed tests and the two-week run stay on the laptop.
+**Status on 4 Oct 2026:** steps 1-4 (keyword pass) and 6 built, plus the CLI: the engine can run on the laptop (`test-feeds`, `fetch --all`). Next: the first live run on the laptop, then scoring (5), the scheduler (7), outputs (8) and the AI pass (needs the founder on open questions 1-2). Building continues in a Claude Code cloud session (founder's cloud credits, expire 5 Nov 2026); live feed tests and the two-week run stay on the laptop.
 
 **Deadline context:** Riffi launches end of Oct / first week of Nov 2026. The two-week source test needs ~14 days of running, so the engine should be fetching by about 10-12 Oct to finish the test before launch.
 
