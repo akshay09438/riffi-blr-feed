@@ -215,3 +215,86 @@ def test_dates_round_trip_as_utc():
     assert from_iso(utc_iso(when)) == when
     assert utc_iso(datetime(2026, 10, 4, 6, 0)) == "2026-10-04T06:00:00+00:00"  # naive = UTC
     assert from_iso(None) is None
+
+
+# ---- found by the adversarial review, 4 Oct 2026
+
+
+def test_an_old_article_listed_again_never_shrinks_or_duplicates_its_story(db):
+    a = item("Karnataka cabinet approves caste survey report", source_id="S011", hours_ago=2)
+    b = item("Cabinet approves caste survey report in Karnataka", source_id="S019", hours_ago=1)
+    c = Clusterer()
+    c.add_all([a, b])
+    save_run(db, [a, b], list(c.clusters.values()), NOW)
+    story_id = next(iter(c.clusters))
+    # 54 h later the story is outside the 48 h window; the S011 feed still lists the same article
+    later = NOW + timedelta(hours=54)
+    c2 = Clusterer(existing=load_recent_clusters(db, later, timedelta(hours=48)))
+    c2.add(a)
+    assert save_run(db, [a], list(c2.clusters.values()), later) == 0
+    row = db.execute("SELECT source_count, sources FROM story_clusters WHERE cluster_id = ?", (story_id,)).fetchone()
+    assert row["source_count"] == 2 and json.loads(row["sources"]) == ["S011", "S019"]
+    # and a later member coming back alone makes no orphan story
+    c3 = Clusterer()
+    c3.add(b)
+    save_run(db, [b], list(c3.clusters.values()), later)
+    orphans = db.execute(
+        "SELECT COUNT(*) FROM story_clusters c WHERE NOT EXISTS (SELECT 1 FROM items i WHERE i.cluster_id = c.cluster_id)"
+    ).fetchone()[0]
+    assert orphans == 0
+
+
+def test_items_with_missing_fields_are_stored_not_dropped(db):
+    odd = item("x")
+    odd.title = None
+    odd.published_at = None
+    c = Clusterer()
+    c.add(odd)
+    assert save_run(db, [odd], list(c.clusters.values()), NOW) == 1
+    row = db.execute("SELECT title, published_at FROM items WHERE item_id = ?", (odd.item_id,)).fetchone()
+    assert row["title"] == "" and row["published_at"] == utc_iso(NOW)
+
+
+def test_the_same_article_twice_in_one_run_is_stored_once(db):
+    a = item("Metro fare hike from Monday", url="https://a.in/fare")
+    twin = item("Metro fare hike from Monday", source_id="S019", url="https://a.in/fare")
+    c = Clusterer()
+    c.add_all([a, twin])
+    assert save_run(db, [a, twin], list(c.clusters.values()), NOW) == 1
+
+
+def test_newest_item_date_never_goes_backwards(db):
+    fresh = FetchOutcome(
+        "S019", "Google News RSS", "ok", entries=[Entry(title="a", link="https://a.in/1", published=NOW)]
+    )
+    older = FetchOutcome(
+        "S019",
+        "Google News RSS",
+        "ok",
+        entries=[Entry(title="b", link="https://a.in/2", published=NOW - timedelta(days=3))],
+    )
+    record_fetch(db, fresh, NOW)
+    record_fetch(db, older, NOW + timedelta(hours=1))
+    assert db.execute("SELECT newest_item_at FROM sources WHERE source_id = 'S019'").fetchone()[0] == utc_iso(NOW)
+
+
+def test_a_database_inside_onedrive_is_refused(tmp_path):
+    with pytest.raises(RuntimeError, match="OneDrive"):
+        connect(tmp_path / "OneDrive - Riffi" / "engine.db")
+
+
+def test_the_default_database_lives_in_the_project_not_the_current_folder(monkeypatch, tmp_path, repo_root):
+    from riffi_ingest.db.connection import default_db_path
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("RIFFI_DB_PATH", raising=False)
+    assert default_db_path() == repo_root / "data" / "engine.db"
+    monkeypatch.setenv("RIFFI_DB_PATH", str(tmp_path / "x.db"))
+    assert default_db_path() == tmp_path / "x.db"
+
+
+def test_schema_version_has_exactly_one_row(tmp_path):
+    path = tmp_path / "engine.db"
+    for _ in range(3):
+        connect(path).close()
+    assert connect(path).execute("SELECT COUNT(*) FROM schema_version").fetchone()[0] == 1

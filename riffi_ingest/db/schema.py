@@ -9,7 +9,7 @@ test's history cannot be recreated.
 SCHEMA_VERSION = 1
 
 SCHEMA = """
-CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS schema_version (id INTEGER PRIMARY KEY CHECK (id = 1), version INTEGER NOT NULL);
 
 CREATE TABLE IF NOT EXISTS sources (
     source_id TEXT PRIMARY KEY,

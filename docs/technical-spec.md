@@ -83,7 +83,7 @@ tests/
 
 ## Data model (as built, 4 Oct 2026)
 
-One SQLite file, `data/engine.db` (WAL, foreign keys on, 30 s busy timeout). Every date is ISO-8601 in UTC, so text order is time order. Tables (`riffi_ingest/db/schema.py`):
+One SQLite file, `<project>/data/engine.db` (or `RIFFI_DB_PATH`), anchored on the project folder rather than the current folder (Windows Task Scheduler starts in System32), refused inside OneDrive (D-001); WAL, foreign keys on, 30 s busy timeout. Every date is ISO-8601 in UTC, so text order is time order. Tables (`riffi_ingest/db/schema.py`):
 
 - **sources** - feeds.csv columns + `active` + health columns kept by every fetch: `last_status`, `last_ok_at`, `newest_item_at`, `fields_present`, `consecutive_failures`, and the conditional-GET `etag` / `last_modified`.
 - **fetch_runs** - one row per source per run: status (ok / not_modified / skipped / error), `http_status`, `duration_ms`, `items_returned`, `newest_item_at`, `fields_present`, `on_backup`, `error`. Indexed on (source_id, started_at).
@@ -92,9 +92,9 @@ One SQLite file, `data/engine.db` (WAL, foreign keys on, 30 s busy timeout). Eve
 - **item_topics** - (cluster_id, topic_id, match_method keyword|llm), `confidence`, `evidence` (matched keywords as JSON, or the AI's reason). Keyword rows are recomputed from the whole story each run; llm rows are never touched by the keyword pass.
 - **page_snapshots** - every page-monitor snapshot; `text` cleared after 30 days except each page's latest (the next comparison needs it).
 - **ground_truth** - the editor's log: `logged_on`, `topic_id`, `what_happened`, `where_seen`, `seen_at` (step 10).
-- Helpers: **topics** (topics.csv), **gnews_cache** (Google News article id -> publisher URL, so a link is resolved once ever), **schema_version** (a newer file is refused, never overwritten).
+- Helpers: **topics** (topics.csv), **gnews_cache** (Google News article id -> publisher URL, so a link is resolved once ever), **schema_version** (one row; a newer file is refused, never overwritten).
 
-`db/importers.py` seeds sources and topics; re-importing updates rows in place, keeps health columns and history, and marks a source that left feeds.csv `active = 0` (never deleted). `db/store.py` records each fetch, loads validators / page snapshots / the Google News cache / the last 48 h of stories, saves a run's items and stories in one transaction, saves keyword tags, and prunes. Nothing deletes rows; SQL statements are fixed text with `?` values only.
+`db/importers.py` seeds sources and topics; re-importing updates rows in place, keeps health columns and history, and marks a source that left feeds.csv `active = 0` (never deleted). `db/store.py` records each fetch, loads validators / page snapshots / the Google News cache / the last 48 h of stories, saves a run's items and stories in one transaction (an item already stored keeps its story; a story is written only when it gains a new item; counts and sources are recomputed from stored items, so an old article listed again never shrinks or duplicates a story), saves keyword tags, and prunes. Nothing deletes rows; SQL statements are fixed text with `?` values only.
 
 ## Code reused from the panel project
 

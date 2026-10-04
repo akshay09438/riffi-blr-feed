@@ -188,7 +188,7 @@ class Clusterer:
     def add(self, item: Item, *, route_type: str = "") -> AddResult:
         if item.item_id in self._item_cluster:
             return AddResult(False, self.clusters[self._item_cluster[item.item_id]], False)
-        published_at = _aware(item.published_at)
+        published_at = _aware(item.published_at or item.fetched_at)
         norm = story_title(item.title, item.publisher)
         member = Member(item.item_id, item.source_id, item.publisher, item.title or "", norm, published_at)
         is_page = route_type == PAGE_MONITOR
@@ -204,5 +204,5 @@ class Clusterer:
     def add_all(self, items: list[Item], route_types: dict[str, str] | None = None) -> list[AddResult]:
         """Add items oldest first, so each story's headline is the earliest report."""
         route_types = route_types or {}
-        ordered = sorted(items, key=lambda i: _aware(i.published_at))
+        ordered = sorted(items, key=lambda i: _aware(i.published_at or i.fetched_at))
         return [self.add(i, route_type=route_types.get(i.source_id, "")) for i in ordered]
