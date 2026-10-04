@@ -1,31 +1,14 @@
 import asyncio
-import base64
 import json
 
 import httpx
 
 from riffi_ingest.fetchers import gnews
-from tests.feedtools import fake_client
+from tests.feedtools import NEW_STYLE, batch_answer, fake_client, new_style, old_style
 
 
 def run(coro):
     return asyncio.run(coro)
-
-
-def old_style(url: str) -> str:
-    return base64.urlsafe_b64encode(b'\x08\x13"\x1a' + url.encode() + b"\xd2\x01\x00").decode().rstrip("=")
-
-
-def new_style(tail: bytes) -> str:
-    return base64.urlsafe_b64encode(b'\x08\x13"AU_yqL' + tail).decode().rstrip("=")
-
-
-NEW_STYLE = new_style(b"xyz")
-
-
-def batch_answer(url: str) -> str:
-    inner = json.dumps(["garturlres", url, 1])
-    return ")]}'\n\n" + json.dumps([["wrb.fr", "Fbv4je", inner, None, None, None, "generic"]]) + "\n\n"
 
 
 def google(handler_calls: list):
