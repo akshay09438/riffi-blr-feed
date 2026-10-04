@@ -1,6 +1,6 @@
 # Technical spec - Riffi ingestion engine
 
-*How the engine is built. Status on 4 Oct 2026: **step 1 (fetchers) partly built** - the feed routes are as-built (see "Fetchers (as built)"); everything else is the target design from `BRIEF.md` and `DECISIONS.md`. Rewrite each section to "as-built" in the same change that builds it.*
+*How the engine is built. Status on 4 Oct 2026: **step 1 (fetchers) built** - every route is as-built (see "Fetchers (as built)"); everything else is the target design from `BRIEF.md` and `DECISIONS.md`. Rewrite each section to "as-built" in the same change that builds it.*
 
 ## Stack
 
@@ -28,8 +28,9 @@ riffi_ingest/
     http.py              [dangerous] the one HTTP client: identity, timeouts, retries, rate limit, conditional GET
     gnews.py             [dangerous] Google News queries and link resolution (+ cache, per-run cap)
     parse.py             RSS/Atom -> one entry shape (title, link, date, summary, author, image, GN <source>)
-    feeds.py             every feed route: publisher RSS, Google News, X/Instagram backup, Telegram, YouTube
-    pagemonitor.py       (next) web page monitors: trafilatura text, hash, snapshot, "updated" item
+    feeds.py             every route: plan what to fetch, fetch it, never raise (feeds and page monitors)
+    pagemonitor.py       web page monitors: trafilatura text, stamp lines dropped, hash, "updated" item
+    outcome.py           FetchOutcome / Validators / PageSnapshot shared by all routes
   normalise.py           one item shape, HTML stripping, IST dates, language detection
   dedupe.py              URL de-dup and title clustering
   safety/                [dangerous] blocklist, excluded-topic drop, sensitive flag
@@ -62,7 +63,8 @@ tests/
 - `fetchers/parse.py` - feedparser (fed a `BytesIO`) into `Entry` (title, link, published in UTC, summary stripped of HTML and cut to 1,000 chars, author, image from media:content / media:thumbnail / enclosure / first `<img>`, Google News `<source>`, guid). Dates that carry no zone (and "... IST") are read as IST, since every source that omits the zone is Indian; feedparser alone would read them as UTC (5.5 h off) and misread `29-09-2026` as 2029. `looks_like_html` catches feeds that answer 200 with a web page.
 - `fetchers/feeds.py` - `plan()` decides per route what to fetch (table in the module); `fetch_source()` returns a `FetchOutcome` (`ok` / `not_modified` / `skipped` / `error`, reason, HTTP status, entries, validators) and never raises; `fetch_sources()` runs many at once. X/Instagram rows fetch only `backup_google_news_url` and are marked `on_backup`; `rss_app_url()` is the stub for the 5 `priority_x_feed` rows. Rows whose fetch_url is an instruction (S047, S107, S121), that lack a backup (S108), or whose backup is not a Google News feed are skipped with the reason.
 - `fetchers/gnews.py` - `Resolver` turns Google News article links into publisher URLs: offline base64 decode first, else the two-request online decode (article page signature, then batchexecute); if Google redirects straight to the publisher, that URL is taken. Answers are cached by article id (the cache can be passed in, so step 6 can persist it); online look-ups stop at 100 per run and the rest stay as Google News links for a later run. Wiring it into the pipeline is step 2.
-- Not yet: storing outcomes (fetch_runs, items) is step 6; the page monitor is the next change; `test-feeds` is step 7 (CLI).
+- `fetchers/pagemonitor.py` - the 22 web page monitors (21 fetchable; S047 has an instruction for a URL). GET with a browser Accept header; the first 1 MB of HTML goes to trafilatura in a worker thread with a 60 s limit (trafilatura takes ~6 s at 1 MB and minutes beyond, which would otherwise freeze every other fetch). Main text with tables, or all visible text split into sentences when trafilatura finds no main text. Stamp lines are dropped: a line with a stamp word ("updated", "reviewed", "visitors", "views", "sunrise", "rights reserved", "... ago") whose other words are only filler, dates, times and numbers, plus a bare date/time line straight after one. Lines with real words, Kannada text, or only numbers/dates without a stamp word (table rows, "Date: 15/10/2026") are content. The hash is over the *set* of lines, so reordering is not a change. Bot-check pages (Cloudflare "Just a moment...", "Access denied" titles, challenge markup) are errors. First visit: snapshot only, and no conditional-GET validators are sent until a snapshot exists. Later visits: if the hash changed, one entry - title = page `<title>` + " updated" (source name if none), link = the page, published = when the change was seen, summary = "Added: ... || Removed: ..." of lines that really changed (1,000 chars max), guid = source id + old hash + new hash. Every error (HTTP, non-HTML, bot check, extraction crash or timeout) hands back the previous snapshot unchanged. Snapshots go in and out on `FetchOutcome.snapshot`; storing them (page_snapshots) is step 6.
+- Not yet: storing outcomes (fetch_runs, items, page_snapshots) is step 6; `test-feeds` is step 7 (CLI).
 
 ## Data model
 

@@ -26,7 +26,8 @@ def test_plan_for_each_route_type():
     assert plan(src(feeds.NATIVE)) == ("https://a.in/feed", False, "")
     assert plan(src(feeds.GOOGLE_NEWS, "https://news.google.com/rss/search?q=x"))[0].startswith("https://news.google")
     assert plan(src(feeds.MANUAL, ""))[2] == "manual source"
-    assert plan(src(feeds.PAGE_MONITOR, "https://gov.in/page"))[0] == ""
+    assert plan(src(feeds.PAGE_MONITOR, "https://gov.in/page")) == ("https://gov.in/page", False, "")
+    assert "not a URL" in plan(src(feeds.PAGE_MONITOR, "Monitor holiday notification page"))[2]  # S047
 
 
 def test_x_rows_never_touch_x_and_run_on_their_backup():
@@ -121,7 +122,8 @@ def test_every_row_in_feeds_csv_gets_a_plan(repo_root):
     fetchable = [sid for sid, (url, _, _) in plans.items() if url]
     on_backup = [sid for sid, (url, backup, _) in plans.items() if url and backup]
     assert len(on_backup) == 24  # 25 X/Instagram rows, minus S108 which has no backup
-    for sid in ("S108", "S107", "S121", "S112"):
+    assert sum(1 for s in sources if s.route_type == feeds.PAGE_MONITOR and plans[s.source_id][0]) == 21
+    for sid in ("S108", "S107", "S121", "S112", "S047"):
         assert not plans[sid][0], sid
     assert all(plans[sid][0].startswith("https://") for sid in fetchable)
     assert sum(s.priority_x_feed for s in sources) == 5
