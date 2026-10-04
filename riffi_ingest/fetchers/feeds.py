@@ -22,6 +22,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 from ..config import DEFAULT_RSSHUB_BASE
 from ..sources import Source
+from .gnews import is_gnews_feed
 from .http import PoliteClient
 from .parse import Entry, looks_like_html, parse_feed
 
@@ -90,6 +91,8 @@ def plan(source: Source, rsshub_base: str = DEFAULT_RSSHUB_BASE) -> tuple[str, b
             return direct, False, ""
         if not _is_url(source.backup_google_news_url):
             return "", True, "no backup Google News URL (X and Instagram are never scraped)"
+        if not is_gnews_feed(source.backup_google_news_url):
+            return "", True, f"backup is not a Google News feed: {source.backup_google_news_url!r}"
         return source.backup_google_news_url, True, ""
     if not _is_url(source.fetch_url):
         if route == YOUTUBE:

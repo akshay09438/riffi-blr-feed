@@ -33,6 +33,11 @@ def is_gnews_feed(url: str) -> bool:
     return (parts.hostname or "").endswith("news.google.com") and parts.path.startswith("/rss")
 
 
+def is_google(url: str) -> bool:
+    host = (urlsplit(url).hostname or "").lower()
+    return host == "google.com" or host.endswith(".google.com")
+
+
 def article_id(url: str) -> str | None:
     parts = urlsplit(url)
     if not (parts.hostname or "").endswith("news.google.com"):
@@ -69,7 +74,12 @@ def _extract_batch_url(text: str) -> str | None:
                     inner = json.loads(item[2])
                 except json.JSONDecodeError:
                     continue
-                if len(inner) > 1 and isinstance(inner[1], str) and inner[1].startswith("http"):
+                if (
+                    isinstance(inner, list)
+                    and len(inner) > 1
+                    and isinstance(inner[1], str)
+                    and inner[1].startswith("http")
+                ):
                     return inner[1]
     return None
 
@@ -78,6 +88,8 @@ async def _resolve_online(client: PoliteClient, art_id: str) -> tuple[str | None
     page = await client.fetch(f"https://news.google.com/rss/articles/{art_id}", accept=PAGE_ACCEPT, retries=1)
     if not page.ok:
         return None, f"article page {page.status or page.error_kind}"
+    if page.redirects and not is_google(page.final_url):
+        return page.final_url, "redirect"  # Google sent us straight to the publisher
     sg, ts = SG_RE.search(page.text), TS_RE.search(page.text)
     if not (sg and ts):
         return None, "no signature on article page"
@@ -124,7 +136,10 @@ class Resolver:
             if self.online_used >= self.online_cap:
                 return None, "online cap reached for this run"
             self.online_used += 1
-            url, how = await _resolve_online(self.client, art_id)
+            try:
+                url, how = await _resolve_online(self.client, art_id)
+            except Exception as exc:  # an odd answer from Google must not stop the run
+                url, how = None, f"{type(exc).__name__}: {exc}"[:200]
         if url:
             self.cache[art_id] = url
         return url, how

@@ -125,3 +125,9 @@ def test_every_row_in_feeds_csv_gets_a_plan(repo_root):
         assert not plans[sid][0], sid
     assert all(plans[sid][0].startswith("https://") for sid in fetchable)
     assert sum(s.priority_x_feed for s in sources) == 5
+
+
+def test_an_x_row_whose_backup_is_not_google_news_is_skipped():
+    x = src(feeds.X_INSTAGRAM, "Create in RSS.app", backup_google_news_url="https://x.com/someone")
+    url, on_backup, reason = plan(x)
+    assert url == "" and on_backup and "not a Google News feed" in reason

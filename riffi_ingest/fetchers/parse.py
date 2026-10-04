@@ -15,11 +15,15 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 
 import feedparser
+from feedparser.datetimes import _parse_date as _feedparser_date
 
 TAG_RE = re.compile(r"<[^>]+>")
 WS_RE = re.compile(r"\s+")
 IMG_RE = re.compile(r"<img[^>]+src=[\"']([^\"']+)[\"']", re.I)
 IST = timezone(timedelta(hours=5, minutes=30))
+# A date that names its own offset or zone. Anything else is taken as IST (see parse_loose_date).
+HAS_ZONE_RE = re.compile(r"(?:[+-]\d{2}:?\d{2}|Z|\b(?:GMT|UTC|UT|EST|EDT|CST|CDT|MST|MDT|PST|PDT)\b)\s*$", re.I)
+IST_SUFFIX_RE = re.compile(r"\s*\bIST\s*$", re.I)
 SUMMARY_CHARS = 1000
 
 
@@ -52,7 +56,10 @@ FALLBACK_FORMATS = (
     "%d %B, %Y",
     "%b %d, %Y",
     "%B %d, %Y",
+    "%Y-%m-%dT%H:%M:%S",
+    "%Y-%m-%dT%H:%M",
     "%Y-%m-%d %H:%M:%S",
+    "%Y-%m-%d %H:%M",
     "%Y-%m-%d",
     "%d-%m-%Y",
     "%d/%m/%Y",
@@ -75,6 +82,21 @@ def parse_loose_date(text: str | None) -> datetime | None:
             continue
         return dt.astimezone(timezone.utc) if dt.tzinfo else dt.replace(tzinfo=IST).astimezone(timezone.utc)
     return None
+
+
+def entry_date(raw: str | None, parsed=None) -> datetime | None:
+    """A feed entry's date in UTC. feedparser reads a date with no zone as UTC, but every source
+    here that leaves the zone out is Indian, so those (and "... IST") are read as IST instead."""
+    if not raw:
+        return _struct_to_dt(parsed)
+    text = IST_SUFFIX_RE.sub(" +0530", WS_RE.sub(" ", raw.strip()))
+    if HAS_ZONE_RE.search(text):
+        return _struct_to_dt(_feedparser_date(text)) or parse_loose_date(text)
+    loose = parse_loose_date(text)
+    if loose:
+        return loose
+    as_utc = _struct_to_dt(_feedparser_date(text))  # feedparser assumed UTC for a zone-less date
+    return as_utc - timedelta(hours=5, minutes=30) if as_utc else None
 
 
 def _struct_to_dt(value) -> datetime | None:
@@ -146,8 +168,9 @@ def parse_feed(content: bytes) -> ParsedFeed:
             Entry(
                 title=strip_html(e.get("title", "")),
                 link=(e.get("link") or "").strip(),
-                published=_struct_to_dt(e.get("published_parsed") or e.get("updated_parsed"))
-                or parse_loose_date(e.get("published") or e.get("updated")),
+                published=entry_date(
+                    e.get("published") or e.get("updated"), e.get("published_parsed") or e.get("updated_parsed")
+                ),
                 summary=strip_html(e.get("summary", ""))[:SUMMARY_CHARS],
                 author=strip_html(e.get("author", "")),
                 image_url=_image(e),

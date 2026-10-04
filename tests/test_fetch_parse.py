@@ -75,3 +75,25 @@ def test_html_page_is_not_a_feed():
 def test_strip_html():
     assert strip_html("<p>a&nbsp;<i>b</i></p>\n c") == "a b c"
     assert strip_html(None) == ""
+
+
+def test_feed_dates_without_a_zone_are_ist_and_explicit_zones_are_kept():
+    def date_of(text):
+        content = (
+            '<?xml version="1.0"?><rss version="2.0"><channel><title>t</title>'
+            f"<item><title>x</title><link>https://a.in/1</link><pubDate>{text}</pubDate></item></channel></rss>"
+        ).encode()
+        return parse_feed(content).entries[0].published
+
+    ist_10am = datetime(2026, 9, 29, 4, 30, tzinfo=timezone.utc)
+    for text in (
+        "2026-09-29 10:00:00",
+        "2026-09-29T10:00:00",
+        "29 Sep 2026 10:00:00",
+        "Tue, 29 Sep 2026 10:00:00 IST",
+        "29-09-2026 10:00:00",  # RBI Hindi feeds; feedparser alone reads this as 2029
+        "2026-09-29T10:00:00+05:30",
+    ):
+        assert date_of(text) == ist_10am, text
+    assert date_of("Tue, 29 Sep 2026 10:00:00 GMT") == datetime(2026, 9, 29, 10, 0, tzinfo=timezone.utc)
+    assert date_of("2026-09-29T10:00:00Z") == datetime(2026, 9, 29, 10, 0, tzinfo=timezone.utc)

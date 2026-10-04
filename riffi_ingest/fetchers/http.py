@@ -4,9 +4,14 @@ reverting code.
 
 Rules enforced here, so no caller can forget them (BRIEF.md step 1, D-004):
 - browser-like User-Agent (D-004: the founder chose this over the panel project's bot identity)
-- one request at a time per domain, and at least 2 s between request starts on the same domain
-- 20 s timeout per read plus an overall deadline per request, redirects followed
-- up to 2 retries with exponential backoff on network errors, 429 and 5xx (Retry-After honoured, capped)
+- one request at a time per domain, and at least 2 s between request starts on the same domain -
+  every redirect hop counts as a request on its own domain
+- never X, Instagram or WhatsApp, not even through a redirect (BRIEF.md hard rule)
+- 20 s timeout per read plus a 60 s deadline per attempt (redirects included)
+- up to 2 retries with exponential backoff on network errors, 429 and 5xx (Retry-After honoured, capped);
+  no retry for a DNS, TLS or bad-URL failure
+- a domain that fails 3 times in a row at network level is skipped for the rest of the run, so a dead
+  host (say news.google.com, with 84 queued feeds) cannot stretch one run into hours
 - conditional GET: send the last ETag / Last-Modified, and report a 304 as "not modified"
 - TLS certificates are always verified; a certificate problem is a finding, never something to switch off
 
@@ -16,10 +21,11 @@ Adapted from the panel project's feedkit/net.py at commit 0a07e29 (copied, not i
 from __future__ import annotations
 
 import asyncio
+import math
 import random
 import time
 from dataclasses import dataclass, field
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 
@@ -30,17 +36,30 @@ FEED_ACCEPT = "application/rss+xml, application/atom+xml, application/xml;q=0.9,
 PAGE_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
 
 TIMEOUT = 20.0
-DEADLINE = 60.0  # some servers (NSE) drip bytes so slowly that the per-read timeout never fires
+DEADLINE = 60.0  # per attempt; some servers (NSE) drip bytes so slowly that the per-read timeout never fires
 RETRIES = 2
 DOMAIN_INTERVAL = (2.0, 2.5)  # seconds between request starts on one domain: at least 2 s, a little jitter
+MAX_REDIRECTS = 10
 MAX_BYTES = 15 * 1024 * 1024
 RETRY_STATUSES = {429, 500, 502, 503, 504}
+REDIRECT_STATUSES = {301, 302, 303, 307, 308}
 MAX_RETRY_AFTER = 30.0
+DOMAIN_FAILURE_LIMIT = 3  # consecutive network-level failures before a domain is skipped for the run
+NO_RETRY_KINDS = {"dns", "tls", "too_large", "bad_url", "blocked", "domain_down", "too_many_redirects"}
+NETWORK_KINDS = {"timeout", "dns", "connect"}  # failures that say the host itself is unreachable
+
+# BRIEF.md: never scrape X, Instagram or WhatsApp directly.
+BLOCKED_DOMAINS = ("x.com", "twitter.com", "instagram.com", "whatsapp.com", "whatsapp.net", "wa.me")
 
 
 def domain_key(url: str) -> str:
     host = (urlsplit(url).hostname or "").lower()
     return host[4:] if host.startswith("www.") else host
+
+
+def is_blocked(url: str) -> bool:
+    host = domain_key(url)
+    return any(host == d or host.endswith("." + d) for d in BLOCKED_DOMAINS)
 
 
 @dataclass
@@ -52,8 +71,9 @@ class FetchResult:
     content: bytes = b""
     headers: dict = field(default_factory=dict)
     error: str | None = None
-    error_kind: str | None = None  # timeout | dns | tls | connect | too_large | other
+    error_kind: str | None = None  # see NO_RETRY_KINDS / NETWORK_KINDS, plus "other"
     attempts: int = 0
+    redirects: int = 0
     elapsed: float = 0.0
 
     @property
@@ -76,6 +96,10 @@ class FetchResult:
     def text(self) -> str:
         return self.content.decode("utf-8", errors="replace")
 
+    def fail(self, kind: str, message: str) -> None:
+        self.status, self.content, self.headers = None, b"", {}
+        self.error_kind, self.error = kind, message[:300]
+
 
 class _Gate:
     """One request at a time per domain, with a minimum gap between request starts."""
@@ -84,12 +108,17 @@ class _Gate:
         self.lock = asyncio.Lock()
         self.interval = interval
         self.next_start = 0.0
+        self.failures = 0  # consecutive network-level failures
 
     async def __aenter__(self):
         await self.lock.acquire()
-        now = time.monotonic()
-        if self.next_start > now:
-            await asyncio.sleep(self.next_start - now)
+        try:
+            now = time.monotonic()
+            if self.next_start > now:
+                await asyncio.sleep(self.next_start - now)
+        except BaseException:  # cancelled while waiting its turn: free the domain for everyone else
+            self.lock.release()
+            raise
         # the gap counts from the start of this request, so a slow answer does not add to it
         self.next_start = time.monotonic() + random.uniform(*self.interval)
         return self
@@ -102,6 +131,8 @@ def _classify_error(exc: Exception) -> str:
     msg = f"{type(exc).__name__}: {exc}".lower()
     if isinstance(exc, httpx.TimeoutException):
         return "timeout"
+    if isinstance(exc, (httpx.InvalidURL, httpx.UnsupportedProtocol)):
+        return "bad_url"
     if any(s in msg for s in ("getaddrinfo", "name or service not known", "nodename nor servname", "no address")):
         return "dns"
     if "ssl" in msg or "certificate" in msg or "tls" in msg:
@@ -112,13 +143,13 @@ def _classify_error(exc: Exception) -> str:
 
 
 def _retry_after(headers: dict) -> float | None:
-    value = headers.get("retry-after")
-    if not value:
-        return None
     try:
-        return min(float(value), MAX_RETRY_AFTER)
+        value = float(headers.get("retry-after", ""))
     except ValueError:
+        return None  # an HTTP date or junk: use the normal backoff
+    if not math.isfinite(value) or value < 0:
         return None
+    return min(value, MAX_RETRY_AFTER)
 
 
 class _TooLarge(Exception):
@@ -142,12 +173,8 @@ class PoliteClient:
         self.retries = retries
         self.interval = interval
         self._gates: dict[str, _Gate] = {}
-        self._client = httpx.AsyncClient(
-            follow_redirects=True,
-            max_redirects=10,
-            timeout=httpx.Timeout(timeout),
-            transport=transport,
-        )
+        # redirects are followed by hand in _attempt, so each hop goes through its own domain's gate
+        self._client = httpx.AsyncClient(follow_redirects=False, timeout=httpx.Timeout(timeout), transport=transport)
 
     async def __aenter__(self):
         return self
@@ -188,10 +215,14 @@ class PoliteClient:
         started = time.monotonic()
         for attempt in range(max_attempts):
             result.attempts = attempt + 1
-            async with self._gate(url):
-                await self._attempt(result, method, url, hdrs, data)
-            if result.error_kind in ("dns", "tls", "too_large"):
-                break  # retrying will not change these
+            try:
+                async with asyncio.timeout(self.deadline):
+                    await self._attempt(result, method, url, hdrs, data)
+            except TimeoutError:
+                result.fail("timeout", f"no complete answer within {self.deadline:.0f}s")
+                self._gate(result.final_url or url).failures += 1
+            if result.error_kind in NO_RETRY_KINDS:
+                break
             if result.error is None and result.status not in RETRY_STATUSES:
                 break
             if attempt + 1 < max_attempts:
@@ -201,11 +232,28 @@ class PoliteClient:
         return result
 
     async def _attempt(self, result: FetchResult, method: str, url: str, hdrs: dict, data) -> None:
+        result.redirects = 0
+        for _hop in range(MAX_REDIRECTS + 1):
+            if is_blocked(url):
+                return result.fail("blocked", f"refused: {domain_key(url)} is never fetched (no X/Instagram/WhatsApp)")
+            result.final_url = url  # the hop in flight, so a timeout is charged to the right domain
+            gate = self._gate(url)
+            if gate.failures >= DOMAIN_FAILURE_LIMIT:
+                return result.fail("domain_down", f"{domain_key(url)} failed {gate.failures} times in a row this run")
+            async with gate:
+                await self._send(result, gate, method, url, hdrs, data)
+            location = result.headers.get("location")
+            if result.error or result.status not in REDIRECT_STATUSES or not location:
+                return None
+            url = urljoin(url, location)
+            result.redirects += 1
+            if result.status == 303 or (result.status in (301, 302) and method == "POST"):
+                method, data = "GET", None
+        return result.fail("too_many_redirects", f"more than {MAX_REDIRECTS} redirects")
+
+    async def _send(self, result: FetchResult, gate: _Gate, method: str, url: str, hdrs: dict, data) -> None:
         try:
-            async with (
-                asyncio.timeout(self.deadline),
-                self._client.stream(method, url, headers=hdrs, content=data) as resp,
-            ):
+            async with self._client.stream(method, url, headers=hdrs, content=data) as resp:
                 chunks, size = [], 0
                 async for chunk in resp.aiter_bytes():
                     size += len(chunk)
@@ -218,13 +266,10 @@ class PoliteClient:
                 result.content_type = result.headers.get("content-type", "")
                 result.content = b"".join(chunks)
                 result.error = result.error_kind = None
+            gate.failures = 0
         except _TooLarge:
-            result.status = None
-            result.error, result.error_kind = f"response larger than {MAX_BYTES} bytes", "too_large"
-        except TimeoutError:
-            result.status = None
-            result.error, result.error_kind = f"no complete answer within {self.deadline:.0f}s", "timeout"
+            result.fail("too_large", f"response larger than {MAX_BYTES} bytes")
         except Exception as exc:  # any network-level failure becomes a finding, never a crash
-            result.status = None
-            result.error = f"{type(exc).__name__}: {exc}"[:300]
-            result.error_kind = _classify_error(exc)
+            result.fail(_classify_error(exc), f"{type(exc).__name__}: {exc}")
+            if result.error_kind in NETWORK_KINDS:
+                gate.failures += 1

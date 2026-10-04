@@ -109,3 +109,21 @@ def test_resolver_reports_a_failed_lookup():
             return await gnews.Resolver(client).resolve(f"https://news.google.com/rss/articles/{NEW_STYLE}")
 
     assert run(go()) == (None, "no signature on article page")
+
+
+def test_an_odd_batchexecute_answer_is_not_a_crash():
+    odd = ")]}'\n\n" + json.dumps([["wrb.fr", "Fbv4je", json.dumps({"garturlres": 1})]]) + "\n\n"
+    assert gnews._extract_batch_url(odd) is None
+
+
+def test_a_google_redirect_straight_to_the_publisher_counts_as_resolved():
+    def handler(request):
+        if request.url.host == "news.google.com":
+            return httpx.Response(302, headers={"Location": "https://www.deccanherald.com/city/x"})
+        return httpx.Response(200, text="<html>article</html>")
+
+    async def go():
+        async with fake_client(handler) as client:
+            return await gnews.Resolver(client).resolve(f"https://news.google.com/rss/articles/{NEW_STYLE}")
+
+    assert run(go()) == ("https://www.deccanherald.com/city/x", "redirect")
