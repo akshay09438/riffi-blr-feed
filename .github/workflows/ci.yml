@@ -1,0 +1,128 @@
+# Zuko CI - the real floor. Runs on GitHub regardless of which agent, machine,
+# or mood produced the code. Scaffolded by /bootstrap from the project profile
+# (Part B), adapted to this Python project (Zuko's template is JavaScript-first).
+#
+# Note: this team runs without branch protection by choice (small team). A red
+# run therefore WARNS (a visible red X on the PR and commit) rather than
+# blocking merge. The discipline "do not merge red" lives in the team process
+# and the constitution. The value CI still delivers regardless: a clean-room
+# re-run that catches machine-specific passes, and the security scanners that no
+# local test run covers. Enable branch protection later to turn warnings into
+# gates - see docs/BRANCH_PROTECTION_NOTES.md.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    name: Verify (install, lint, format, test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (pinned requirements)
+        run: python -m pip install -r requirements.txt
+      - name: Lint and format check
+        run: |
+          python -m ruff check .
+          python -m ruff format --check .
+      - name: Tests
+        run: python -m pytest -q tests
+
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Run gitleaks
+        run: |
+          GITLEAKS_VERSION=8.21.2
+          curl -sSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks detect --source . --redact --verbose --exit-code 1
+
+  sast:
+    name: Static analysis (semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run semgrep
+        run: |
+          pip install --quiet semgrep
+          semgrep scan --config auto --error --quiet --exclude reference
+
+  coverage-no-regression:
+    name: Coverage no-regression on touched files
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Changed files
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          git diff --name-only "origin/${{ github.base_ref }}...HEAD" > changed-files.txt
+          echo "Changed files:" && cat changed-files.txt
+
+      # pytest-cov writes coverage.py JSON; reshape it into the per-file
+      # {"path": {"lines": {"pct": N}}} summary the Zuko check reads.
+      - name: Coverage on PR head
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pytest -q tests --cov=riffi_ingest --cov-report=json:coverage/coverage.json
+          python -c "import json; d=json.load(open('coverage/coverage.json')); json.dump({f: {'lines': {'pct': v['summary']['percent_covered']}} for f, v in d['files'].items()}, open('head-summary.json', 'w'))"
+
+      - name: Coverage on base branch
+        run: |
+          git stash --include-untracked || true
+          git checkout "origin/${{ github.base_ref }}"
+          python -m pip install -r requirements.txt || true
+          rm -rf coverage
+          python -m pytest -q tests --cov=riffi_ingest --cov-report=json:coverage/coverage.json || true
+          python -c "import json; d=json.load(open('coverage/coverage.json')); json.dump({f: {'lines': {'pct': v['summary']['percent_covered']}} for f, v in d['files'].items()}, open('base-summary.json', 'w'))" || echo '{}' > base-summary.json
+          git checkout -
+
+      - name: Compare
+        run: |
+          node .github/scripts/zuko-coverage-check.mjs \
+            --base base-summary.json \
+            --head head-summary.json \
+            --changed changed-files.txt
+
+  goodnight-gate:
+    name: Goodnight merge-gate (dangerous changes are approved)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      # If this PR carries a goodnight provenance log, every dangerous-path file
+      # in the diff must have a recorded human approval. Attended PRs (no
+      # provenance) pass - CODEOWNERS gates those.
+      - name: Goodnight provenance gate
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1
+          node .zuko/goodnight-gate.js --base "origin/${{ github.base_ref }}"

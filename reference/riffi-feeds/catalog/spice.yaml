@@ -1,0 +1,167 @@
+# What makes a story worth posting on Riffi (read by fetcher/picker.py).
+#
+# Riffi is an opinion and discussion platform. A good pick sparks an argument people want to join:
+# it has two sides, it touches their own life (rent, commute, office, money, language, being new to
+# Bengaluru), it is moving right now, and a creator can have a take on it in a line. Most of our
+# audience are young professionals and migrants in Bengaluru, so the city's everyday frictions and
+# the local-vs-outsider questions are the richest seam; national and general stories count when they
+# land in that life.
+#
+# Every list is a set of regular expressions matched case-insensitively on the headlines (and their
+# English translations) of all outlets covering a story, or on a Reddit post's title. Kannada terms
+# match at the start of a word. Edit freely; `python -m pytest tests` checks the file still loads.
+
+# ---- signals that raise the score
+
+conflict:          # two parties at odds, public anger, a fight: the raw material of debate
+  - slams?|hits? out|lash(es|ed)? out|attacks?\b|takes? a dig|jibe|swipe at
+  - (?<!in a )\brow\b|spat|feud|clash(es|ed)?|war of words|face-?off|showdown|standoff
+  - backlash|outrage|fury|furious|angry|anger|irk(s|ed)?|upset|slammed|flak|under fire|faces? heat|trolled
+  - protests?|agitation|dharna|bandh|boycott|walk-?out|stir\b|(bank|nationwide|general|hunger|auto|cab|transport|teachers'?|doctors'?|workers'?) strikes?|on strike|strike (call|notice|over|against|demanding)|go(es)? on strike
+  - objections?|oppos(e|es|ed|ition to)|pushback|push(es|ing)? back|resist(s|ance)?\b|complain(s|ts)?\b|petition|dispute|rift\b
+  - demands?|ultimatum|warns?|threatens?|accuses|accusations?|alleges|allegations? (against|of)|blames?|raises questions|questions (govt|government|centre|minister|cm|pm)
+  - controvers(y|ial)|divid(es|ed|ing)|polaris|u-?turn|flip-?flop|rollback|withdraws?|scrap(s|ped)
+  - defends?|justif(y|ies|ied)|refuses?|rejects?|denies|hits back|counters?|rebuts?|mocks?
+  - ಆಕ್ರೋಶ|ಪ್ರತಿಭಟನೆ|ವಾಗ್ದಾಳಿ|ಟೀಕೆ|ಆರೋಪ|ವಿರೋಧ|ಗಲಾಟೆ|ಖಂಡನೆ|ಅಸಮಾಧಾನ|ಹೇರಿಕೆ|ಕಿಡಿ|ತರಾಟೆ|ವಿವಾದ|ಓಡಿಸಬೇಕು|ಸವಾಲು
+
+two_sided:         # the headline itself frames a choice or a question
+  - \bvs\.?\b|versus|should\b|is it (fair|right|time)|good or bad|right or wrong|for or against|debate
+  - \?|who is (right|responsible|to blame)|why (is|are|do|does|did|can't|don't)\b|worth it|or not\b
+
+rule_impact:       # a decision that lands on people: new rules, fines, bans, price changes
+  - hike[sd]?\b|increase[sd]? (in|of)|goes? up|costlier|price rise|revis(ed|es) (fares?|rates?|prices?)
+  - \bfines?\b|penalt(y|ies)|challan|\bban(s|ned)?\b|mandatory|compulsory|new rules?|crackdown|deadline
+  - \btax\b|\bgst\b|\btoll\b|\bcess\b|surcharge|\bfees?\b|charges?\b|fare|tariff|subsid(y|ies)|freebies?
+  - ದರ ಏರಿಕೆ|ದಂಡ|ನಿಷೇಧ|ಕಡ್ಡಾಯ|ಹೊಸ ನಿಯಮ|ಬೆಲೆ ಏರಿಕೆ|ಶುಲ್ಕ
+
+money_pinch:       # what hits a salary, a rent cheque or a savings account
+  - \brent|landlord|deposit|broker|flat prices?|house prices?|property prices?|\bemi\b|home loan
+  - salar(y|ies)|\bctc\b|appraisal|hike in pay|pay cut|bonus|increment|layoffs?|laid off|job cuts?|fired
+  - cost of living|expensive|afford|savings|\bsip\b|mutual fund|stock market|sensex crash|nifty crash|inflation
+  - market (crash|rout|fall)|wipes? (off|out)|bloodbath|investors lose
+  - \bpf\b|provident fund|\bepfo?\b|gratuity|pension (rules?|withdrawal)|overcharg|price gouging|\d+-fold
+  - (drug|medicine|hospital|treatment|school|college) (prices?|bills?|costs?|fees?)|costlier|pricier
+
+work_life:         # office culture and careers, the life of the techie
+  - techies?|\boffice\b|return to office|work from (home|office)|\bwfh\b|\bwfo\b|hybrid|70-?hour|90-?hour
+  - work(ing)? hours|work-?life|burnout|toxic|boss|manager|hr\b|notice period|moonlight|hustle|resign
+  - \bit (sector|firms?|companies|employees)|startup (culture|founder)|founders?\b|gen z|millennials?|freshers?
+  - bench(ed|ing)?\b|benchwarm|on the bench|overtime|work culture|working culture|hiring freeze|variable pay
+  - (garment|gig|delivery|factory|it) workers?|employees? (union|protest)|9-to-5|nine-to-five|side hustle
+
+city_life:         # the daily friction of living in Bengaluru (and any Indian metro)
+  - traffic|jam\b|pothole|commute|namma metro|\bmetro\b|bmtc|\bbus(es)?\b|auto(rickshaw)?s?\b|auto drivers?
+  - \bcabs?\b|\bola\b|\buber\b|rapido|bike taxi|parking|flyover|tunnel road|silk board|outer ring road|orr\b
+  - water (supply|crisis|shortage|tanker)|power cut|power outage|outage|no (electricity|power|water)\b|flood(ing|ed)?|rain\b|lakes?\b|garbage|footpath|stray dogs?
+  - \bpg\b|flatmates?|roommates?|tenants?|gated society|apartment|pubs?\b|nightlife|swiggy|zomato|blinkit|zepto
+  - airbnb|homestays?|short-?term (rentals?|stays?)|residential (areas?|neighbourhoods?|layouts?)|\brwa\b|residents'? welfare
+  - ಸಂಚಾರ ದಟ್ಟಣೆ|ಗುಂಡಿ|ಮೆಟ್ರೋ|ಆಟೋ(?!ಇ|ಟ)|ನೀರಿನ|ಬಾಡಿಗೆ|ಕಸ
+
+identity:          # who belongs where: the migrant-city fault lines, and language
+  - kannadigas?|non-?kannadigas?|kannada (row|imposition|signboards?|mandatory|first|speak)|learn kannada
+  - hindi (imposition|speaking|row)|language (row|war|debate|imposition)|outsiders?|migrants?|north indians?
+  - south indians?|locals? (vs|versus|first|jobs|quota)|jobs for locals|domicile|sons of the soil|moved to (bangalore|bengaluru)
+  - ಕನ್ನಡಿಗ|ಕನ್ನಡ ಕಡ್ಡಾಯ|ಹಿಂದಿ ಹೇರಿಕೆ|ವಲಸಿಗ|ಪರಭಾಷಿಕ|ಉತ್ತರ ಭಾರತೀಯ
+
+viral:             # already travelling on social media
+  - viral|netizens|internet (reacts|is divided|slams)|social media|\bon x\b|x post|x users|twitter|linkedin post
+  - reddit|instagram|video (shows|goes)|goes viral|sparks (debate|row|outrage)|trending|meme
+
+take_hooks:        # someone decided or said something a creator can agree or disagree with
+  - \bsays?\b|\bsaid\b|claims?|announces?|orders?|proposes?|plans? to|mandates?|approves?|clears?\b|decides?
+  - wants?|asks?|urges?|calls? (for|out)|pitches|suggests?|admits?|reveals?|explains?|why\b|how\b
+
+opinion_sections:  # sections whose pieces already argue a point (matched on the feed's sub-topic or link)
+  - opinion|editorial|columns?|explained|explainer|analysis|comment|/opinion/|/editorials?/|/explained/
+
+info_request:      # a Reddit title that asks for directions or advice, not opinions
+  - ^(is there|are there|any)\b.{0,40}\b(any|a|an|good|place|places|option|options)\b|^where (can|to|do|should|is)\b
+  - ^(which|what) is the best|^best (place|way|option)|^how (to|do|can) i\b|^can (someone|anyone)|^does anyone|^anyone (know|here|else)
+  - anyone (else|faced|face|know|seen|experienced|here)\b
+  - recommend|suggestions?|looking for|need help|help me|please help|\bdm me\b|query|doubt|newbie|beginner|^question\b|\bq:|what should i|should i (buy|sell|invest|take|join|switch|accept)
+
+proposal:          # someone wants something changed: people will be for or against it
+  - suggests?|proposes?|proposal|pitches|calls for|backs\b|pushes for|mulls|considering|weighs|floats|wants (to|a|an)\b
+  - plans? to (ban|tax|charge|make|allow|end|scrap|introduce|cap|raise|cut)|set to (ban|tax|charge|scrap|raise|cut)
+
+flashpoints:       # questions India (and Bengaluru) already argues about
+  - guarantee schemes?|freebies?|free (bus|travel|electricity|power|rations)|shakti (scheme|yojane|dues|bills?|burden)|gruha (lakshmi|jyothi)
+  - anna bhagya|inheritance tax|wealth tax|old pension|\bops\b|4-day (work )?week|70-hour|90-hour|work-?life balance
+  - h-?1b|green card|upi (charges?|mdr|fees?)|\bmdr\b|parking (fees?|rules|policy)|wfh mandate|work from home mandate
+  - reservation|quota|hindi imposition|language row|delimitation|one nation,? one election|caste census|three-language
+  - milk price|nandini|\bkmf\b|power tariff|water tariff|property tax (hike|revision|rise|increase|dues|defaulters|arrears|penalty)|guidance value|(metro|bus|auto|cab) fares?
+  - bike taxi (ban|rules)|rapido ban|toll (hike|plaza|fee)|potholes?|tunnel road|garbage (crisis|fee)|lake encroach
+  - ಗ್ಯಾರಂಟಿ|ಶಕ್ತಿ ಯೋಜನೆ|ಹಾಲಿನ ದರ|ನಂದಿನಿ|ಮೀಸಲಾತಿ|ಹಿಂದಿ ಹೇರಿಕೆ|ಗುಂಡಿ
+
+viral_personal:    # one person's money or career story: the comments write themselves
+  - \d{2}-year-old|techie (says|asks|shares|claims|reveals|quits|slams|explains)|(man|woman|user|employee|founder|ceo|student|mom|dad)s? (says|asks|shares|claims|reveals|slams|questions)
+  - (employee|techie|founder|user|resident|woman|man)['’]s (advice|take|post|rant)|don['’]t (come|move) to (bangalore|bengaluru)|if your salary
+  - earning (rs|₹|\d)|\blpa\b|lakh (salary|package|per month|a month|a year)|crore package|asks if|post (goes viral|sparks)|x user|linkedin user|redditor
+
+life_feels:        # the life our audience lives: family, love, loneliness, moving cities
+  - \bparents?\b|\bmom\b|\bdad\b|mother|father|marriage|married|\bsingle\b|lonely|loneliness|friends?\b|dating|relationships?|breakup
+  - moving (to|out)|family pressure|in (my|their|your) (20s|30s|40s)|midlife|\bkids\b|childfree|settle down|\bnri\b|homesick|hometown
+
+big_move:          # a real market move is news, not a routine tick
+  - slide continues|losing streak|in a row|(straight|consecutive) (days?|sessions?|weeks?)|ಸತತ|ಭಾರೀ ಕುಸಿತ
+  - tumbles?|crash(es|ed)?|plunges?|\brout\b|wipes? (off|out)|bloodbath|biggest (fall|drop|gain|jump)|soars?|surges?|record (high|low)
+
+# ---- signals that lower the score
+
+dry:               # routine updates nobody argues about
+  - (sensex|nifty)[^.]{0,40}(points|pts|higher|lower|flat|ends|closes|opens)|stocks? to (buy|watch)|share price (today|live)
+  - \blive (updates?|blog|coverage|news)\b|\blive:|\blive\b.{0,3}$|breaking news live|q[1-4] results|results? (today|date)|ipo gmp|allotment status
+  - (launch(es|ed)? of|launches|rolls out) (an? )?(online|new) (software|portal|app|website|service)|online (software|portal) for
+  - circular|notification no|tender|recruitment|vacanc(y|ies)|admit card|answer key|schedule|timetable
+  - inaugurat|felicitat|condolence|pays? tribute|jayanti|anniversary|seminar|workshop|webinar|awareness (programme|drive|camp)
+  - \bitat\b|tribunal (rules|says|deletes)|assessing officer|tax addition|section \d+[a-z]*\b|form \d+[a-z]*\b|conclave|press meet|briefing
+  - congratulates|greets|extends greetings|wishes on|meets? (with )?(pm|cm|minister|governor)|chairs? (a )?meeting|reviews? progress
+  - weather (forecast|update)|rain alert|orange alert|yellow alert|thunderstorm|cap alert|river .{0,30}(above|danger level)
+  - horoscope|rashifal|zodiac|panchang|tarot|recipe|box office|wallpaper|in pics|photos:|live score|match preview
+  - ಕಾರ್ಯಕ್ರಮ|ಉದ್ಘಾಟನೆ|ಸನ್ಮಾನ|ಜಯಂತಿ|ಶಿಬಿರ|ಜಾಗೃತಿ|ಸಭೆ|ಪೂಜೆ|ಉತ್ಸವ|ಶ್ರದ್ಧಾಂಜಲಿ|ರಾಶಿ ಭವಿಷ್ಯ
+
+# ---- gates: what we never pick, and what needs a human's eye
+
+skip_tragedy:      # someone died or was harmed: not a "spicy" post, never picked on its own (rebuilt 29 Sep 2026 after two safety reviews)
+  - \bdies\b|\bdied\b|\bdie\b(?!-)|death|deaths|killed|kills|\bdeceased|body (found|of)|bodies|murder|suicide
+  # "dead", "no more", "blast" and "succumb" stay broad (a false skip is the safe mistake); only idioms that are never about a person are let through
+  - \bdead\b(?![- ](cheap|end|ends|heat|rubber|serious|stock|lock|set on|letter|ringer))|(found|shot|beaten|left|declared|brought|lying) dead|dead body|feared dead
+  - \brape[ds]?\b|gang-?rape[ds]?|sexual(ly)? assault|molest|pocso|child abuse|stabbed|lynch|drown(s|ed|ing)?|electrocuted
+  - shot at (\d|and |by |in |near |outside |while |during |his |her )|shot (dead|by|and killed)|(man|woman|youth|boy|girl|student|techie|worker|rider|driver|constable|farmer|cop) shot\b|set ablaze|set on fire|immolat|acid attack
+  - (road|bike|car|bus|truck|lorry|train|air) (accident|crash)|in (a|an|the) (road |freak )?accident|accident (on|at|near|kills?|claims?|victims?)|killed in (an? )?(accident|crash)|mishap|crash(es|ed)? (into|kills)|stampede|collapse[sd]? .{0,30}(dead|killed|injured|trapped)|missing (girl|boy|child)
+  - \d+ (people |persons )?(were )?(injured|hurt)|(injured|hurt) (in|as|after|when)\b|(critically|seriously|grievously) injured|(bus|car|lorry|truck|van|auto|jeep|tractor) overturn
+  - injures? (\d+|a |an |two|three|four|five|six|seven|eight|nine|ten|several|many)|crushed (under|by|between)|(falls?|fell|falling) (into|from|off) (a |an |the )?(open )?(drain|borewell|well|lake|pond|building|balcony|terrace|bridge|flyover|train|bus)|borewell
+  - (suv|jeep|van|cab|auto|autorickshaw|tractor|tanker|scooter|two-wheeler|porsche|bmw|audi|mercedes|helicopter|plane|chopper) (accident|crash)
+  - no more\b(?!\s+(than|wfh|work[- ]from[- ]home|free|extensions?|delays?|excuses?|plastic|cash|paper|queues?|waiting|hiding|office|ban|power cuts?))|passes away|passed away|obituary|last rites|funeral|terror attack
+  - \bblast(s|ed|ing)?\b|(bomb|cylinder|boiler|gas|firecracker|cracker|factory) explosion|explosions? (rocks?|kills?|injures?|at|in)\b
+  - tragedy|tragic|swept away|run over|mowed down|hit-and-run|heart attack claims|claims (\d+ |two |three |four |five )?li(fe|ves)\b
+  - (ends?|ended|takes?|took|taking) (his |her |their )?(own )?li(fe|ves)\b|found (hanging|hanged)|hangs? (self|himself|herself)|hanged (himself|herself|themselves)
+  - succumb(s|ed|ing)?\b(?! to (selling|profit[- ]booking|profit[- ]taking|market) pressure)|(loses?|lost|losing) (his |her |their )?li(fe|ves)\b
+  - fatal (crash|accident|collision|fall|fire|attack)|hacked to death|bludgeoned|charred to death|crushed to death|burnt alive|buried alive
+  - slit (her|his|their|the) throat|throat slit|dismember
+  - ಸಾವು|ಮೃತ|ಸಾವನ್ನಪ್ಪ|ಕೊಲೆ|ಆತ್ಮಹತ್ಯೆ|ಅತ್ಯಾಚಾರ|ಅಪಘಾತ|ನಿಧನ|ಶವ|ಬಲಿ
+  - ನೇಣ|ಸಾವಿಗೀಡ|ಕೊನೆಯುಸಿರೆಳೆ|ಜೀವ ಕಳೆದುಕೊಂಡ|ಮರಣ|ಹತ್ಯೆ|ದುರ್ಮರಣ|ಕಾಲ್ತುಳಿತ|ದುರಂತ|ಲೈಂಗಿಕ ದೌರ್ಜನ್ಯ|ಗಾಯಗೊಂಡ|ಗಾಯಾಳು|ಗಂಭೀರ ಗಾಯ|ನೀರುಪಾಲ
+
+systemic_hook:     # ...unless it is about a failure a city argues over (then: handle with care)
+  - pothole|negligence|govt|government|civic body|bbmp|\bgba\b|bwssb|bescom|bmrcl|police (inaction|apathy)
+  - work pressure|toxic (work|boss|culture)|overwork|who is responsible|accountab|safety (lapse|norms|audit)
+  - protest|outrage|angry|anger|fury|demands? (action|justice)|questions raised|probe ordered|suspended|compensation
+  - (against|blames?|slams?) (the )?(govt|government|department|dept|police|officials|authorities|civic body|corporation)
+  - ಆಕ್ರೋಶ|ನಿರ್ಲಕ್ಷ್ಯ|ಪ್ರತಿಭಟನೆ|ಇಲಾಖೆ ವಿರುದ್ಧ|ಅಧಿಕಾರಿಗಳ ವಿರುದ್ಧ|ಪರಿಹಾರ
+  - high court|supreme court|\bhc\b|verdict|ruling|judgment|justice|pendenc|backlog|conviction rate|women'?s safety|safety of women|law and order|\bbill\b|policy
+
+care_sensitive:    # allowed, but a human reads it before it goes out
+  - communal|hindu-muslim|muslims?|hindus?\b|christians?|temple|mosque|masjid|church|caste|dalit|brahmin|reservation\b|\bobc\b|\bsc,? st\b|sc/st
+  - love jihad|conversion|cow (vigilante|slaughter)|beef|hijab|halal|pakistan (supporters|slogans)|anti-national|sedition
+  - minor\b|minors|juvenile|sexual harassment|#metoo|stalking|acid attack|dowry
+  - ಕೋಮು|ಮುಸ್ಲಿಂ|ಹಿಂದೂ|ಜಾತಿ|ದಲಿತ|ಮತಾಂತರ
+  # the communities, faiths and quota words of Karnataka's political fights: allowed, a human reads it first (29 Sep 2026)
+  - vokkaliga|lingayat|veerashaiva|kuruba|madiga|panchamasali|internal reservation|waqf|hindutva|\brss\b|\beid\b|namaz|bakrid|ramzan|ramadan
+  - ಮೀಸಲಾತಿ|ಒಕ್ಕಲಿಗ|ಲಿಂಗಾಯತ|ವೀರಶೈವ|ಕುರುಬ|ಮಾದಿಗ|ಪಂಚಮಸಾಲಿ|ವಕ್ಫ್|ಹಿಂದುತ್ವ|ಆರ್‌ಎಸ್‌ಎಸ್|ನಮಾಜ್|ಬಕ್ರೀದ್|ರಂಜಾನ್
+
+care_private:      # fights, thefts, scams and accusations involving people: allowed, a human reads it first (founder, 29 Sep 2026)
+  - physical (clash|fight|altercation)|exchange[sd]? blows|came to blows|brawl|scuffle|fist ?fight|road rage|slapped|thrashed|beaten up|manhandl|assault(ed|s|ing)?\b
+  - \btheft|\bstolen\b|\bstole\b|\bthie(f|ves)\b|robbed|robbery|snatch(ed|ing|er|ers)?\b|burglar
+  - \bscam(s|mer|mers|med)?\b|fraudster|\bduped\b|\bconned\b|cheated
+  - misconduct|harass(ed|es|ment|ing)?\b
+  - ಜಗಳ|ಹಲ್ಲೆ|ಕಳ್ಳತನ|ಕಳವು|ವಂಚನೆ|ದರೋಡೆ|ಹಗರಣ
