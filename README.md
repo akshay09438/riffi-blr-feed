@@ -2,7 +2,7 @@
 
 Collects new developments on Riffi's 151 tracked topics from 131 sources, cleans them, groups them into stories and tags them by topic. It only collects, ranks and reports: it never posts anything. What it does and why: `BRIEF.md`; where the team decided differently: `DECISIONS.md`; how it is built: `docs/technical-spec.md`; how far along it is: `docs/implementation-plan.md`.
 
-**Built so far:** fetching every route, cleaning, Google News link resolution, the blocklist, grouping into stories, keyword tagging, the database, and the commands below. **Not yet:** the AI tagging pass, scoring and labels, the scheduler, the 07:00 digest, the dashboard and `/api/stories`, and the two-week recall test.
+**Built so far:** fetching every route, cleaning, Google News link resolution, the blocklist, grouping into stories, keyword tagging, scoring and labels, the database, and the commands below. **Not yet:** the AI tagging pass, the scheduler, the 07:00 digest, the dashboard and `/api/stories`, and the two-week recall test.
 
 ## Setup (Windows laptop, once)
 
@@ -23,6 +23,7 @@ Then every command below is run as `.venv\Scripts\python.exe -m riffi_ingest <co
 | `import-sources` | Loads `feeds.csv` into the database. Safe to run again after editing the CSV: rows are updated, history is kept, and a removed source is marked inactive, never deleted. |
 | `import-topics` | Loads `topics.csv` into the database. Safe to run again. |
 | `fetch --all` | One full cycle for every active source: fetch, clean, group into stories, tag, store. `fetch --source S004 --source S011` does just those. The first `fetch` imports the sources by itself. Takes up to about 12 minutes (the source fetches plus up to 100 Google News link look-ups); please leave it running. Only one fetch can run at a time. |
+| `stories` | The best stories of the last 24 hours, highest score first: score, label (High / Medium / Low / Drop), number of sources, topics and headline. `--top 50`, `--hours 48`, `--label High`. Until the AI pass exists, scores leave out its 25 points and stories show `[awaiting AI]`. |
 
 Every command has `--help`.
 
@@ -30,7 +31,7 @@ Every command has `--help`.
 
 1. `test-feeds` and read the failures and their suggested fixes. Known ones before any run: S047 and S107 have an instruction where the URL should be, S108 has no backup Google News URL, S121 needs a YouTube channel ID.
 2. Fix what you can in `feeds.csv`, then `import-sources`.
-3. `fetch --all` and look at what was stored (a dashboard comes in step 8).
+3. `fetch --all`, then `stories` to see the top 30 with their scores and topics (a dashboard comes in step 8).
 
 ## Settings (environment variables)
 
@@ -48,6 +49,7 @@ No API keys are needed: AI tagging will run in Claude Code on the founder's plan
 |---|---|---|
 | `feeds.csv` | The 131 sources (an export of Source List v4) | After editing, run `import-sources`. |
 | `topics.csv` | The 151 topics | After editing, run `import-topics`, and give a new topic keywords (below). |
+| `config/scoring.yaml` | The relevance-score weights and label cut-offs | Tune after the two-week test. |
 | `config/topic_keywords.yaml` | 5-15 keywords per topic for the keyword pass | Plain phrases; the rules are at the top of the file. A test fails if a topic in `topics.csv` has no keywords. |
 | `blocklist.csv` | Copycat and unreliable sites; anything from them is dropped | Protected file: changes need the founder. Put the site's domain in the row; a row without one is reported, never guessed. |
 

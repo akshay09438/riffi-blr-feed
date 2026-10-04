@@ -3,7 +3,8 @@
     import-sources    seed / refresh sources from feeds.csv (idempotent)
     import-topics     seed / refresh topics from topics.csv (idempotent)
     test-feeds        fetch every source once and report pass / fail with a suggested fix; stores nothing
-    fetch             one full cycle (fetch, clean, group, tag, store): --all, or --source S004 --source S011
+    fetch             one full cycle (fetch, clean, group, tag, score, store): --all, or --source S004 --source S011
+    stories           the best stories of the last 24 hours with score, label, sources and topics
 
 Coming with later steps: digest --date, report, and the scheduler.
 """
@@ -14,7 +15,7 @@ import asyncio
 import csv
 import sys
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import typer
@@ -44,6 +45,9 @@ TopicsOption = typer.Option(PROJECT_ROOT / "topics.csv", "--topics", help="The t
 SourceOption = typer.Option(None, "--source", help="Only these source ids (repeatable).")
 ReportsOption = typer.Option(PROJECT_ROOT / "reports" / "test-feeds", "--out", help="Folder for the reports.")
 AllOption = typer.Option(False, "--all", help="Fetch every active source.")
+TopOption = typer.Option(30, "--top", help="How many stories to show.")
+HoursOption = typer.Option(24, "--hours", help="Stories updated in this many past hours.")
+LabelOption = typer.Option(None, "--label", help="Only High, Medium, Low or Drop.")
 
 
 @app.command("import-sources")
@@ -207,8 +211,9 @@ def fetch(
     source: list[str] = SourceOption,
     db: Path = DbOption,
     feeds: Path = FeedsOption,
+    topics: Path = TopicsOption,
 ) -> None:
-    """One full cycle: fetch, clean, group into stories, tag by keyword, store."""
+    """One full cycle: fetch, clean, group into stories, tag by keyword, score, store."""
     if all_sources == bool(source):
         _fail("say either --all, or --source S004 (repeatable), not both")
     conn = connect(db)
@@ -216,6 +221,10 @@ def fetch(
         _read_feeds(feeds)  # a clear message if feeds.csv is missing
         r = import_sources(conn, feeds)
         typer.echo(f"First run: imported {r.added} sources from {feeds}.")
+    if conn.execute("SELECT COUNT(*) FROM topics").fetchone()[0] == 0:
+        # scoring needs each topic's priority and geography; without them every story would score Drop
+        r = import_topics(conn, topics)
+        typer.echo(f"First run: imported {r.added} topics from {topics}.")
     if source:  # by id, inactive sources included, so a person can still try one by hand
         ids = [w.strip().upper() for w in source]
         sources = store.load_sources(conn, ids)
@@ -242,6 +251,36 @@ def fetch(
         f"Stories: {s.stories_new} new, {s.stories_grown} grown; {s.tagged} tagged, {s.unmatched_local} unmatched local."
     )
     typer.echo(f"Google News: {s.gnews_online} looked up online, {s.gnews_cached_new} new links cached.")
+    if s.labels:
+        typer.echo(
+            "Scored: " + ", ".join(f"{s.labels[k]} {k}" for k in ("High", "Medium", "Low", "Drop") if s.labels[k]) + "."
+        )
+    typer.echo("See the best ones with: python -m riffi_ingest stories")
+
+
+@app.command("stories")
+def stories(
+    top: int = TopOption,
+    hours: int = HoursOption,
+    label: str = LabelOption,
+    db: Path = DbOption,
+) -> None:
+    """The best stories updated in the last --hours (default 24), highest score first (BRIEF.md "FIRST RUN",
+    point 3). Score and label exclude the AI points until the AI pass runs ("awaiting AI")."""
+    conn = connect(db)
+    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    rows = store.top_stories(conn, since, top, label.capitalize() if label else None)
+    if not rows:
+        typer.echo(f"No stories in the last {hours} hours. Run: python -m riffi_ingest fetch --all")
+        return
+    typer.echo(f"Top {len(rows)} stories of the last {hours} hours (score / label / sources / topics / headline):")
+    for n, r in enumerate(rows, 1):
+        flags = (" [sensitive]" if r["sensitive"] else "") + ("" if r["ai_checked"] else " [awaiting AI]")
+        score = "" if r["relevance_score"] is None else f"{r['relevance_score']:.0f}"
+        typer.echo(
+            f"{n:>3}. {score:>3} {r['label'] or '-':<6} {r['source_count']:>2} src  {(r['topics'] or '-')[:24]:<24}"
+            f"  {r['headline'][:90]}{flags}"
+        )
 
 
 def main() -> None:

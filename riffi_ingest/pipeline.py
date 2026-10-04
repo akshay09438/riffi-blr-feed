@@ -1,7 +1,8 @@
-"""One fetch cycle, end to end: fetch -> clean -> group into stories -> tag -> store (BRIEF.md steps 1-4, 6).
+"""One fetch cycle, end to end: fetch -> clean -> group into stories -> tag -> score -> store
+(BRIEF.md steps 1-6).
 
-The AI pass (step 4, part 2) and scoring (step 5) are not wired in yet; stories are stored with their
-keyword tags only.
+The AI pass (step 4, part 2) is not wired in yet: stories are tagged by keyword and scored without the AI
+points, marked "awaiting AI pass".
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from .fetchers.gnews import Resolver
 from .fetchers.http import PoliteClient
 from .normalise import clean
 from .safety.blocklist import load_blocklist
+from .scoring import Scorer
 from .sources import Source
 from .tagging.keywords import KeywordTagger
 
@@ -29,6 +31,7 @@ from .tagging.keywords import KeywordTagger
 class Paths:
     blocklist: Path = PROJECT_ROOT / "blocklist.csv"
     keywords: Path = PROJECT_ROOT / "config" / "topic_keywords.yaml"
+    scoring: Path = PROJECT_ROOT / "config" / "scoring.yaml"
 
 
 @dataclass
@@ -44,6 +47,7 @@ class RunSummary:
     unmatched_local: int = 0
     gnews_online: int = 0
     gnews_cached_new: int = 0
+    labels: Counter = field(default_factory=Counter)  # High / Medium / Low / Drop -> stories scored this run
     pruned_payloads: int = 0
 
 
@@ -67,6 +71,9 @@ async def run_fetch(
     now = now or datetime.now(timezone.utc)
     blocklist = load_blocklist(paths.blocklist)
     tagger = KeywordTagger.load(paths.keywords)
+    scorer = Scorer.load(paths.scoring)
+    if conn.execute("SELECT COUNT(*) FROM topics").fetchone()[0] == 0:
+        raise RuntimeError("no topics in the database: run `python -m riffi_ingest import-topics` first")
     by_id = {s.source_id: s for s in sources}
     summary = RunSummary(sources=len(sources))
 
@@ -111,6 +118,10 @@ async def run_fetch(
     store.save_tags(conn, tags, now)
     summary.tagged = sum(1 for t in tags.values() if t.topics)
     summary.unmatched_local = sum(1 for t in tags.values() if t.unmatched_local)
+    for cid in touched:
+        score = scorer.score(store.story_facts(conn, cid))
+        store.save_score(conn, cid, score)
+        summary.labels[score.label] += 1
 
     summary.gnews_cached_new = store.save_gnews_cache(
         conn, {k: v for k, v in resolver.cache.items() if k not in known_cache}, now

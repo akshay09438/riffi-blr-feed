@@ -39,7 +39,7 @@ riffi_ingest/
   tagging/
     keywords.py          keyword pass (reads config/topic_keywords.yaml)
     llm_batches.py       [dangerous] writes batches for the Claude Code pass, reads and validates answers
-  scoring.py             relevance score from config/scoring.yaml
+  scoring.py             (as built) relevance score and label from config/scoring.yaml
   scheduler.py           APScheduler jobs (30 min / 2 h / 6 h / 07:00 IST)
   outputs/
     digest.py            reports/YYYY-MM-DD/ Markdown + CSV, sources_health.csv
@@ -89,6 +89,13 @@ tests/
 - `pipeline.run_fetch(conn, sources)` - one cycle: load conditional-GET validators, page snapshots and the Google News cache from the database; fetch; clean (incl. Google News resolution); drop items already stored; group into stories against the last 48 h of stories; save items and stories in one transaction; then record every fetch's health, validators and page snapshots (after the items, so a crash between the two only means re-reading those feeds next time, never losing items); tag each touched story from all its stored reports; save new Google News resolutions; prune (D-002). Returns a `RunSummary` (statuses, entries, new items, drops by reason, new / grown stories, tagged, unmatched local, Google News look-ups).
 - `health.check(outcome, now)` - BRIEF.md checks Reachable / Valid / Alive (7 days) / Fields (title, link, date) with a suggested fix per failure (wrong URL, blocks bots, rsshub.app refusing vs channel not found, needs a channel ID or backup URL, page-not-feed, Google News query empty, a monitored page with no readable text). "Useful" needs history and belongs to the daily report.
 - `cli.py` (Typer; `python -m riffi_ingest`): `import-sources`, `import-topics`, `test-feeds` (stores nothing; prints the table and writes `reports/test-feeds/<IST stamp>.csv/.md`), `fetch --all | --source ID` (imports sources on the first run; one fetch at a time via an OS file lock beside the database; a progress line per source and a time estimate; clear errors for unknown ids, `--all` with `--source`, or a missing feeds.csv; console output never crashes on characters the console cannot show). Default paths are anchored on the project folder. `digest`, `report` and the scheduler come with steps 7-8.
+
+## Scoring (as built, 4 Oct 2026)
+
+- `config/scoring.yaml` - team-editable weights: the BRIEF.md table exactly (priority 30/20/10, geography 25/20/12/10, new development 15, debate angle 10, sources 3+/2/1 = 10/5/0, tier Official/Media/Aggregator = 10/6/3) and labels (High 70+, Medium 45+, Low 20+, else Drop). Mapping of the CSVs' richer values: geography = the first place named ("Pan-India (Bangalore angle)" = Pan-India; Bangalore = Bengaluru; Tamil Nadu = South India); tier = the word before any bracket ("Media (Kannada)" = Media), with Fact-checker / Research / Civic org / Union scored as Media (6). A test checks every real geography and tier value maps to points.
+- `scoring.py` - `Scorer.score(StoryFacts)` -> total, label, sensitive, awaiting_ai, per-factor parts, best topic. A story scores by its best topic (priority + geography); the best source tier among its sources counts. Excluded -> Drop regardless (step 4 part 2); a topic with a `sensitive_note` sets the sensitive flag but keeps the score. Without the AI pass the AI points are 0 and `awaiting_ai` is true (open question 1): the highest score possible is then 75, so High needs a High-priority Bengaluru topic with 2+ sources and an Official source, or 3+ sources.
+- `db/store.py` - `story_facts` (topics: the AI's when present, else keyword; tiers of the story's distinct sources), `save_score` (relevance_score, label, sensitive), `top_stories`.
+- Run: every story touched by a run is re-scored after tagging. CLI: `stories [--top 30] [--hours 24] [--label High]` lists the best stories (score, label, sources, topics, headline, [sensitive], [awaiting AI]) - the brief's first-run "top 30". The first `fetch` imports topics.csv too; a run without topics stops with a clear message (every story would otherwise score Drop).
 
 ## Data model (as built, 4 Oct 2026)
 
