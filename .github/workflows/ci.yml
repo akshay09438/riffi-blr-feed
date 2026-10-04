@@ -88,7 +88,9 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          git fetch origin "$BASE_REF" --depth=1
+          # full fetch, not --depth=1: if main moved on after this branch was cut, a one-commit
+          # base has no common ancestor with HEAD and the three-dot diff fails (exit 128)
+          git fetch origin "$BASE_REF"
           git diff --name-only "origin/$BASE_REF...HEAD" > changed-files.txt
           echo "Changed files:" && cat changed-files.txt
 
@@ -137,5 +139,5 @@ jobs:
         env:
           BASE_REF: ${{ github.base_ref }}
         run: |
-          git fetch origin "$BASE_REF" --depth=1
+          git fetch origin "$BASE_REF"
           node .zuko/goodnight-gate.js --base "origin/$BASE_REF"
