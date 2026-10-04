@@ -1,0 +1,248 @@
+{
+  "version": 1,
+  "appName": "Riffi Ingestion Engine",
+  "summary": "Riffi's news ingestion engine: pulls new developments on 151 tracked topics from 131 sources, cleans, de-duplicates, tags and scores them, and hands a ranked list to the content team and the seed-account agent by 07:00 IST; plus a two-week source-recall test. Never posts. Standalone Python 3.11 on the founder's Windows laptop; AI tagging in Claude Code (no API key). Spec: BRIEF.md; DECISIONS.md wins over it.",
+  "protectedBranch": "main",
+  "dangerousGlobs": [
+    ".env",
+    "**/.env",
+    "**/.env.*",
+    "**/*secret*",
+    "**/*credentials*.json",
+    "riffi_ingest/db/**",
+    "migrations/**",
+    "data/**",
+    "riffi_ingest/safety/**",
+    "config/exclusions.yaml",
+    "blocklist.csv",
+    "riffi_ingest/api/stories.py",
+    "riffi_ingest/tagging/llm*.py",
+    "config/prompts/**",
+    "riffi_ingest/outputs/sheets*.py",
+    "riffi_ingest/fetchers/http.py",
+    "riffi_ingest/fetchers/gnews.py",
+    "requirements.txt",
+    "tests/conftest.py",
+    "pytest.ini",
+    "ruff.toml",
+    ".github/workflows/**",
+    ".github/scripts/**",
+    ".github/CODEOWNERS",
+    ".claude/settings.json",
+    ".claude/hooks/**",
+    "CLAUDE.md",
+    "AGENTS.md",
+    ".zuko/config.json"
+  ],
+  "buyNotBuilt": [
+    {
+      "surface": "AI tagging",
+      "service": "Claude Code on the founder's plan, through files (no API key, no paid AI) - D-005"
+    },
+    {
+      "surface": "X / Instagram",
+      "service": "RSS.app later, only the 5 priority_x_feed rows; phase 1 uses each row's backup Google News query; never scrape X, Instagram or WhatsApp"
+    },
+    {
+      "surface": "Telegram",
+      "service": "RSSHub (rsshub.app; base URL configurable for self-hosting)"
+    },
+    {
+      "surface": "feed parsing / page text / title matching",
+      "service": "feedparser / trafilatura / RapidFuzz"
+    },
+    {
+      "surface": "scheduling / CLI / dashboard",
+      "service": "APScheduler / Typer / FastAPI on 127.0.0.1"
+    },
+    {
+      "surface": "data store",
+      "service": "one SQLite file (data/engine.db); no database server in phase 1"
+    },
+    {
+      "surface": "hosting",
+      "service": "this laptop for the two-week test; a small server (with a login) before launch"
+    },
+    {
+      "surface": "secret",
+      "service": "environment variables / .env only, never committed"
+    }
+  ],
+  "format": {
+    "command": "node .claude/hooks/format-python.js {file}"
+  },
+  "test": {
+    "test": "node .claude/hooks/py.js -m pytest -q tests",
+    "typecheck": "",
+    "mode": "on-change"
+  },
+  "orientation": {
+    "profile": "CLAUDE.md",
+    "handoff": "docs/zuko-handoff.md",
+    "functionalSpec": "BRIEF.md",
+    "technicalSpec": "docs/technical-spec.md",
+    "implementationPlan": "docs/implementation-plan.md",
+    "uiDesign": "",
+    "docs": [
+      "DECISIONS.md",
+      "reference/riffi-feeds/README.md"
+    ]
+  },
+  "escalation": {
+    "channel": "#zuko-escalations",
+    "mention": "",
+    "webhookEnv": "ZUKO_SLACK_WEBHOOK_INGEST"
+  },
+  "uiUx": {
+    "enabled": true,
+    "skill": "ui-ux-pro-max"
+  },
+  "product": {
+    "audience": "The Riffi content team and the seed-account agent (an AI that posts opinion takes from 50-100 seed accounts). Behind them, Riffi's launch audience: aspirational, English-speaking tier-1 Bengalureans earning Rs 1-2L+ a month - corporate and startup professionals, tech workers, founders and tier-1 college students; heavy X and Instagram users. Not tier-2/3 mass audiences.",
+    "jobs": [
+      "Daily intake: pull every new development on the 151 tracked topics from the 131 sources, clean it, de-duplicate it into stories, tag each by topic and score it for relevance, and hand a ranked list to the team and the seed-account agent by 07:00 IST.",
+      "Source proof: within two weeks, measure which sources actually catch real developments (recall against the editor's ground-truth log), so each source is kept, fixed or dropped on evidence.",
+      "Keep it safe to argue about: drop communal and religious flashpoints entirely, drop copycat and blocklisted sites, and flag sensitive-but-allowed topics so a human checks the framing before anything is posted."
+    ],
+    "success": "Whenever something real happens on a tracked topic, at least one source surfaces it within 24 hours: 95% recall on High-priority topics, 90% caught within 24 h, 70% of High labels judged relevant by the editor, 90% of non-X sources passing health checks - and nothing on an excluded topic ever reaches the seed agent.",
+    "keyFlows": [
+      "Scheduled fetch (every 30 min / 2 h / 6 h) -> normalise -> resolve Google News links -> filter (blocklist, older than 7 days, excluded) -> de-duplicate into story clusters -> keyword tags.",
+      "AI pass in a Claude Code session (no API key): topic IDs, is-new, what's new, debate angle, excluded verdict -> score -> label High / Medium / Low / Drop.",
+      "07:00 IST: ranked digest (dashboard + Markdown/CSV in reports/YYYY-MM-DD/), feed health report, sources_health.csv; the seed agent reads GET /api/stories?since=&label=.",
+      "Editor logs ground truth daily (form or CSV) -> nightly match to clusters -> recall and timeliness -> day-14 recall_report.md with keep/fix/drop recommendations (never automatic).",
+      "CLI: import-sources, import-topics, test-feeds, fetch --all / --source, digest --date, report."
+    ],
+    "nonGoals": [
+      "Never publishes or posts anything - it only collects, ranks and reports.",
+      "Never republishes articles; Riffi is for opinions, not news.",
+      "Never scrapes X, Instagram or WhatsApp directly (RSS.app later, only for the 5 priority handles).",
+      "No paid AI API in phase 1: AI tagging runs in Claude Code on the founder's plan (D-005).",
+      "Not merged with the existing Riffi Feeds panel project: code is copied from it, never imported, and that project is never changed from here (D-006).",
+      "Never auto-deletes or auto-switches a source; day-14 decisions are recommendations.",
+      "Communal and religious flashpoints are dropped, never ranked.",
+      "Bengaluru only in phase 1; no multi-city design."
+    ],
+    "scale": "Internal tool: a team of 3-10 people plus one AI agent, on one Windows laptop for the two-week test (a small server before launch). 131 sources, 151 topics; about 3,000-8,000 new items a day (about 200,000 in month one). Tables that grow without limit: items (with raw_payload), fetch_runs (roughly 1,500-3,000 rows a day), page_snapshots, story_clusters and item_topics - index them on time and cluster id, paginate every list and API response, and prune raw_payload and page text after 30 days. Story summaries and the editor's ground-truth log are kept forever. Bengaluru only; do not build for multiple cities or many users."
+  },
+  "riskModel": {
+    "maturityTier": "prelaunch",
+    "surfaces": {
+      ".env": {
+        "sensitivity": "auth",
+        "reversibilityClass": "irreversible"
+      },
+      "**/.env": {
+        "sensitivity": "auth",
+        "reversibilityClass": "irreversible"
+      },
+      "**/.env.*": {
+        "sensitivity": "auth",
+        "reversibilityClass": "irreversible"
+      },
+      "**/*secret*": {
+        "sensitivity": "auth",
+        "reversibilityClass": "irreversible"
+      },
+      "**/*credentials*.json": {
+        "sensitivity": "auth",
+        "reversibilityClass": "irreversible"
+      },
+      "riffi_ingest/db/**": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "irreversible"
+      },
+      "migrations/**": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "irreversible"
+      },
+      "data/**": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "irreversible"
+      },
+      "riffi_ingest/safety/**": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "irreversible"
+      },
+      "config/exclusions.yaml": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "irreversible"
+      },
+      "blocklist.csv": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "irreversible"
+      },
+      "riffi_ingest/api/stories.py": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "reversible"
+      },
+      "riffi_ingest/tagging/llm*.py": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "reversible"
+      },
+      "config/prompts/**": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "reversible"
+      },
+      "riffi_ingest/outputs/sheets*.py": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "irreversible"
+      },
+      "riffi_ingest/fetchers/http.py": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "irreversible"
+      },
+      "riffi_ingest/fetchers/gnews.py": {
+        "sensitivity": "user-data",
+        "reversibilityClass": "irreversible"
+      },
+      "requirements.txt": {
+        "sensitivity": "internal",
+        "reversibilityClass": "reversible"
+      },
+      "tests/conftest.py": {
+        "sensitivity": "internal",
+        "reversibilityClass": "reversible"
+      },
+      "pytest.ini": {
+        "sensitivity": "internal",
+        "reversibilityClass": "reversible"
+      },
+      "ruff.toml": {
+        "sensitivity": "internal",
+        "reversibilityClass": "reversible"
+      },
+      ".github/workflows/**": {
+        "sensitivity": "internal",
+        "reversibilityClass": "reversible"
+      },
+      ".github/scripts/**": {
+        "sensitivity": "internal",
+        "reversibilityClass": "reversible"
+      },
+      ".github/CODEOWNERS": {
+        "sensitivity": "internal",
+        "reversibilityClass": "reversible"
+      },
+      ".claude/settings.json": {
+        "sensitivity": "internal",
+        "reversibilityClass": "reversible"
+      },
+      ".claude/hooks/**": {
+        "sensitivity": "internal",
+        "reversibilityClass": "reversible"
+      },
+      "CLAUDE.md": {
+        "sensitivity": "auth",
+        "reversibilityClass": "reversible"
+      },
+      "AGENTS.md": {
+        "sensitivity": "auth",
+        "reversibilityClass": "reversible"
+      },
+      ".zuko/config.json": {
+        "sensitivity": "auth",
+        "reversibilityClass": "reversible"
+      }
+    }
+  }
+}

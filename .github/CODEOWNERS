@@ -1,0 +1,48 @@
+# CODEOWNERS - mandatory human review on the two categories where blast radius
+# is real: the dangerous 5% surfaces, and the test/harness files (so an
+# implementer cannot quietly weaken the tests it is checked against). The boring
+# 95% has no owner - the team self-merges freely once CI is green.
+#
+# Scaffolded by /bootstrap from the project profile (Part B). The owner lines
+# below are generated from the dangerous-path globs.
+#
+# IMPORTANT (this repo's setup): without branch protection enabled, CODEOWNERS
+# AUTO-REQUESTS the owner's review and labels the PR, but does NOT block merge.
+# To make owner review a hard gate, enable branch protection with "Require
+# review from Code Owners" - see docs/BRANCH_PROTECTION_NOTES.md. On a Free
+# private repo this requires upgrading the GitHub plan.
+
+# --- Dangerous 5% surfaces -> @akshay09438 ---
+.env @akshay09438
+**/.env @akshay09438
+**/.env.* @akshay09438
+**/*secret* @akshay09438
+**/*credentials*.json @akshay09438
+riffi_ingest/db/** @akshay09438
+migrations/** @akshay09438
+data/** @akshay09438
+riffi_ingest/safety/** @akshay09438
+config/exclusions.yaml @akshay09438
+blocklist.csv @akshay09438
+riffi_ingest/api/stories.py @akshay09438
+riffi_ingest/tagging/llm*.py @akshay09438
+config/prompts/** @akshay09438
+riffi_ingest/outputs/sheets*.py @akshay09438
+riffi_ingest/fetchers/http.py @akshay09438
+riffi_ingest/fetchers/gnews.py @akshay09438
+requirements.txt @akshay09438
+ruff.toml @akshay09438
+.github/workflows/** @akshay09438
+.github/scripts/** @akshay09438
+.github/CODEOWNERS @akshay09438
+.claude/settings.json @akshay09438
+.claude/hooks/** @akshay09438
+CLAUDE.md @akshay09438
+AGENTS.md @akshay09438
+.zuko/config.json @akshay09438
+
+# --- Test and harness files -> @akshay09438 ---
+tests/conftest.py @akshay09438
+pytest.ini @akshay09438
+
+# Everything else: no owner, team self-merges on green CI.

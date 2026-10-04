@@ -1,0 +1,31 @@
+# What stays out of version history
+
+# Python and tool caches
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+coverage/
+.coverage
+
+# Collected data, snapshots and the ground-truth log stay on this laptop
+data/
+
+# Generated outputs (rebuilt by the engine)
+reports/
+sources_health.csv
+*.log
+
+# Spreadsheets are generated (and Excel locks them while open)
+*.xlsx
+~$*
+
+# Secrets never enter the repo (.env.example is the committed template)
+.env
+.env.*
+!.env.example
+
+# Zuko runtime state (approvals are per-session, the overnight queue is transient)
+.zuko/approvals.json
+.zuko/goodnight/queue/

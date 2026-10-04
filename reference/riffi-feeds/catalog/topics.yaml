@@ -1,0 +1,145 @@
+# Topics a 25-35 year old Bangalore tech / corporate professional argues about.
+#
+# One file, three readers:
+#   - the fetcher tags every stored story and Reddit post with the topics it matches
+#     (fetcher/topics.py), replacing the Google News gap queries (founder decision, 27 Sep 2026)
+#   - the coverage report (build_outputs.py) counts which feeds cover which topic
+#   - the daily shortlist uses the tags for relevance
+#
+# pattern   case-insensitive regex over title + teaser. English, plus Kannada terms where
+#           Kannada outlets carry the topic. Kannada words are matched as plain text
+#           (\b does not work inside Kannada script).
+# local     true = only counts when the story is about Bengaluru / Karnataka: the item comes
+#           from a Bangalore & Karnataka feed or subreddit, or its text names the city or
+#           state (see local_context).
+# filter    true = one of the founder's nine keyword filters (task B, reported per day)
+# replaces  the Google News rows this filter replaces (for the comparison report)
+# dedicated feeds that exist only for this topic (coverage report)
+# google_news_query  thin topics only (founder decision 28 Sep 2026): one English Google News
+#           query, checked at most every 3 hours, last day only; results must pass this topic's
+#           pattern and the India / Bengaluru context rules before they are stored
+
+min_hits: 3
+
+local_context: "bengaluru|bangalore|karnataka|bbmp|\\bgba\\b|bmrcl|bwssb|bescom|\\bbmtc\\b|namma metro|mysuru|mysore|mangaluru|hubballi|belagavi|ಬೆಂಗಳೂರು|ಕರ್ನಾಟಕ|ಮೈಸೂರು"
+
+topics:
+  # ---------------------------------------------------------------- the nine filters
+  rto:
+    label: Return-to-office and work culture
+    google_news_query: "(\"work from office\" OR \"return to office\" OR \"hybrid work\" OR WFO OR \"office attendance\") (India OR Bengaluru OR Indian OR IT)"  # thin topic: Google News allowed, 1 check / 3h
+    filter: true
+    local: false
+    replaces: [G7, XT019]
+    pattern: "return[- ]to[- ](the )?office|back to (the )?office|work[- ]from[- ](the )?office|\\bWFO\\b|\\bRTO\\b|hybrid (work|working|model|policy|mode|setup|arrangement)|office (attendance|mandate)|attendance (mandate|policy|tracking)|badge[- ]?(in|swipe)|days (a week |a month )?(in|at|from) (the )?office|(work[- ]from[- ]home|\\bWFH\\b|remote work|work remotely) (policy|mandate|ends?|ending|scrapped|curbs?|rules?|debate|option|allowance)|(ends?|scraps?|curbs?|withdraws?|cuts?) (work[- ]from[- ]home|\\bWFH\\b|remote work)|70-hour|90-hour|work-life balance|four-day (work )?week|burn ?out|\\b1[0-6] ?(hrs?|hours?)\\+? ?(a )?(days?|shifts?)|long (working )?hours|overtime|toxic (work|workplace|culture|manager|boss)|right to disconnect|working hours|moonlighting|(Infosys|TCS|Wipro|HCL ?Tech|Tech Mahindra|Cognizant|Accenture|Capgemini|LTIMindtree|Mphasis|Amazon|Google|Microsoft|Meta|Intel|IBM|Oracle|Salesforce|Dell|Flipkart|Swiggy|Zomato|Ola|Paytm|PhonePe|Byju'?s|Unacademy|Meesho|Zepto|ShareChat|upGrad|Vedantu|Freshworks|Razorpay|CRED)\\b.{0,60}\\b(return to office|WFO|WFH|hybrid|remote work|office attendance|days in office)|ವರ್ಕ್ ಫ್ರಮ್|ಕಚೇರಿಯಿಂದ ಕೆಲಸ|ಮನೆಯಿಂದ ಕೆಲಸ|ಕೆಲಸದ ಅವಧಿ"
+    dedicated: []
+  kannada_language:
+    label: Kannada language debates
+    filter: true
+    local: true
+    replaces: [G9, XT020]
+    pattern: "kannada (language|signboards?|first|imposition|pride|activists?|medium|compulsory)|hindi imposition|language (row|policy|war|debate)|signboards?|three-language|two-language|mother tongue|\\bKRV\\b|karave|ನಾಮಫಲಕ|ಹಿಂದಿ ಹೇರಿಕೆ|ಕನ್ನಡ ಭಾಷೆ|ಭಾಷಾ ನೀತಿ|ದ್ವಿಭಾಷಾ|ತ್ರಿಭಾಷಾ|ಕನ್ನಡ ಕಡ್ಡಾಯ|(?<![\\u0C80-\\u0CFF])ಕರವೇ"
+    dedicated: []
+  pubs_excise:
+    label: Pubs, excise and nightlife rules
+    filter: true
+    local: true
+    replaces: [G10, XT018]
+    pattern: "\\bpubs?\\b|nightlife|night life|excise|liquor|brewer(y|ies)|microbrewer|alcohol|\\bbar (licen|timing|owners)|\\b1 ?am deadline|(?<![\\u0C80-\\u0CFF])ಪಬ್(?!ಲ)|(?<![\\u0C80-\\u0CFF])ಅಬಕಾರಿ|(?<![\\u0C80-\\u0CFF])ಮದ್ಯ"
+    dedicated: []
+  civic_elections:
+    label: Civic elections
+    google_news_query: "(\"GBA polls\" OR \"GBA elections\" OR \"ward elections\" OR \"corporation elections\" OR \"civic polls\" OR \"ward reservation\" OR \"ward delimitation\") (Bengaluru OR Bangalore OR Karnataka)"  # thin topic: Google News allowed, 1 check / 3h
+    filter: true
+    local: true
+    replaces: [XT017]
+    pattern: "(gba|bbmp|civic|corporation|municipal|ward|local[- ]?body|zilla|taluk|panchayat)[- ](polls?|elections?)|ward (delimitation|reservation|elections?|polls?)|corporators?|(state election commission|\\bSEC\\b).{0,40}(gba|bbmp|ward|corporation|civic|local body|panchayat)|five (city )?corporations|(bengaluru|greater bengaluru).{0,30}corporations?.{0,30}(polls?|elections?)|ಪಾಲಿಕೆ ಚುನಾವಣೆ|ವಾರ್ಡ್ ಚುನಾವಣೆ|ವಾರ್ಡ್ ಮೀಸಲಾತಿ|ವಾರ್ಡ್ ಪುನರ್ವಿಂಗಡಣೆ|ಜಿಬಿಎ ಚುನಾವಣೆ|ಬಿಬಿಎಂಪಿ ಚುನಾವಣೆ|ಸ್ಥಳೀಯ ಸಂಸ್ಥೆ(ಗಳ)? ಚುನಾವಣೆ|ರಾಜ್ಯ ಚುನಾವಣಾ ಆಯೋಗ|(ಜಿಲ್ಲಾ|ತಾಲ್ಲೂಕು|ಗ್ರಾಮ) ಪಂಚಾಯಿತಿ ಚುನಾವಣೆ"
+    dedicated: []
+  rent_housing:
+    label: Rent and housing
+    filter: true
+    local: true
+    replaces: [G2, G3]
+    pattern: "\\brent(s|al|als|ed|ing)?\\b|landlord|tenant|security deposit|house[- ]hunting|flat[- ]hunting|real estate|khata|housing (prices?|society|project|loan)|property (prices?|tax)|apartment|\\bPGs?\\b|paying guest|home loan|ಮನೆ ಬಾಡಿಗೆ|ಬಾಡಿಗೆ ಮನೆ|ಬಾಡಿಗೆದಾರ|(?<![\\u0C80-\\u0CFF])ಖಾತಾ|ಆಸ್ತಿ ತೆರಿಗೆ|ಅಪಾರ್ಟ್‌ಮೆಂಟ್"
+    dedicated: []
+  layoffs:
+    label: Layoffs
+    google_news_query: "(layoffs OR \"job cuts\" OR \"laid off\" OR \"lays off\" OR retrenchment) (India OR Bengaluru OR Indian OR IT OR startup)"  # thin topic: Google News allowed, 1 check / 3h
+    filter: true
+    local: false
+    replaces: [C9, G5]
+    pattern: "layoffs?|laid off|lays off|lay off|job cuts?|jobs? cut|cut(s|ting)? (\\d[\\d,]* )?jobs|retrench|pink slips?|downsiz|rightsiz|(workforce|headcount) (reduction|cut)|cut(s|ting)? (its )?headcount|reduc(e|es|ing) (its )?(workforce|headcount)|trim(s|ming)? (its )?(workforce|headcount|staff)|restructur\\w*.{0,40}\\b(jobs?|employees|staff|workforce|roles|teams)|\\b(jobs?|employees|staff|workforce|roles)\\b.{0,40}restructur|let(s|ting)? go (of )?\\d|(fires?|sacks?|axes?|cuts?) \\d[\\d,]* (jobs|employees|staff|workers|people)|hiring freeze|job losses|lost (their )?jobs|(Infosys|TCS|Wipro|HCL ?Tech|Tech Mahindra|Cognizant|Accenture|Capgemini|LTIMindtree|Mphasis|Amazon|Google|Microsoft|Meta|Intel|IBM|Oracle|Salesforce|Dell|Flipkart|Swiggy|Zomato|Ola|Paytm|PhonePe|Byju'?s|Unacademy|Meesho|Zepto|ShareChat|upGrad|Vedantu|Freshworks|Razorpay|CRED)\\b.{0,50}\\b(layoffs?|job cuts|sacks|fires|lets go|restructur\\w*|trainees|onboarding delay)|ಉದ್ಯೋಗ ಕಡಿತ|ಉದ್ಯೋಗಿಗಳ ವಜಾ|ನೌಕರರ ವಜಾ|ಉದ್ಯೋಗ ನಷ್ಟ|ಕೆಲಸದಿಂದ ತೆಗೆ|ಲೇಆಫ್"
+    dedicated: []
+  visas:
+    label: Visas (H-1B and others)
+    filter: true
+    local: false
+    replaces: [G8]
+    pattern: "H-?1B|H-4|green card|\\bvisas?\\b|immigration|\\bOPT\\b|\\bUSCIS\\b|work permit|student visa|ವೀಸಾ"
+    dedicated: []
+  water_flooding:
+    label: Water supply and flooding
+    filter: true
+    local: true
+    replaces: [G4]
+    pattern: "water (crisis|shortage|supply|tanker|cut|scarcity|bill|tariff|price|connection)|drinking water|bwssb|flood|waterlog|inundat|\\blakes?\\b|cauvery|borewell|storm ?water|ಕುಡಿಯುವ ನೀರು|ನೀರಿನ (ಸಮಸ್ಯೆ|ಬವಣೆ|ಅಭಾವ|ಕೊರತೆ|ಬಿಲ್|ದರ)|ನೀರು ಪೂರೈಕೆ|ಜಲಮಂಡಳಿ|(?<![\\u0C80-\\u0CFF])ಪ್ರವಾಹ|(?<![\\u0C80-\\u0CFF])ಕೆರೆ|(?<![\\u0C80-\\u0CFF])ಕಾವೇರಿ"
+    dedicated: [GV045]
+  traffic_metro:
+    label: Traffic, tunnel roads and metro
+    filter: true
+    local: true
+    replaces: [G1]
+    pattern: "\\btraffic\\b|tunnel road|flyover|silk board|outer ring road|\\bORR\\b|pothole|peripheral ring|congestion|elevated corridor|namma metro|\\bmetro\\b|bmrcl|yellow line|pink line|purple line|green line|suburban rail|\\bBMTC\\b|ಸಂಚಾರ ದಟ್ಟಣೆ|ಸಂಚಾರ(ಿ)? ಪೊಲೀಸ|ಸಂಚಾರ ನಿಯಮ|ಟ್ರಾಫಿಕ್|ಸುರಂಗ (ರಸ್ತೆ|ಮಾರ್ಗ)|ಮೆಟ್ರೋ|ಫ್ಲೈಓವರ್|ರಸ್ತೆ ಗುಂಡಿ|ಬಿಎಂಟಿಸಿ"
+    dedicated: []
+  # ---------------------------------------------------------------- relevance topics
+  hiring:
+    label: Hiring and jobs
+    pattern: "\\bhiring\\b|headcount|freshers?|campus placement|job market|job offers?|onboarding delay"
+    dedicated: []
+  ai_jobs:
+    label: AI and jobs
+    pattern: "(\\bAI\\b(?![-\\s]?\\d)|artificial intelligence|automation|genai|agentic).{0,80}(jobs?|hiring|layoffs?|workers?|workforce|employ|roles?|careers?|freshers?|engineers?)|(jobs?|hiring|layoffs?|workforce|employ|roles?|careers?|freshers?).{0,80}(\\bAI\\b(?![-\\s]?\\d)|automation|genai)|global capability (centre|center)s?|\\bGCCs\\b|\\bGCC (hiring|jobs|talent|setup|expansion|market|ecosystem|headcount|centres?|centers?)"
+    dedicated: []
+  salaries_appraisals:
+    label: Salaries and appraisals
+    pattern: "salar(y|ies)|appraisal|(pay|wage|salary) hikes?|increments?\\b|variable pay|(employee|staff|executive|ceo) compensation|compensation (hike|package|structure)|pay cuts?|\\bCTC\\b|bonus(es)?\\b"
+    dedicated: []
+  taxes:
+    label: Taxes
+    pattern: "income tax|\\bITR\\b|\\bGST\\b|tax slab|\\bTDS\\b|CBDT|tax regime|\\btax(es)?\\b"
+    dedicated: []
+  ipos_markets:
+    label: IPOs and the stock market
+    pattern: "\\bIPOs?\\b|DRHP|listing (day|gains?|price)|(stock|market) listing|sensex|nifty|(?<!laughing )\\bstocks?\\b|\\bshares? (price|prices|fell|fall|falls|rose|rise|rises|jump|jumps|surge|surges|slump|slumps|tank|tanks|gain|gains|drop|drops|crash|crashed|hit|of)\\b|share (market|price)|\\bF&O\\b|mutual fund"
+    dedicated: []
+  startup_news:
+    label: Startup news and drama
+    pattern: "start-?ups?\\b|co-?founders?|founder (and|&) ceo|funding round|raises? (\\$|rs\\.?|₹|inr|usd)|series [a-f]\\b|seed (round|funding)|pre-seed|valuation|unicorn|down round|\\bVCs?\\b|venture (capital|fund)"
+    dedicated: []
+  autos_cabs:
+    label: Autos, cabs and bike taxis
+    local: true
+    pattern: "auto (fare|driver)|autorickshaw|auto-rickshaw|\\bcabs?\\b|\\bola\\b|\\buber\\b|rapido|namma yatri|bike taxi|(?<![\\u0C80-\\u0CFF])ಆಟೋ(?!ಇ|ಟ)"
+    dedicated: []
+  safety:
+    label: Safety and crime
+    local: true
+    pattern: "safety|harass|assault|stalk|molest|robbery|chain snatch|cyber fraud|digital arrest|scam"
+    dedicated: []
+  weather:
+    label: Weather and rain
+    local: true
+    pattern: "\\brain(s|fall)?\\b|\\bIMD\\b|monsoon|weather|yellow alert|orange alert|heatwave|temperature|thunderstorm|(?<![\\u0C80-\\u0CFF])ಮಳೆ"
+    dedicated: [GV042, GV045]
+  quick_commerce:
+    label: Quick commerce
+    pattern: "zepto|blinkit|instamart|quick commerce|quick-commerce|dark stores?|flipkart minutes|swiggy|zomato"
+    dedicated: []
+  gig_workers:
+    label: Gig workers
+    pattern: "gig workers?|delivery (partner|executive|agent)s?|platform workers?|gig economy"
+    dedicated: []
+  exams_education:
+    label: Education and exam leaks
+    pattern: "\\bNEET\\b|\\bJEE\\b|paper leak|\\bexams?\\b|\\bNTA\\b|\\bCBSE\\b|\\bUGC\\b|entrance test|\\bKCET\\b|\\bCET\\b"
+    dedicated: []

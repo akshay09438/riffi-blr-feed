@@ -1,0 +1,5 @@
+# Keep every text file LF so the engine behaves the same on this laptop and a Linux server.
+* text=auto eol=lf
+*.pdf binary
+*.png binary
+*.db binary
