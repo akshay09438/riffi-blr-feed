@@ -16,7 +16,7 @@
 | 3 | De-duplicate into story clusters | Built and tested offline (4 Oct 2026); clusters live in memory until step 6 stores them |
 | 4 | Tag topics (keyword pass + Claude Code AI pass, D-005) | Keyword pass built and tested offline (4 Oct 2026), keywords drafted for all 151 topics; AI pass not started (open questions 1-2) |
 | 5 | Score (scoring.yaml) | Not started |
-| 6 | Store (7 tables, idempotent CSV import) | Not started |
+| 6 | Store (7 tables, idempotent CSV import) | Built and tested (4 Oct 2026): schema, importers, run storage, pruning; wired into the CLI next |
 | 7 | Schedule + CLI | Not started |
 | 8 | Outputs (dashboard, digest, /api/stories, sources_health.csv) | Not started |
 | 9 | Health checks | Not started |
