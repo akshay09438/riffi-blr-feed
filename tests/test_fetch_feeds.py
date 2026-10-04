@@ -133,3 +133,20 @@ def test_an_x_row_whose_backup_is_not_google_news_is_skipped():
     x = src(feeds.X_INSTAGRAM, "Create in RSS.app", backup_google_news_url="https://x.com/someone")
     url, on_backup, reason = plan(x)
     assert url == "" and on_backup and "not a Google News feed" in reason
+
+
+def test_many_sources_on_one_site_never_time_out_waiting_their_turn():
+    # the reviewer's first-run scenario, scaled down: 30 feeds on one site, 0.05 s between requests,
+    # a 0.3 s limit per request. Queued all at once, most would time out waiting; one at a time, none do.
+    feed = rss([{"title": "Story", "link": "https://a.in/1", "date": rfc822(NOW)}])
+    gn = [src(feeds.GOOGLE_NEWS, f"https://news.google.com/rss/search?q=t{i}", source_id=f"G{i}") for i in range(30)]
+
+    async def go():
+        client = fake_client(lambda r: httpx.Response(200, content=feed), interval=(0.05, 0.05))
+        client.deadline = 0.3
+        async with client:
+            return await fetch_sources(client, gn)
+
+    outcomes = run(go())
+    assert [o.status for o in outcomes] == ["ok"] * 30
+    assert [o.source_id for o in outcomes] == [f"G{i}" for i in range(30)]  # input order kept

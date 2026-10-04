@@ -199,3 +199,18 @@ def test_each_change_of_a_monitored_page_is_its_own_item():
         assert len({i.item_id for i in items}) == 2
     finally:
         del SOURCES["S025"]
+
+
+def test_a_google_news_item_keeps_its_id_once_resolved():
+    link = f"https://news.google.com/rss/articles/{NEW_STYLE}?oc=5"
+    e = entry(link=link, source_title="DH", source_url="https://www.deccanherald.com")
+    unresolved = run_clean([outcome("S019", [e])])[0].items[0]  # the fake network answers 404
+
+    def google(request):
+        if request.url.path.startswith("/rss/articles/"):
+            return httpx.Response(200, text='<div data-n-a-sg="S" data-n-a-ts="1"></div>')
+        return httpx.Response(200, text=batch_answer("https://www.deccanherald.com/city/x"))
+
+    resolved = run_clean([outcome("S019", [e])], handler=google)[0].items[0]
+    assert not unresolved.url_resolved and resolved.url_resolved
+    assert unresolved.item_id == resolved.item_id

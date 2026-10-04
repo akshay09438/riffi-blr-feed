@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import sys
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,13 +22,15 @@ import typer
 from . import health
 from .config import rsshub_base
 from .db import connect, store
-from .db.connection import PROJECT_ROOT
+from .db.connection import PROJECT_ROOT, default_db_path
 from .db.importers import import_sources, import_topics
-from .fetchers.feeds import fetch_sources
-from .fetchers.http import PoliteClient
+from .fetchers.feeds import fetch_sources, plan
+from .fetchers.gnews import ONLINE_CAP_PER_RUN
+from .fetchers.http import DOMAIN_INTERVAL, PoliteClient, domain_key
 from .fetchers.parse import IST
 from .pipeline import Paths, run_fetch
-from .sources import load_sources
+from .runlock import AlreadyRunning, run_lock
+from .sources import Source, load_sources
 
 app = typer.Typer(help="Riffi news ingestion engine.", no_args_is_help=True, add_completion=False)
 
@@ -58,6 +62,49 @@ def import_topics_cmd(topics: Path = TopicsOption, db: Path = DbOption) -> None:
     typer.echo(f"Topics: {r.added} added, {r.updated} updated.")
 
 
+def _fail(message: str) -> None:
+    typer.echo(f"Error: {message}", err=True)
+    raise typer.Exit(code=1)
+
+
+def _read_feeds(feeds: Path) -> list[Source]:
+    if not feeds.exists():
+        _fail(f"cannot find {feeds}. Run this inside the project folder, or pass --feeds <path to feeds.csv>.")
+    return load_sources(feeds)
+
+
+def _pick(sources: list[Source], wanted: list[str] | None) -> list[Source]:
+    if not wanted:
+        return sources
+    ids = [w.strip().upper() for w in wanted]
+    known = {s.source_id.upper() for s in sources}
+    unknown = [w for w in ids if w not in known]
+    if unknown:
+        _fail(f"no such source id: {', '.join(unknown)} (see source_id in feeds.csv)")
+    return [s for s in sources if s.source_id.upper() in set(ids)]
+
+
+def _estimate_minutes(sources: list[Source], with_lookups: bool) -> int:
+    """The busiest site sets the pace: one request per site every ~2.25 s (Google News carries 84 sources)."""
+    per_site = Counter(domain_key(url) for url, _, _ in (plan(s, rsshub_base()) for s in sources) if url)
+    seconds = max(per_site.values(), default=0) * sum(DOMAIN_INTERVAL) / 2
+    if with_lookups:
+        seconds += ONLINE_CAP_PER_RUN * 2 * sum(DOMAIN_INTERVAL) / 2  # Google News link look-ups, 2 requests each
+    return max(1, round(seconds / 60))
+
+
+def _progress(total: int):
+    done = 0
+
+    def report(outcome) -> None:
+        nonlocal done
+        done += 1
+        detail = f"{len(outcome.entries)} items" if outcome.status == "ok" else (outcome.reason or outcome.status)
+        typer.echo(f"  [{done:>3}/{total}] {outcome.source_id:<5} {outcome.status:<12} {detail[:70]}")
+
+    return report
+
+
 def _date(when: datetime | None) -> str:
     return when.astimezone(IST).strftime("%Y-%m-%d %H:%M") if when else ""
 
@@ -70,16 +117,16 @@ def test_feeds(
 ) -> None:
     """Fetch every source once and print source_id, name, route, HTTP status, items, newest item,
     fields, pass/fail, plus each failure with a suggested fix (BRIEF.md "FIRST RUN"). Stores nothing."""
-    sources = load_sources(feeds)
-    if source:
-        wanted = {s.upper() for s in source}
-        sources = [s for s in sources if s.source_id.upper() in wanted]
-    typer.echo(f"Testing {len(sources)} sources (one request per site every 2 s; this takes a few minutes)...")
+    sources = _pick(_read_feeds(feeds), source)
+    typer.echo(
+        f"Testing {len(sources)} sources. Each site gets one request every 2 s, so expect about"
+        f" {_estimate_minutes(sources, with_lookups=False)} minutes. Progress:"
+    )
     now = datetime.now(timezone.utc)
 
     async def go():
         async with PoliteClient() as client:
-            return await fetch_sources(client, sources, rsshub_base=rsshub_base())
+            return await fetch_sources(client, sources, rsshub_base=rsshub_base(), on_done=_progress(len(sources)))
 
     outcomes = asyncio.run(go())
     names = {s.source_id: s.name for s in sources}
@@ -162,17 +209,30 @@ def fetch(
     feeds: Path = FeedsOption,
 ) -> None:
     """One full cycle: fetch, clean, group into stories, tag by keyword, store."""
-    if not all_sources and not source:
-        raise typer.BadParameter("say --all, or --source S004 (repeatable)")
+    if all_sources == bool(source):
+        _fail("say either --all, or --source S004 (repeatable), not both")
     conn = connect(db)
     if conn.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == 0:
+        _read_feeds(feeds)  # a clear message if feeds.csv is missing
         r = import_sources(conn, feeds)
         typer.echo(f"First run: imported {r.added} sources from {feeds}.")
-    sources = store.load_sources(conn, [s.upper() for s in source] if source else None)
-    if not sources:
-        raise typer.BadParameter(f"no such source: {', '.join(source)}")
-    typer.echo(f"Fetching {len(sources)} sources...")
-    s = asyncio.run(run_fetch(conn, sources, paths=Paths()))
+    if source:  # by id, inactive sources included, so a person can still try one by hand
+        ids = [w.strip().upper() for w in source]
+        sources = store.load_sources(conn, ids)
+        unknown = sorted(set(ids) - {s.source_id for s in sources})
+        if unknown:
+            _fail(f"no such source id: {', '.join(unknown)} (see source_id in feeds.csv)")
+    else:
+        sources = store.load_sources(conn)
+    typer.echo(
+        f"Fetching {len(sources)} sources; expect up to about {_estimate_minutes(sources, with_lookups=True)} minutes"
+        " (sites are asked politely, one request every 2 s each). Please leave it running. Progress:"
+    )
+    try:
+        with run_lock((Path(db) if db else default_db_path()).parent / "fetch.lock"):
+            s = asyncio.run(run_fetch(conn, sources, paths=Paths(), on_progress=_progress(len(sources))))
+    except AlreadyRunning as exc:
+        _fail(str(exc))
     statuses = ", ".join(f"{n} {k}" for k, n in sorted(s.statuses.items()))
     typer.echo(f"Sources: {statuses}.")
     typer.echo(f"Entries read: {s.entries}; new items stored: {s.items_new}.")
@@ -185,4 +245,8 @@ def fetch(
 
 
 def main() -> None:
+    # never crash on a character the console cannot show (Windows consoles and redirected output use cp1252)
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
     app()

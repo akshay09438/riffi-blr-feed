@@ -42,8 +42,11 @@ def _fields(outcome: FetchOutcome) -> list[str]:
 def _fix_for_error(outcome: FetchOutcome) -> str:
     reason = (outcome.reason or "").lower()
     status = outcome.http_status
-    if outcome.route_type == TELEGRAM and (status in (403, 429, 503) or "rsshub" in (outcome.url or "")):
-        return "rsshub.app is refusing or rate-limiting: self-host RSSHub and set RSSHUB_BASE_URL"
+    if outcome.route_type == TELEGRAM:
+        if status in (403, 429, 503):
+            return "rsshub.app is refusing or rate-limiting: self-host RSSHub and set RSSHUB_BASE_URL"
+        if status in (404, 410):
+            return "RSSHub cannot find this channel: check the channel name in the URL, and that it is public"
     if status == 404 or status == 410:
         return "wrong URL: the feed has moved; find the current feed link on the site"
     if status in (401, 403):
@@ -75,6 +78,8 @@ def _fix_for_skip(outcome: FetchOutcome) -> str:
         return "add the channel's ID: https://www.youtube.com/feeds/videos.xml?channel_id=UC..."
     if "no backup Google News URL" in reason:
         return "add a backup_google_news_url (a Google News search for the handle's name)"
+    if "not a Google News feed" in reason:
+        return "set backup_google_news_url to a news.google.com/rss/search?q=... link (X/Instagram are never fetched)"
     if "not a URL" in reason:
         return "replace the instruction in fetch_url with the actual URL"
     if "manual" in reason:
@@ -94,6 +99,12 @@ def check(outcome: FetchOutcome, now: datetime) -> Health:
     if outcome.status == "error":
         return Health(passed=False, problems=[outcome.reason or "error"], fix=_fix_for_error(outcome))
     if outcome.route_type == PAGE_MONITOR:
+        if outcome.snapshot is not None and not outcome.snapshot.text.strip():
+            return Health(
+                passed=False,
+                problems=["no readable text on the page"],
+                fix="the page is probably built by JavaScript: monitor a simpler page, a feed or an API for this source",
+            )
         return Health(passed=True)
     fields = _fields(outcome)
     dated = [e.published for e in outcome.entries if e.published]

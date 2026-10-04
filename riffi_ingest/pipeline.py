@@ -54,8 +54,15 @@ async def run_fetch(
     paths: Paths | None = None,
     client: PoliteClient | None = None,
     now: datetime | None = None,
+    on_progress=None,
 ) -> RunSummary:
-    """Fetch `sources` once and store everything new. `client` is for tests (a fake network)."""
+    """Fetch `sources` once and store everything new. `client` is for tests (a fake network);
+    `on_progress(outcome)` is called as each source finishes.
+
+    Order matters for crash safety: items and stories are saved before the fetch records that hold each
+    source's conditional-GET validators and page snapshot. If the run dies in between, the next run simply
+    re-reads those feeds (stored items are skipped); the other order could lose items for good, because the
+    next run would get "not modified" for feeds whose items were never saved."""
     paths = paths or Paths()
     now = now or datetime.now(timezone.utc)
     blocklist = load_blocklist(paths.blocklist)
@@ -74,6 +81,7 @@ async def run_fetch(
             rsshub_base=rsshub_base(),
             validators=store.load_validators(conn),
             snapshots=store.load_snapshots(conn),
+            on_done=on_progress,
         )
         resolver = Resolver(client, cache=cache)
         cleaned = await clean(outcomes, by_id, blocklist=blocklist, resolver=resolver, now=now)
@@ -81,10 +89,6 @@ async def run_fetch(
         if own_client:
             await client.aclose()
 
-    for outcome in outcomes:
-        store.record_fetch(conn, outcome, now)
-        summary.statuses[outcome.status] += 1
-        summary.entries += len(outcome.entries)
     summary.dropped = cleaned.dropped
     summary.gnews_online = resolver.online_used
 
@@ -98,6 +102,10 @@ async def run_fetch(
     summary.stories_new = len({r.cluster.cluster_id for r in results if r.new_cluster})
     summary.stories_grown = len(touched) - summary.stories_new
     summary.items_new = store.save_run(conn, fresh, list(touched.values()), now)
+    for outcome in outcomes:  # after the items: see the docstring
+        store.record_fetch(conn, outcome, now)
+        summary.statuses[outcome.status] += 1
+        summary.entries += len(outcome.entries)
 
     tags = {cid: tagger.tag_texts(store.story_texts(conn, cid)) for cid in touched}
     store.save_tags(conn, tags, now)

@@ -146,7 +146,18 @@ def test_health_checks_and_fixes():
     yt = health.check(outcome("skipped", reason="needs a YouTube channel ID (fetch_url is 'Needs channel ID')"), now)
     assert not yt.passed and "channel_id=" in yt.fix
     assert health.check(outcome("skipped", reason="manual source"), now).passed
-    assert health.check(outcome(route_type="Web page monitor"), now).passed
+    from riffi_ingest.fetchers.outcome import PageSnapshot
+
+    page = outcome(route_type="Web page monitor", snapshot=PageSnapshot("h", "Notices\nFares revised"))
+    assert health.check(page, now).passed
+    blank = health.check(outcome(route_type="Web page monitor", snapshot=PageSnapshot("h", "")), now)
+    assert not blank.passed and "JavaScript" in blank.fix
+    tg404 = outcome(
+        "error", reason="HTTP 404", http_status=404, route_type="RSSHub Telegram", url="https://rsshub.app/x"
+    )
+    assert "cannot find this channel" in health.check(tg404, now).fix
+    backup = health.check(outcome("skipped", reason="backup is not a Google News feed: 'https://x.com/a'"), now)
+    assert "news.google.com/rss/search" in backup.fix
 
 
 # ---- the commands
@@ -193,3 +204,50 @@ def test_cli_fetch_needs_a_choice_and_imports_on_first_run(tmp_path, repo_root, 
     )
     assert r.exit_code == 0, r.output
     assert "First run: imported 131 sources" in r.output and "1 skipped" in r.output
+
+
+def test_cli_rejects_unclear_requests(tmp_path, repo_root):
+    runner = CliRunner()
+    db_path = str(tmp_path / "engine.db")
+    feeds = str(repo_root / "feeds.csv")
+    both = runner.invoke(cli.app, ["fetch", "--all", "--source", "S004", "--db", db_path, "--feeds", feeds])
+    assert both.exit_code == 1 and "not both" in both.output
+    unknown = runner.invoke(cli.app, ["fetch", "--source", "S999", "--db", db_path, "--feeds", feeds])
+    assert unknown.exit_code == 1 and "no such source id: S999" in unknown.output
+    missing = runner.invoke(cli.app, ["test-feeds", "--feeds", str(tmp_path / "nope.csv")])
+    assert missing.exit_code == 1 and "cannot find" in missing.output
+    unknown_test = runner.invoke(cli.app, ["test-feeds", "--source", "s999", "--feeds", feeds])
+    assert unknown_test.exit_code == 1 and "S999" in unknown_test.output
+
+
+def test_cli_shows_progress_and_an_estimate(tmp_path, repo_root, monkeypatch):
+    handler, _ = network()
+    monkeypatch.setattr(pipeline, "PoliteClient", lambda: fake_client(handler))
+    r = CliRunner().invoke(
+        cli.app,
+        [
+            "fetch",
+            "--source",
+            "S112",
+            "--source",
+            "s108",
+            "--db",
+            str(tmp_path / "e.db"),
+            "--feeds",
+            str(repo_root / "feeds.csv"),
+        ],
+    )
+    assert r.exit_code == 0, r.output
+    assert "expect up to about" in r.output and "[  2/2]" in r.output
+
+
+def test_only_one_fetch_runs_at_a_time(tmp_path):
+    from riffi_ingest.runlock import AlreadyRunning, run_lock
+
+    lock = tmp_path / "fetch.lock"
+    with run_lock(lock):
+        with pytest.raises(AlreadyRunning):
+            with run_lock(lock):
+                pass
+    with run_lock(lock):  # released afterwards
+        pass

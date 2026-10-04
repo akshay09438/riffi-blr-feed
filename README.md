@@ -19,10 +19,10 @@ Then every command below is run as `.venv\Scripts\python.exe -m riffi_ingest <co
 
 | Command | What it does |
 |---|---|
-| `test-feeds` | Fetches every source once and prints a pass / fail table (HTTP status, items, newest item, fields) with a suggested fix for each failure. Also writes it to `reports/test-feeds/<date-time>.csv` and `.md`. Stores nothing. Add `--source S004` (repeatable) to test a few. Takes a few minutes: each site gets at most one request every 2 seconds. |
+| `test-feeds` | Fetches every source once and prints a pass / fail table (HTTP status, items, newest item, fields) with a suggested fix for each failure. Also writes it to `reports/test-feeds/<date-time>.csv` and `.md`. Stores nothing. Add `--source S004` (repeatable) to test a few. Takes about 3-4 minutes for all 131: each site gets at most one request every 2 seconds, and 84 sources are on Google News. A progress line shows each source as it finishes. |
 | `import-sources` | Loads `feeds.csv` into the database. Safe to run again after editing the CSV: rows are updated, history is kept, and a removed source is marked inactive, never deleted. |
 | `import-topics` | Loads `topics.csv` into the database. Safe to run again. |
-| `fetch --all` | One full cycle for every active source: fetch, clean, group into stories, tag, store. `fetch --source S004 --source S011` does just those. The first `fetch` imports the sources by itself. |
+| `fetch --all` | One full cycle for every active source: fetch, clean, group into stories, tag, store. `fetch --source S004 --source S011` does just those. The first `fetch` imports the sources by itself. Takes up to about 12 minutes (the source fetches plus up to 100 Google News link look-ups); please leave it running. Only one fetch can run at a time. |
 
 Every command has `--help`.
 
