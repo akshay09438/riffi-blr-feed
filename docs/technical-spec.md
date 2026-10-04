@@ -81,9 +81,20 @@ tests/
 - `config/topic_keywords.yaml` - team-editable: for each of the 151 topics a label and 5-15 plain keyword phrases (1,904 in all, drafted by Claude from each topic's title and debate angles on 4 Oct 2026), optional `local: true` (64 topics) and optional `exclude` phrases; plus the `local_context` list of place and body names. The header explains the rules for editors.
 - `tagging/keywords.py` - `KeywordTagger.load(path)`; `tag(text)` / `tag_texts([...])` return `TagResult(topics={topic_id: [matched keywords]}, local, unmatched_local)`. Matching is case-insensitive; English keywords match whole words only; Kannada keywords match at a word start (suffixes allowed; `\b` does not work in Kannada script); keywords are plain text, never regexes; the longest keyword at a position is reported. A story is tagged from all its members' titles and summaries at once. `local: true` topics need a `local_context` name somewhere in the story; `exclude` vetoes. This pass favours recall - the AI pass (step 4, part 2) confirms or rejects candidates. `unmatched_local` = names Bengaluru/Karnataka but matches no topic (BRIEF.md: weekly human review). `check_against_topics_csv` lists topics.csv ids without keywords and vice versa (a test keeps it empty).
 
-## Data model
+## Data model (as built, 4 Oct 2026)
 
-As in `BRIEF.md` ("Data model" and step 6): sources, fetch_runs, items, story_clusters, item_topics, page_snapshots, ground_truth. Index `items` on `published_at`, `fetched_at`, `cluster_id` and the resolved URL; `fetch_runs` on `(source_id, started_at)`. Prune `raw_payload` and page text after 30 days (D-002). SQLite busy timeout of 30 s or more.
+One SQLite file, `data/engine.db` (WAL, foreign keys on, 30 s busy timeout). Every date is ISO-8601 in UTC, so text order is time order. Tables (`riffi_ingest/db/schema.py`):
+
+- **sources** - feeds.csv columns + `active` + health columns kept by every fetch: `last_status`, `last_ok_at`, `newest_item_at`, `fields_present`, `consecutive_failures`, and the conditional-GET `etag` / `last_modified`.
+- **fetch_runs** - one row per source per run: status (ok / not_modified / skipped / error), `http_status`, `duration_ms`, `items_returned`, `newest_item_at`, `fields_present`, `on_backup`, `error`. Indexed on (source_id, started_at).
+- **items** - the BRIEF.md items shape plus `canonical_url`, `url_resolved`, `on_backup`, `cluster_id`. `raw_payload` (JSON) is cleared after 30 days (D-002). Indexed on published_at, fetched_at, cluster_id, canonical_url.
+- **story_clusters** - `headline`, `first_seen_at`, `started_at` (first report; the 48 h window's anchor), `source_count`, `publisher_count`, `sources` (JSON), `page_monitor`, `unmatched_local`, and `relevance_score` / `label` / `sensitive` for step 5.
+- **item_topics** - (cluster_id, topic_id, match_method keyword|llm), `confidence`, `evidence` (matched keywords as JSON, or the AI's reason). Keyword rows are recomputed from the whole story each run; llm rows are never touched by the keyword pass.
+- **page_snapshots** - every page-monitor snapshot; `text` cleared after 30 days except each page's latest (the next comparison needs it).
+- **ground_truth** - the editor's log: `logged_on`, `topic_id`, `what_happened`, `where_seen`, `seen_at` (step 10).
+- Helpers: **topics** (topics.csv), **gnews_cache** (Google News article id -> publisher URL, so a link is resolved once ever), **schema_version** (a newer file is refused, never overwritten).
+
+`db/importers.py` seeds sources and topics; re-importing updates rows in place, keeps health columns and history, and marks a source that left feeds.csv `active = 0` (never deleted). `db/store.py` records each fetch, loads validators / page snapshots / the Google News cache / the last 48 h of stories, saves a run's items and stories in one transaction, saves keyword tags, and prunes. Nothing deletes rows; SQL statements are fixed text with `?` values only.
 
 ## Code reused from the panel project
 
