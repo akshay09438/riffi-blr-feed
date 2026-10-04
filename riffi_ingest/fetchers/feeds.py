@@ -118,6 +118,7 @@ async def fetch_source(
             await _fetch_feed(client, out, v)
     except Exception as exc:  # a parser bug on one odd source must not stop the other 130
         out.status, out.reason = "error", f"{type(exc).__name__}: {exc}"[:300]
+        out.snapshot, out.entries = snapshot, []  # a page keeps its last snapshot
     out.elapsed = round(time.monotonic() - started, 2)
     return out
 

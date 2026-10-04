@@ -31,6 +31,8 @@
 3. **Rows that cannot fetch as written** (found 4 Oct 2026): S108 (X route, no backup Google News URL), S047 and S107 (fetch_url is an instruction, not a URL), S121 (YouTube channel ID needed). The first `test-feeds` run lists them; a person supplies the fix.
 4. **Kannada Google News `site:` queries** (S045, S055, S056, S058) came back empty in the panel project; the publishers' own feeds worked (`prajavani.net/feed/`, `tv9kannada.com/feed`). Expect these to fail `test-feeds` and suggest the native feed.
 
+5. **Page monitors to watch on the first live run** (found in review, 4 Oct 2026): BookMyShow (S041) and District (S042, S131) build their listings with JavaScript, so the downloaded HTML may hold little more than a shell and new events would be missed; IMD (S029) and ISL (S040) change numbers every visit (weather, scores) and may alert on most runs. Decide per source after the live run: a different URL, a JSON endpoint, changedetection.io, or drop.
+
 ## Reuse map (from the panel project, copied not imported - D-006)
 
 | From `Riffi feeds` | Verdict | Into |
