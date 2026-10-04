@@ -12,14 +12,23 @@ def test_the_real_blocklist_reads_every_domain_and_reports_rows_without_one(repo
         "cockroachjantapaarty.org",
         "thecockroachjantaparty.org.in",
         "cockroachjanataparty.pro",
+        "calendarlabs.com",  # the founder supplied these domains on 4 Oct 2026
+        "pockethrms.com",
+        "godigit.com",
+        "bankbazaar.com",
+        "khelnow.com",
     ):
         assert domain in bl.domains, domain
     assert ("x.com", "/cockroachisback") in bl.paths
     assert "x.com" not in bl.domains  # one X account is blocked, not all of X
-    # rows naming sites without a domain are reported for a person to fix, never guessed
-    assert len(bl.problems) == 2
-    assert any("Generic holiday sites" in p for p in bl.problems)
-    assert any("Khel Now" in p for p in bl.problems)
+    assert bl.problems == []
+
+
+def test_a_row_naming_a_site_without_a_domain_is_reported_not_guessed(tmp_path):
+    csv_file = tmp_path / "blocklist.csv"
+    csv_file.write_text("name,url,reason\nKhel Now fixture tables,—,Venue error found\n", encoding="utf-8")
+    bl = load_blocklist(csv_file)
+    assert bl.domains == set() and len(bl.problems) == 1 and "Khel Now" in bl.problems[0]
 
 
 def test_matching_covers_subdomains_but_not_lookalikes():
