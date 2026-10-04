@@ -188,3 +188,14 @@ def test_one_odd_entry_never_stops_the_run():
 def test_mixed_headlines():
     assert detect_language("Namma Metro ಹಳದಿ ಮಾರ್ಗ") == "kn"
     assert detect_language("Bengaluru: ಮೆಟ್ರೋ fare hike announced today") == "en"
+
+
+def test_each_change_of_a_monitored_page_is_its_own_item():
+    SOURCES["S025"] = Source("S025", "BMRCL", "Transport", "Web page monitor", "https://english.bmrc.co.in/")
+    try:
+        first = Entry(title="BMRCL updated", link="https://english.bmrc.co.in/", published=NOW, guid="S025:a-b")
+        second = Entry(title="BMRCL updated", link="https://english.bmrc.co.in/", published=NOW, guid="S025:b-c")
+        items = run_clean([outcome("S025", [first, second])])[0].items
+        assert len({i.item_id for i in items}) == 2
+    finally:
+        del SOURCES["S025"]

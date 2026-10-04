@@ -22,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import re
+import unicodedata
 from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -36,6 +37,7 @@ from .sources import Source
 MAX_AGE = timedelta(days=7)
 FUTURE_TOLERANCE = timedelta(hours=6)
 TELEGRAM = "RSSHub Telegram"
+PAGE_MONITOR = "Web page monitor"
 YOUTUBE = "YouTube Atom"
 
 TRACKING_PARAMS = {
@@ -50,7 +52,6 @@ HOST_ALIASES = {
     "m.thewire.in": "thewire.in",
     "m.hindustantimes.com": "www.hindustantimes.com",
 }
-PUNCT_RE = re.compile(r"[^\w\s]", re.UNICODE)
 WS_RE = re.compile(r"\s+")
 KANNADA_RE = re.compile(r"[ಀ-೿]")
 LATIN_RE = re.compile(r"[A-Za-z]")
@@ -106,8 +107,10 @@ def clean_title(title: str, publisher: str = "") -> str:
 
 
 def norm_title(title: str) -> str:
-    """Lower case, no punctuation: the form de-duplication compares (step 3)."""
-    return WS_RE.sub(" ", PUNCT_RE.sub(" ", title.lower())).strip()
+    """Lower case, no punctuation: the form de-duplication compares (step 3). Letters, digits and
+    combining marks are kept - Kannada vowel signs are marks, and dropping them breaks words apart."""
+    kept = "".join(c if unicodedata.category(c)[0] in "LNM" else " " for c in (title or "").lower())
+    return WS_RE.sub(" ", kept).strip()
 
 
 KANNADA_SHARE = 0.3  # "Namma Metro ಹಳದಿ ಮಾರ್ಗ" is a Kannada headline; one Kannada word in English is not
@@ -219,8 +222,10 @@ def _make_item(
         title = summary_text.split(". ")[0][:200]  # a Telegram post's first line
     summary = "" if summary_text.strip() == title else summary_text
     canon = canonical_url(url)
+    # a page monitor reports every change of one page under the same URL; its guid tells changes apart
+    identity = f"{canon}#{entry.guid}" if source.route_type == PAGE_MONITOR and entry.guid else canon
     return Item(
-        item_id=item_id(canon),
+        item_id=item_id(identity),
         source_id=source.source_id,
         title=title,
         url=url,
