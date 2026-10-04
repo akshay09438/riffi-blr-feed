@@ -36,6 +36,7 @@ function changedFiles(projectDir) {
 }
 
 function run(exe, args, projectDir) {
+  // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process -- exe is the project's own Python (from py.js) with fixed ruff/pytest arguments; no shell, no outside input
   const res = spawnSync(exe, args, { cwd: projectDir, encoding: 'utf8', timeout: 600000 });
   const out = `${res.stdout || ''}\n${res.stderr || ''}`.trim().split('\n');
   return { ok: res.status === 0, tail: out.slice(-25).join('\n') };

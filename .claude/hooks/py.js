@@ -10,7 +10,10 @@ const fs = require('fs');
 const path = require('path');
 
 function pythonFor(root) {
+  // root is the project folder (CLAUDE_PROJECT_DIR or cwd); the rest of each path is fixed, so no outside input reaches it
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const win = path.join(root, '.venv', 'Scripts', 'python.exe');
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const nix = path.join(root, '.venv', 'bin', 'python');
   if (fs.existsSync(win)) return win;
   if (fs.existsSync(nix)) return nix;
