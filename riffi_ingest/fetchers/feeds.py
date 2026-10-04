@@ -22,7 +22,7 @@ from urllib.parse import urlsplit, urlunsplit
 from ..config import DEFAULT_RSSHUB_BASE
 from ..sources import Source
 from .gnews import is_gnews_feed
-from .http import PoliteClient
+from .http import PoliteClient, domain_key
 from .outcome import FetchOutcome, PageSnapshot, Validators
 from .pagemonitor import monitor_page
 from .parse import looks_like_html, parse_feed
@@ -130,22 +130,33 @@ async def fetch_sources(
     rsshub_base: str = DEFAULT_RSSHUB_BASE,
     validators: dict[str, Validators] | None = None,
     snapshots: dict[str, PageSnapshot] | None = None,
+    on_done=None,
 ) -> list[FetchOutcome]:
-    """Fetch many sources at once. The client's per-domain gate keeps each site at one request per 2 s,
-    so different sites run in parallel while one site is never hammered. Outcomes come back in input order.
-    `validators` and `snapshots` are keyed by source_id."""
+    """Fetch many sources: different sites in parallel, each site's sources one after another.
+
+    One at a time per site matters: the client allows one request per site every 2 s and counts a
+    request's 60 s limit from when it starts waiting for its turn, so queueing all 84 Google News feeds at
+    once would time most of them out before they were ever sent. Outcomes come back in input order.
+    `validators` and `snapshots` are keyed by source_id; `on_done(outcome)` is called as each finishes."""
     validators, snapshots = validators or {}, snapshots or {}
-    return list(
-        await asyncio.gather(
-            *(
-                fetch_source(
-                    client,
-                    s,
-                    rsshub_base=rsshub_base,
-                    validators=validators.get(s.source_id),
-                    snapshot=snapshots.get(s.source_id),
-                )
-                for s in sources
+    by_site: dict[str, list[int]] = {}
+    for n, s in enumerate(sources):
+        url = plan(s, rsshub_base)[0]
+        by_site.setdefault(domain_key(url) if url else f"skip:{n}", []).append(n)
+    results: list[FetchOutcome | None] = [None] * len(sources)
+
+    async def one_site(indexes: list[int]) -> None:
+        for n in indexes:
+            s = sources[n]
+            results[n] = await fetch_source(
+                client,
+                s,
+                rsshub_base=rsshub_base,
+                validators=validators.get(s.source_id),
+                snapshot=snapshots.get(s.source_id),
             )
-        )
-    )
+            if on_done is not None:
+                on_done(results[n])
+
+    await asyncio.gather(*(one_site(ix) for ix in by_site.values()))
+    return [r for r in results if r is not None]

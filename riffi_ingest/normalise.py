@@ -19,7 +19,6 @@ panel project's fetcher/normalize.py (canonical_url, clean_title, norm_title - c
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import re
 import unicodedata
@@ -179,8 +178,12 @@ async def _resolve_all(entries: list[Entry], resolver: gnews.Resolver | None) ->
     links = sorted({e.link for e in entries if _gnews_id(e.link)})
     if not links or resolver is None:
         return {}
-    answers = await asyncio.gather(*(resolver.resolve(link) for link in links))
-    return {link: url for link, (url, _how) in zip(links, answers, strict=True)}
+    # one at a time: every online look-up goes to news.google.com, where the client allows one request per
+    # 2 s; queueing them all at once would let the 60 s request limit expire while they wait their turn
+    out = {}
+    for link in links:
+        out[link] = (await resolver.resolve(link))[0]
+    return out
 
 
 def _published(entry: Entry, now: datetime) -> datetime:
@@ -224,6 +227,10 @@ def _make_item(
     canon = canonical_url(url)
     # a page monitor reports every change of one page under the same URL; its guid tells changes apart
     identity = f"{canon}#{entry.guid}" if source.route_type == PAGE_MONITOR and entry.guid else canon
+    if from_gnews:
+        # keyed on Google's own article id, so a link stored unresolved and resolved in a later run stays
+        # one item instead of becoming two
+        identity = f"gnews:{_gnews_id(link)}"
     return Item(
         item_id=item_id(identity),
         source_id=source.source_id,

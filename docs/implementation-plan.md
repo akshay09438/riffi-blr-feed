@@ -2,7 +2,7 @@
 
 *How far along the engine is, what is in flight, what is left, and the drift log. Update it in the same change that moves any item.*
 
-**Status on 4 Oct 2026:** steps 1-3 built and the step 4 keyword pass; next is the step 4 AI pass (needs the founder on open questions 1-2) or step 5 (scoring). Before that: set up only. Zuko bootstrapped (Python-adapted CI and hooks), inputs and brief in the repo, a smoke test on the input files (5 passing), the panel project's reusable code copied to `reference/riffi-feeds/`. No engine code yet. Building continues in a Claude Code cloud session (founder's cloud credits, expire 5 Nov 2026); live feed tests and the two-week run stay on the laptop.
+**Status on 4 Oct 2026:** steps 1-4 (keyword pass) and 6 built, plus the CLI: the engine can run on the laptop (`test-feeds`, `fetch --all`). Next: the first live run on the laptop, then scoring (5), the scheduler (7), outputs (8) and the AI pass (needs the founder on open questions 1-2). Building continues in a Claude Code cloud session (founder's cloud credits, expire 5 Nov 2026); live feed tests and the two-week run stay on the laptop.
 
 **Deadline context:** Riffi launches end of Oct / first week of Nov 2026. The two-week source test needs ~14 days of running, so the engine should be fetching by about 10-12 Oct to finish the test before launch.
 
@@ -17,12 +17,12 @@
 | 4 | Tag topics (keyword pass + Claude Code AI pass, D-005) | Keyword pass built and tested offline (4 Oct 2026), keywords drafted for all 151 topics; AI pass not started (open questions 1-2) |
 | 5 | Score (scoring.yaml) | Not started |
 | 6 | Store (7 tables, idempotent CSV import) | Built and tested (4 Oct 2026): schema, importers, run storage, pruning; wired into the CLI next |
-| 7 | Schedule + CLI | Not started |
+| 7 | Schedule + CLI | CLI built (4 Oct 2026): import-sources, import-topics, test-feeds, fetch. Scheduler, digest and report not started |
 | 8 | Outputs (dashboard, digest, /api/stories, sources_health.csv) | Not started |
 | 9 | Health checks | Not started |
 | 10 | Two-week recall test (ground-truth form, nightly match, day-14 report) | Not started |
-| - | First run: test-feeds over all 131, failures with fixes, top 30 stories | Not started |
-| - | README + .env.example | Not started |
+| - | First run: test-feeds over all 131, failures with fixes, top 30 stories | Ready to run on the laptop (`test-feeds`, then `fetch --all`); top 30 needs scoring (step 5) |
+| - | README + .env.example | README written (4 Oct 2026); .env.example not yet (it matches the dangerous `**/.env.*` glob, so it waits for a founder OK) |
 
 ## Open questions
 
