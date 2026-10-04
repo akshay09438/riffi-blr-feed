@@ -4,6 +4,16 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-007 · Claude merges its own pull requests when they are safe to (4 Oct 2026, founder)
+
+A Claude session may merge its own pull request into `main` without waiting for the founder when **both** hold:
+- every CI check on the PR's latest commit has passed (verify, secret scan, semgrep, coverage, goodnight gate), and
+- the PR changes no file on the dangerous list (`CLAUDE.md` Part B / `.zuko/config.json`).
+
+A PR that touches a dangerous file waits for the founder's explicit OK for that change. Agreeing to start the work counts, if the PR does what was agreed; say so in the PR. A red check is never merged; fix it or ask. One logical change per PR still applies.
+
+Why: the founder is non-technical and reviews by outcome, not diff. Green checks plus the dangerous-list gate are the safety net, so routine work should not sit waiting for a click.
+
 ## D-006 · Separate from the existing "Riffi Feeds" project; copy, never import (4 Oct 2026, founder)
 
 The existing project at `C:\Users\Akshay\Projects\Riffi feeds` (the "panel") stays separate and keeps running as it is. This engine may **copy** code from it (with tests), but must never import from it, share its database, or change anything in that folder. The reuse map is in `docs/implementation-plan.md`.
