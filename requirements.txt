@@ -1,6 +1,8 @@
 # Pinned dependencies. Install on the laptop: .venv\Scripts\python.exe -m pip install -r requirements.txt
 # The engine's own libraries (httpx, feedparser, trafilatura, APScheduler, Typer, FastAPI, RapidFuzz, PyYAML)
 # are added, pinned, in the change that first uses them.
+feedparser==6.0.14
+httpx==0.28.1
 pytest==9.1.1
 pytest-cov==7.1.0
 ruff==0.16.10
