@@ -36,6 +36,7 @@ from .sources import Source
 MAX_AGE = timedelta(days=7)
 FUTURE_TOLERANCE = timedelta(hours=6)
 TELEGRAM = "RSSHub Telegram"
+PAGE_MONITOR = "Web page monitor"
 YOUTUBE = "YouTube Atom"
 
 TRACKING_PARAMS = {
@@ -219,8 +220,10 @@ def _make_item(
         title = summary_text.split(". ")[0][:200]  # a Telegram post's first line
     summary = "" if summary_text.strip() == title else summary_text
     canon = canonical_url(url)
+    # a page monitor reports every change of one page under the same URL; its guid tells changes apart
+    identity = f"{canon}#{entry.guid}" if source.route_type == PAGE_MONITOR and entry.guid else canon
     return Item(
-        item_id=item_id(canon),
+        item_id=item_id(identity),
         source_id=source.source_id,
         title=title,
         url=url,
