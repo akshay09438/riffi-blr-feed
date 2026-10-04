@@ -2,7 +2,7 @@
 
 *How far along the engine is, what is in flight, what is left, and the drift log. Update it in the same change that moves any item.*
 
-**Status on 4 Oct 2026:** steps 1-3 built (fetchers, normalise and clean, story clusters); next is step 4 (tagging). Before that: set up only. Zuko bootstrapped (Python-adapted CI and hooks), inputs and brief in the repo, a smoke test on the input files (5 passing), the panel project's reusable code copied to `reference/riffi-feeds/`. No engine code yet. Building continues in a Claude Code cloud session (founder's cloud credits, expire 5 Nov 2026); live feed tests and the two-week run stay on the laptop.
+**Status on 4 Oct 2026:** steps 1-3 built and the step 4 keyword pass; next is the step 4 AI pass (needs the founder on open questions 1-2) or step 5 (scoring). Before that: set up only. Zuko bootstrapped (Python-adapted CI and hooks), inputs and brief in the repo, a smoke test on the input files (5 passing), the panel project's reusable code copied to `reference/riffi-feeds/`. No engine code yet. Building continues in a Claude Code cloud session (founder's cloud credits, expire 5 Nov 2026); live feed tests and the two-week run stay on the laptop.
 
 **Deadline context:** Riffi launches end of Oct / first week of Nov 2026. The two-week source test needs ~14 days of running, so the engine should be fetching by about 10-12 Oct to finish the test before launch.
 
@@ -14,7 +14,7 @@
 | 1 | Fetchers, one per route type | Built and tested offline (4 Oct 2026): HTTP client, feed parsing, all feed routes, Google News resolution, web page monitor. Live run on the laptop with `test-feeds` (step 7) |
 | 2 | Normalise and clean (incl. Google News resolution, blocklist, 7-day drop) | Built and tested offline (4 Oct 2026); excluded-topic drop waits for step 4 tags |
 | 3 | De-duplicate into story clusters | Built and tested offline (4 Oct 2026); clusters live in memory until step 6 stores them |
-| 4 | Tag topics (keyword pass + Claude Code AI pass, D-005) | Not started |
+| 4 | Tag topics (keyword pass + Claude Code AI pass, D-005) | Keyword pass built and tested offline (4 Oct 2026), keywords drafted for all 151 topics; AI pass not started (open questions 1-2) |
 | 5 | Score (scoring.yaml) | Not started |
 | 6 | Store (7 tables, idempotent CSV import) | Not started |
 | 7 | Schedule + CLI | Not started |
@@ -34,6 +34,8 @@
 5. **Page monitors to watch on the first live run** (found in review, 4 Oct 2026): BookMyShow (S041) and District (S042, S131) build their listings with JavaScript, so the downloaded HTML may hold little more than a shell and new events would be missed; IMD (S029) and ISL (S040) change numbers every visit (weather, scores) and may alert on most runs. Decide per source after the live run: a different URL, a JSON endpoint, changedetection.io, or drop.
 
 6. ~~**blocklist.csv rows without a domain**~~ Resolved 4 Oct 2026: the founder supplied the domains (calendarlabs.com, pockethrms.com, godigit.com, bankbazaar.com; khelnow.com blocked as a whole site). `Blocklist.problems` still lists any future row without a domain; the health report (step 9) / `test-feeds` (step 7) must show it.
+
+7. **Keywords to tune after the first live run** (drafted 4 Oct 2026): the four India vs New Zealand topics share "Ind vs NZ"; several holiday topics share "long weekend"; O02 will over-tag on "Siddaramaiah"/"Shivakumar"; broad single words to watch: "boycott" (P24), "techno" (D19), "walkout" (D33), "reservation" (P15), "MoU" (D23). Kannada spellings least certain: "ಕ್ಷೇತ್ರ ಪುನರ್ವಿಂಗಡಣೆ" (SI01), "ಕೆನೆಪದರ" (P15), "ಗಿಗ್ ಕಾರ್ಮಿಕ" (P06). The AI pass is meant to absorb over-matching; missing keywords are the bigger risk.
 
 ## Reuse map (from the panel project, copied not imported - D-006)
 

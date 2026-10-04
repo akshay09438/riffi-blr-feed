@@ -1,0 +1,640 @@
+# Topic keywords for the keyword pass (step 4, BRIEF.md "Tagging", point 1). Team-editable.
+#
+# How a story gets a topic: if ANY keyword of the topic appears in the story's title or summary, the topic
+# becomes a candidate. The AI pass later confirms or rejects it, so a keyword that sometimes over-matches
+# is fine; a missing keyword means a story is never considered for the topic.
+#
+# Writing keywords:
+#   - Plain phrases, not patterns. Case does not matter. Whole words only: "fare" does not match "welfare".
+#   - List real variants yourself: "tunnel road" and "tunnel roads"; "B-SMILE" and "BSMILE".
+#   - Kannada: give the stem as headlines spell it; it matches at the start of a word, so suffixes are
+#     fine ("ಬೆಂಗಳೂರ" matches "ಬೆಂಗಳೂರಿನಲ್ಲಿ").
+#   - local: true  -> the topic counts only when the story also names a place or body in local_context
+#     below. Use it when the keywords are generic ("property tax", "power cut").
+#   - exclude: [...] -> any of these phrases vetoes the topic (known false matches).
+#   - Avoid words that appear in a large share of all news ("Bengaluru", "government", "price").
+#
+# Every topic_id in topics.csv needs an entry here; a test checks it.
+# Drafted by Claude on 4 Oct 2026 from each topic's title and debate angles; tune after the first live run.
+
+local_context: [
+  "Bengaluru", "Bangalore", "Bengalurean", "Bengalureans", "Bangaloreans", "Karnataka", "Kannadiga", "Kannadigas",
+  "BBMP", "GBA", "Greater Bengaluru", "BMRCL", "Namma Metro", "BWSSB", "BESCOM", "BMTC", "BDA", "KSRTC",
+  "Siddaramaiah", "Shivakumar", "Vidhana Soudha", "Mysuru", "Mysore", "Mangaluru", "Mangalore", "Hubballi",
+  "Belagavi", "Kalaburagi", "Electronic City", "Whitefield", "Koramangala", "Indiranagar", "Hebbal",
+  "ಬೆಂಗಳೂರ", "ಕರ್ನಾಟಕ", "ಕನ್ನಡಿಗ", "ಮೈಸೂರ", "ಬಿಬಿಎಂಪಿ", "ಸಿದ್ದರಾಮಯ್ಯ", "ಶಿವಕುಮಾರ್",
+]
+
+topics:
+  D01:
+    label: India vs New Zealand T20I series
+    keywords: ["India vs New Zealand", "Ind vs NZ", "IND vs NZ", "India vs NZ", "T20I", "T20Is", "Suryakumar", "Black Caps", "BlackCaps", "NZ tour", "ಭಾರತ-ನ್ಯೂಜಿಲೆಂಡ್", "ನ್ಯೂಜಿಲೆಂಡ್"]
+    local: false
+  D02:
+    label: Karnataka MLC polls (graduates' and teachers' seats)
+    keywords: ["Legislative Council", "MLC poll", "MLC polls", "MLC election", "MLC elections", "Council polls", "graduates' constituency", "teachers' constituency", "Bangalore Teachers", "Bengaluru Teachers", "ವಿಧಾನ ಪರಿಷತ್", "ಪದವೀಧರ ಕ್ಷೇತ್ರ", "ಶಿಕ್ಷಕರ ಕ್ಷೇತ್ರ"]
+    local: true
+  D03:
+    label: Maharshi Valmiki Jayanti holiday
+    keywords: ["Valmiki Jayanti", "Maharshi Valmiki", "Valmiki Jayanthi", "long weekend", "ವಾಲ್ಮೀಕಿ ಜಯಂತಿ"]
+    local: true
+  D04:
+    label: WPL 2027 player auction (RCB women)
+    keywords: ["WPL", "WPL auction", "WPL 2027", "Women's Premier League", "RCB women", "RCB Women", "Smriti Mandhana", "Mandhana", "Ellyse Perry", "Richa Ghosh", "Grace Harris"]
+    local: false
+  D05:
+    label: Namma Metro Pink Line opening
+    keywords: ["Pink Line", "Pink line metro", "Kalena Agrahara", "Tavarekere", "CMRS", "CMRS inspection", "Namma Metro", "elevated stretch", "ಪಿಂಕ್ ಲೈನ್", "ಗುಲಾಬಿ ಮಾರ್ಗ", "ನಮ್ಮ ಮೆಟ್ರೋ"]
+    local: true
+  D06:
+    label: Q2 results of new-age tech (Swiggy, Eternal/Zomato)
+    keywords: ["Swiggy", "Eternal Ltd", "Zomato", "Blinkit", "Instamart", "Q2 results", "Q2 FY27", "quick commerce", "quick-commerce", "cash burn", "new-age tech"]
+    local: false
+  D07:
+    label: Bengaluru FC ISL fixtures
+    keywords: ["Bengaluru FC", "BFC", "ISL", "Indian Super League", "West Block Blues", "Kanteerava", "Mumbai City FC", "Sunil Chhetri", "ಬೆಂಗಳೂರು ಎಫ್‌ಸಿ"]
+    local: false
+  D08:
+    label: Halloween weekend and 'No ID, no entry' at pubs
+    keywords: ["Halloween", "No ID, no entry", "No ID no entry", "drinking age", "legal drinking age", "ID check", "ID checks", "pubs", "bouncers", "cover charge", "ಪಬ್"]
+    local: true
+  D09:
+    label: Rajyotsava Awards list
+    keywords: ["Rajyotsava Award", "Rajyotsava Awards", "Rajyotsava awardees", "Rajyotsava Prashasti", "Rajyotsava award list", "ರಾಜ್ಯೋತ್ಸವ ಪ್ರಶಸ್ತಿ"]
+    local: false
+  D10:
+    label: Kannada Rajyotsava (71st, 1 Nov)
+    keywords: ["Kannada Rajyotsava", "Rajyotsava", "Karnataka Rajyotsava", "Karnataka formation day", "Kannada flag", "red-yellow flag", "Kannada signboards", "Kannada signboard", "ಕನ್ನಡ ರಾಜ್ಯೋತ್ಸವ", "ರಾಜ್ಯೋತ್ಸವ"]
+    local: false
+    exclude: ["Rajyotsava Award", "Rajyotsava Awards"]
+  D11:
+    label: US midterm elections (H-1B, tech angle)
+    keywords: ["US midterm", "US midterms", "midterm elections", "midterms", "H-1B", "H1B", "H-1B visa", "OPT programme", "GCC", "GCCs", "Global Capability Centre", "Global Capability Centres", "Indian techies"]
+    local: false
+  D12:
+    label: India vs New Zealand ODI series
+    keywords: ["India vs New Zealand", "Ind vs NZ", "IND vs NZ", "India vs NZ", "ODI series", "ODIs", "Shubman Gill", "Rohit Sharma", "Virat Kohli", "2027 World Cup", "ನ್ಯೂಜಿಲೆಂಡ್"]
+    local: false
+  D13:
+    label: Kannada film releases squeezed by Ramayana
+    keywords: ["Sandalwood", "Kannada film", "Kannada films", "Kannada movie", "Kannada movies", "Kannada cinema", "Rudraprayag", "screen share", "multiplex", "ಸ್ಯಾಂಡಲ್‌ವುಡ್", "ಕನ್ನಡ ಸಿನಿಮಾ", "ಕನ್ನಡ ಚಿತ್ರ"]
+    local: false
+  D14:
+    label: "Ramayana: Rise of a Legend (Yash as Ravana)"
+    keywords: ["Ramayana", "Ramayana Part 1", "Rise of a Legend", "Ranbir Kapoor", "Yash", "Rocky Bhai", "Ravana", "Sai Pallavi", "Nitesh Tiwari", "Adipurush", "ರಾಮಾಯಣ", "ಯಶ್"]
+    local: false
+  D15:
+    label: Deepavali (crackers, AQI, bonuses, travel)
+    keywords: ["Deepavali", "Diwali", "Naraka Chaturdashi", "Lakshmi Puja", "crackers", "firecrackers", "green crackers", "cracker ban", "Diwali bonus", "ದೀಪಾವಳಿ", "ಪಟಾಕಿ"]
+    local: false
+  D16:
+    label: Appraisal and Diwali bonus discourse
+    keywords: ["appraisal", "appraisals", "appraisal season", "Diwali bonus", "salary hike", "salary hikes", "increment", "increments", "hike percentage", "variable pay"]
+    local: false
+  D17:
+    label: "Diwali bridge day: leave or WFH"
+    keywords: ["bridge day", "WFH", "work from home", "leave denied", "leave request", "RTO", "return to office", "long weekend", "four-day weekend", "4-day weekend"]
+    local: true
+  D18:
+    label: Balipadyami holiday and long-weekend exodus
+    keywords: ["Balipadyami", "Bali Padyami", "Balipadya", "long weekend", "four-day weekend", "4-day weekend", "bus fare", "bus fares", "airfares", "festive rush", "KSRTC", "ಬಲಿಪಾಡ್ಯಮಿ"]
+    local: true
+  D19:
+    label: DGTL Bengaluru at The Lalit Ashok
+    keywords: ["DGTL", "DGTL Bengaluru", "DGTL Bangalore", "Lalit Ashok", "Nina Kraviz", "Stephan Bodzin", "techno"]
+    local: false
+  D20:
+    label: Guns N' Roses at NICE Grounds
+    keywords: ["Guns N' Roses", "Guns N Roses", "Guns and Roses", "GNR", "Axl Rose", "NICE Grounds"]
+    local: false
+  D21:
+    label: Mid-size gigs (Papon, Sartaaj, Candlelight, Indian Ocean)
+    keywords: ["Papon", "Satinder Sartaaj", "Candlelight concert", "Candlelight concerts", "tribute concert", "tribute show", "Indian Ocean", "A.R. Rahman tribute", "Arijit tribute", "Arijit Singh tribute"]
+    local: true
+    exclude: ["Indian Ocean Region", "in the Indian Ocean", "Indian Ocean rim"]
+  D22:
+    label: Sunburn Arena ft. Adam Port
+    keywords: ["Sunburn", "Sunburn Arena", "Adam Port", "Keinemusik", "Afro house", "Afro-house"]
+    local: false
+  D23:
+    label: Bengaluru Tech Summit 2026 at BIEC
+    keywords: ["Bengaluru Tech Summit", "Bangalore Tech Summit", "BTS 2026", "Tech Summit", "BIEC", "AI & Beyond", "India-USA Tech Conclave", "Priyank Kharge", "MoU", "MoUs", "ಬೆಂಗಳೂರು ಟೆಕ್ ಸಮ್ಮಿಟ್", "ಟೆಕ್ ಸಮ್ಮಿಟ್"]
+    local: true
+  D24:
+    label: India vs New Zealand 1st Test, Wellington
+    keywords: ["India vs New Zealand", "Ind vs NZ", "IND vs NZ", "Wellington Test", "Basin Reserve", "Test series", "WTC", "World Test Championship", "Gill's captaincy", "batting collapse"]
+    local: false
+  D25:
+    label: "Pan-India releases: Sri Sri, Yeh Prem Mol Liya, Mysaa"
+    keywords: ["Sri Sri", "Dulquer Salmaan", "Dulquer", "Pooja Hegde", "Yeh Prem Mol Liya", "Ayushmann Khurrana", "Sharvari", "Mysaa", "Rashmika", "Rashmika Mandanna", "ರಶ್ಮಿಕಾ"]
+    local: false
+    exclude: ["Sri Sri Ravi Shankar", "Art of Living"]
+  D26:
+    label: Karnataka SIR final electoral roll
+    keywords: ["SIR exercise", "SIR process", "SIR draft", "Special Intensive Revision", "electoral roll", "electoral rolls", "voter list", "voter lists", "final roll", "name deleted", "deletions", "ಮತದಾರರ ಪಟ್ಟಿ"]
+    local: true
+  D27:
+    label: IPL 2027 retention deadline (RCB)
+    keywords: ["IPL retention", "IPL retentions", "retention list", "retained players", "IPL 2027", "IPL auction", "mega auction", "RCB", "Royal Challengers", "Virat Kohli", "Kohli", "trade window", "ಆರ್‌ಸಿಬಿ"]
+    local: false
+  D28:
+    label: GBA civic poll notification and campaign
+    keywords: ["GBA polls", "GBA elections", "GBA election", "civic polls", "civic poll", "corporation elections", "ward elections", "corporators", "369 wards", "five corporations", "5 corporations", "ward reservation", "ಜಿಬಿಎ ಚುನಾವಣೆ", "ಪಾಲಿಕೆ ಚುನಾವಣೆ"]
+    local: true
+  D29:
+    label: Kanakadasa Jayanti and Black Friday long weekend
+    keywords: ["Kanakadasa Jayanti", "Kanaka Jayanti", "Kanakadasa Jayanthi", "Black Friday", "Black Friday sale", "long weekend", "Coorg", "Chikmagalur", "Chikkamagaluru", "ಕನಕದಾಸ ಜಯಂತಿ"]
+    local: false
+  D30:
+    label: India vs New Zealand 2nd Test, Christchurch
+    keywords: ["India vs New Zealand", "Ind vs NZ", "IND vs NZ", "Christchurch Test", "Hagley Oval", "Test series", "series defeat", "WTC", "World Test Championship"]
+    local: false
+  D31:
+    label: Samay Raina India tour
+    keywords: ["Samay Raina", "India's Got Latent", "Indias Got Latent", "Got Latent", "stand-up tour", "comedy tour"]
+    local: false
+  D32:
+    label: RBI monetary policy (repo rate)
+    keywords: ["RBI policy", "monetary policy", "MPC", "repo rate", "rate cut", "rate cuts", "Sanjay Malhotra", "home loan EMI", "EMIs", "FD rates", "ರೆಪೊ ದರ"]
+    local: false
+  D33:
+    label: Parliament winter session
+    keywords: ["winter session", "Parliament session", "Lok Sabha", "Rajya Sabha", "Parliament disruption", "walkout", "SIR debate", "delimitation", "ಚಳಿಗಾಲದ ಅಧಿವೇಶನ"]
+    local: false
+    exclude: ["Belagavi", "Suvarna Soudha"]
+  D34:
+    label: Basavanagudi Kadalekai Parishe
+    keywords: ["Kadalekai Parishe", "Kadalekayi Parishe", "Kadlekai Parishe", "groundnut fair", "Basavanagudi", "Dodda Ganesha", "Bull Temple", "ಕಡಲೆಕಾಯಿ ಪರಿಷೆ", "ಬಸವನಗುಡಿ"]
+    local: false
+  D35:
+    label: Belagavi winter session of the legislature
+    keywords: ["Belagavi session", "Belagavi winter session", "Belgaum session", "Suvarna Soudha", "Suvarna Vidhana Soudha", "winter session", "North Karnataka", "ಬೆಳಗಾವಿ ಅಧಿವೇಶನ", "ಸುವರ್ಣ ಸೌಧ"]
+    local: true
+  D36:
+    label: Big acts and releases pre-hype (Fred again.., King, BLF)
+    keywords: ["Fred again", "Fred again..", "Avengers: Doomsday", "Avengers Doomsday", "SRK", "Shah Rukh Khan", "King trailer", "Gorillaz", "Bangalore Literature Festival", "Bangalore Lit Fest", "BLF", "NICE Grounds"]
+    local: false
+  O01:
+    label: GBA elections and split into 5 corporations
+    keywords: ["GBA", "Greater Bengaluru Authority", "Greater Bengaluru Governance", "five corporations", "5 corporations", "BBMP polls", "BBMP elections", "civic polls", "corporators", "ward delimitation", "mayor", "ಜಿಬಿಎ", "ಗ್ರೇಟರ್ ಬೆಂಗಳೂರು", "ಬಿಬಿಎಂಪಿ ಚುನಾವಣೆ"]
+    local: true
+  O02:
+    label: CM D.K. Shivakumar's Bengaluru agenda and remarks
+    keywords: ["D.K. Shivakumar", "DK Shivakumar", "D K Shivakumar", "Shivakumar", "DKS", "CM Shivakumar", "Brand Bengaluru", "Siddaramaiah camp", "Siddaramaiah", "marry twice", "ಡಿ.ಕೆ. ಶಿವಕುಮಾರ್", "ಡಿಕೆ ಶಿವಕುಮಾರ್", "ಶಿವಕುಮಾರ್"]
+    local: false
+  O03:
+    label: DKS cabinet, no women ministers, disgruntled MLAs
+    keywords: ["cabinet expansion", "cabinet reshuffle", "cabinet berth", "ministerial berth", "women ministers", "no woman minister", "disgruntled MLAs", "high command", "ministers inducted", "ಸಂಪುಟ ವಿಸ್ತರಣೆ", "ಸಂಪುಟ ಪುನಾರಚನೆ", "ಸಚಿವ ಸ್ಥಾನ"]
+    local: true
+  O04:
+    label: Kumaraswamy's offensive (HMT land, NICE, KPSC)
+    keywords: ["Kumaraswamy", "HDK", "H.D. Kumaraswamy", "HD Kumaraswamy", "JD(S)", "JDS", "HMT land", "NICE project", "NICE road", "KPSC", "KPSC exam", "KPSC recruitment", "ಕುಮಾರಸ್ವಾಮಿ", "ಕೆಪಿಎಸ್‌ಸಿ"]
+    local: false
+  O05:
+    label: Caste survey report not tabled (OBC quota)
+    keywords: ["caste survey", "caste census", "socio-economic survey", "socio-educational survey", "Backward Classes Commission", "OBC quota", "OBC reservation", "42% quota", "Kantharaj report", "Jayaprakash Hegde", "ಜಾತಿ ಗಣತಿ", "ಜಾತಿ ಸಮೀಕ್ಷೆ"]
+    local: true
+  O06:
+    label: Hebbal-Silk Board tunnel road (Adani bid)
+    keywords: ["tunnel road", "tunnel roads", "twin tunnel", "Hebbal", "Silk Board", "B-SMILE", "BSMILE", "Adani", "Lalbagh", "tunnel project", "ಸುರಂಗ ರಸ್ತೆ", "ಟನಲ್ ರಸ್ತೆ"]
+    local: false
+  O07:
+    label: Bengaluru's second airport (Harohalli, Hosur)
+    keywords: ["second airport", "2nd airport", "new airport", "Harohalli", "Kanakapura Road", "Kunigal", "Nelamangala", "Hosur airport", "150-km", "150 km rule", "ಎರಡನೇ ವಿಮಾನ ನಿಲ್ದಾಣ"]
+    local: true
+  O08:
+    label: Namma Metro delays and high fares
+    keywords: ["Namma Metro", "BMRCL", "metro fare", "metro fares", "fare hike", "Pink Line", "Yellow Line", "Blue Line", "metro delay", "metro frequency", "ನಮ್ಮ ಮೆಟ್ರೋ", "ಮೆಟ್ರೋ ದರ", "ಮೆಟ್ರೋ"]
+    local: true
+  O09:
+    label: Traffic (ORR, Silk Board, Hebbal, airport road)
+    keywords: ["traffic jam", "traffic jams", "traffic congestion", "gridlock", "Outer Ring Road", "ORR", "Silk Board", "Hebbal", "airport road", "Tumakuru Road", "Tumkur Road", "ಟ್ರಾಫಿಕ್", "ಸಂಚಾರ ದಟ್ಟಣೆ"]
+    local: true
+  O10:
+    label: Potholes, garbage, 'No road, no tax' protests
+    keywords: ["pothole", "potholes", "garbage", "garbage fee", "garbage cess", "solid waste cess", "No road, no tax", "No road no tax", "property tax", "bad roads", "ರಸ್ತೆ ಗುಂಡಿ", "ಕಸ"]
+    local: true
+  O11:
+    label: Monsoon cloudbursts and flooding
+    keywords: ["flooding", "floods", "waterlogging", "waterlogged", "cloudburst", "heavy rain", "heavy rains", "Mahadevapura", "Yelahanka", "stormwater drain", "stormwater drains", "lake encroachment", "ಭಾರಿ ಮಳೆ", "ಪ್ರವಾಹ"]
+    local: true
+  O12:
+    label: Water stress (tankers, borewells, groundwater)
+    keywords: ["water tanker", "water tankers", "tanker mafia", "borewell", "borewells", "groundwater", "water crisis", "water shortage", "water tariff", "BWSSB", "Day Zero", "Cauvery water", "ನೀರಿನ ಸಮಸ್ಯೆ", "ಟ್ಯಾಂಕರ್", "ಕೊಳವೆ ಬಾವಿ"]
+    local: true
+  O13:
+    label: Rent, deposits, brokers, PG and flatmate discrimination
+    keywords: ["rent", "rents", "rental", "security deposit", "10-month deposit", "landlord", "landlords", "broker", "brokerage", "PG accommodation", "PGs", "paying guest", "flatmate", "veg only", "no bachelors"]
+    local: true
+  O14:
+    label: Kannada vs Hindi; 60% Kannada signage rule
+    keywords: ["Kannada vs Hindi", "Hindi imposition", "Learn Kannada", "Kannada signboard", "Kannada signboards", "60% Kannada", "Kannada signage", "pro-Kannada", "Karnataka Rakshana Vedike", "KRV", "national language", "ಹಿಂದಿ ಹೇರಿಕೆ", "ಕನ್ನಡ ನಾಮಫಲಕ"]
+    local: false
+  O15:
+    label: North vs South, locals vs migrants; BLR vs Hyderabad
+    keywords: ["North Indians", "North Indian", "migrants", "outsiders", "north vs south", "north-south divide", "Bengaluru vs Hyderabad", "Bangalore vs Hyderabad", "Hyderabad vs Bengaluru", "poaching investments", "investments to Hyderabad", "ವಲಸಿಗ"]
+    local: true
+  O16:
+    label: Delimitation and South's Lok Sabha seats
+    keywords: ["delimitation", "Lok Sabha seats", "seat freeze", "southern states", "South India", "tax devolution", "Finance Commission", "family planning", "Census 2027", "ಕ್ಷೇತ್ರ ಪುನರ್ವಿಂಗಡಣೆ", "ಡಿಲಿಮಿಟೇಶನ್"]
+    local: false
+  O17:
+    label: Mekedatu dam row with Tamil Nadu
+    keywords: ["Mekedatu", "Mekedatu dam", "Mekedatu project", "Cauvery water", "Cauvery dispute", "Kaveri water", "Cauvery Water Management Authority", "CWMA", "Cauvery tribunal", "ಮೇಕೆದಾಟು", "ಕಾವೇರಿ ನೀರು"]
+    local: false
+  O18:
+    label: Kannadiga job quota in private / IT firms
+    keywords: ["job quota", "jobs quota", "local quota", "local reservation", "Kannadiga quota", "quota for Kannadigas", "reservation for Kannadigas", "jobs for Kannadigas", "Employment of Local Candidates", "Sarojini Mahishi", "private sector reservation", "ಉದ್ಯೋಗ ಮೀಸಲಾತಿ", "ಕನ್ನಡಿಗರಿಗೆ ಮೀಸಲಾತಿ"]
+    local: true
+  O19:
+    label: Autos, meter refusal and bike taxi SC appeal
+    keywords: ["bike taxi", "bike taxis", "bike-taxi", "Rapido", "Uber Moto", "Namma Yatri", "auto fare", "auto fares", "meter refusal", "autorickshaw", "autorickshaws", "auto drivers", "auto unions", "ಬೈಕ್ ಟ್ಯಾಕ್ಸಿ", "ಆಟೋ ಚಾಲಕ"]
+    local: true
+  O20:
+    label: Pub 1 am closing, drinking age 21, ID checks
+    keywords: ["pub", "pubs", "pub timings", "pub closing", "bars and pubs", "drinking age", "legal drinking age", "ID check", "ID checks", "nightlife", "closing time", "excise department", "New Year's Eve", "ಪಬ್"]
+    local: true
+  O21:
+    label: AI layoffs, RTO mandates and IT unionising (KITU)
+    keywords: ["layoff", "layoffs", "laid off", "hiring freeze", "return to office", "return-to-office", "RTO mandate", "RTO policy", "KITU", "IT employees union", "tech union", "70-hour work week", "90-hour work week", "AI job losses", "AI replacing jobs"]
+    local: false
+  O22:
+    label: Bengaluru startup IPO wait (Zepto, PhonePe, Flipkart)
+    keywords: ["Zepto IPO", "Zepto", "PhonePe IPO", "PhonePe", "Flipkart IPO", "startup IPO", "startup IPOs", "Meesho IPO", "Swiggy IPO", "DRHP", "ESOP", "ESOPs", "quick commerce"]
+    local: false
+  O23:
+    label: Darshan / Renukaswamy murder trial
+    keywords: ["Renukaswamy", "Renukaswamy murder", "actor Darshan", "Darshan Thoogudeepa", "Darshan case", "Darshan bail", "Darshan trial", "Pavithra Gowda", "approver", "Challenging Star", "ದರ್ಶನ್", "ರೇಣುಕಾಸ್ವಾಮಿ"]
+    local: false
+  O24:
+    label: RCB fandom and Chinnaswamy crowd safety
+    keywords: ["RCB", "Royal Challengers Bengaluru", "Royal Challengers Bangalore", "Chinnaswamy", "Chinnaswamy Stadium", "Chinnaswamy stampede", "RCB stampede", "RCB fans", "crowd safety", "victory parade", "ಆರ್‌ಸಿಬಿ", "ಆರ್ಸಿಬಿ", "ಚಿನ್ನಸ್ವಾಮಿ"]
+    local: false
+  O25:
+    label: Bigg Boss Kannada 13 and Bigg Boss Hindi 20
+    keywords: ["Bigg Boss", "Bigg Boss Kannada", "Bigg Boss Kannada 13", "BBK13", "BBK 13", "Bigg Boss 20", "Bigg Boss Hindi", "BB20", "Weekend Ka Vaar", "Kichcha Sudeep", "Kiccha Sudeep", "ಬಿಗ್ ಬಾಸ್", "ಬಿಗ್‌ಬಾಸ್"]
+    local: false
+  O26:
+    label: Cockroach Janta Party Gen Z movement
+    keywords: ["Cockroach Janta Party", "Cockroach Party", "CJP", "Gen Z protest", "Gen Z protests", "Gen Z movement", "Freedom Park", "Shivaji Park", "youth protest", "youth protests"]
+    local: false
+  O27:
+    label: Annamalai's 'We The Leaders' movement
+    keywords: ["Annamalai", "K Annamalai", "K. Annamalai", "We The Leaders", "WeTheLeaders", "Annamalai movement", "Annamalai party", "ಅಣ್ಣಾಮಲೈ"]
+    local: false
+  O28:
+    label: Tree felling for Metro Phase 3
+    keywords: ["tree felling", "trees felled", "felling of trees", "tree cutting", "trees cut", "Metro Phase 3", "Phase 3 metro", "Phase-3", "Garden City", "green cover", "tree transplant", "Tree Authority", "ಮರ ಕಡಿ", "ಮರಗಳ ಹನನ"]
+    local: true
+  B01:
+    label: GBA and the 5-corporation split
+    keywords: ["Greater Bengaluru Authority", "GBA", "Greater Bengaluru Governance", "five corporations", "5 corporations", "new corporations", "BBMP elections", "civic polls", "corporation elections", "ward delimitation", "mayor", "corporators", "ಜಿಬಿಎ", "ಗ್ರೇಟರ್ ಬೆಂಗಳೂರು", "ಪಾಲಿಕೆ ಚುನಾವಣೆ"]
+    local: true
+  B02:
+    label: Bengaluru revenue vs spending
+    keywords: ["Brand Bengaluru", "BBMP budget", "GBA budget", "Bengaluru budget", "Karnataka budget", "state budget", "city revenue", "revenue share", "tax share", "grants for Bengaluru", "Bengaluru development", "ಬಜೆಟ್", "ಬೆಂಗಳೂರು ಅಭಿವೃದ್ಧಿ"]
+    local: true
+  B03:
+    label: Bengaluru traffic hotspots
+    keywords: ["traffic jam", "traffic jams", "traffic congestion", "congestion", "gridlock", "Silk Board", "Outer Ring Road", "ORR", "Hebbal", "airport road", "TomTom", "traffic police", "BTP", "ಟ್ರಾಫಿಕ್", "ಸಂಚಾರ ದಟ್ಟಣೆ"]
+    local: true
+  B04:
+    label: Namma Metro fares, delays, crowding
+    keywords: ["Namma Metro", "BMRCL", "metro fare", "metro fares", "metro station", "metro line", "Purple Line", "Green Line", "Yellow Line", "Pink Line", "Blue Line", "last-mile", "last mile", "ನಮ್ಮ ಮೆಟ್ರೋ", "ಮೆಟ್ರೋ"]
+    local: true
+  B05:
+    label: Potholes, garbage, 'No road, no tax'
+    keywords: ["pothole", "potholes", "pothole-ridden", "bad roads", "road repair", "no road no tax", "garbage", "garbage fee", "garbage cess", "solid waste", "BSWML", "property tax", "ರಸ್ತೆ ಗುಂಡಿ", "ಕಸ ವಿಲೇವಾರಿ"]
+    local: true
+  B06:
+    label: Floods and lake encroachment
+    keywords: ["flood", "floods", "flooding", "flooded", "waterlogging", "waterlogged", "lake encroachment", "encroachment", "encroachments", "stormwater drain", "storm water drain", "rajakaluve", "heavy rain", "ಒತ್ತುವರಿ", "ರಾಜಕಾಲುವೆ"]
+    local: true
+  B07:
+    label: Water stress and tanker raj
+    keywords: ["water crisis", "water shortage", "water scarcity", "water tanker", "water tankers", "tanker mafia", "tanker prices", "BWSSB", "borewell", "borewells", "Day Zero", "water rationing", "ಕುಡಿಯುವ ನೀರು", "ನೀರಿನ ಅಭಾವ", "ಟ್ಯಾಂಕರ್"]
+    local: true
+  B08:
+    label: Garden City lost? Trees vs infrastructure
+    keywords: ["tree felling", "trees felled", "felling of trees", "tree cutting", "trees cut", "Garden City", "green cover", "tree transplant", "tree transplantation", "Tree Authority", "tree census", "heritage trees", "ಮರ ಕಡಿ", "ಮರಗಳ"]
+    local: true
+  B09:
+    label: Autos, meters and bike taxis
+    keywords: ["bike taxi", "bike taxis", "bike-taxi", "Rapido", "Uber Moto", "Namma Yatri", "auto fare", "auto fares", "meter refusal", "autorickshaw", "autorickshaws", "auto drivers", "auto unions", "ಬೈಕ್ ಟ್ಯಾಕ್ಸಿ", "ಆಟೋ ಚಾಲಕ"]
+    local: true
+  B10:
+    label: Stray dogs - feed, shelter or remove
+    keywords: ["stray dog", "stray dogs", "street dogs", "community dogs", "dog bite", "dog bites", "dog feeding", "feeding strays", "animal birth control", "ABC programme", "rabies", "dog shelter", "ಬೀದಿ ನಾಯಿ", "ನಾಯಿ ಕಡಿತ"]
+    local: true
+  B11:
+    label: Civic sense and road manners
+    keywords: ["civic sense", "wrong-side", "wrong side driving", "wrong-side driving", "wrong side riding", "honking", "footpath parking", "footpath riding", "traffic violations", "traffic fines", "challan", "challans", "lane discipline", "road rage", "ಸಂಚಾರ ನಿಯಮ ಉಲ್ಲಂಘನೆ"]
+    local: true
+  B12:
+    label: Airport commute and the second airport
+    keywords: ["Kempegowda International Airport", "Bengaluru airport", "Bangalore airport", "KIAL", "BIAL", "second airport", "airport metro", "airport road", "airport cab", "airport taxi", "Vayu Vajra", "Devanahalli", "ಎರಡನೇ ವಿಮಾನ ನಿಲ್ದಾಣ", "ವಿಮಾನ ನಿಲ್ದಾಣ"]
+    local: true
+  B13:
+    label: BMTC buses and bus commuting
+    keywords: ["BMTC", "BMTC bus", "BMTC buses", "bus lane", "bus lanes", "bus priority lane", "Vajra", "Vayu Vajra", "electric buses", "bus pass", "Shakti scheme", "bus fare", "bus fares", "ಬಿಎಂಟಿಸಿ"]
+    local: true
+  B14:
+    label: Startup vs MNC vs GCC jobs
+    keywords: ["GCC", "GCCs", "global capability centre", "global capability centres", "global capability center", "global capability centers", "startup job", "startup jobs", "MNC", "MNCs", "ESOPs", "CTC", "pay cut", "job switch"]
+    local: false
+    exclude: ["Gulf", "Gulf Cooperation Council", "Gulf Co-operation Council"]
+  B15:
+    label: Hustle culture and toxic startup work
+    keywords: ["hustle culture", "toxic work culture", "work culture", "toxic workplace", "burnout", "work-life balance", "work life balance", "founder mode", "grind culture", "70-hour work week", "90-hour work week", "overwork", "slow living"]
+    local: false
+  B16:
+    label: Layoffs, AI, RTO and tech unionising
+    keywords: ["layoff", "layoffs", "laid off", "hiring freeze", "return to office", "return-to-office", "RTO mandate", "RTO policy", "KITU", "IT employees union", "tech union", "AI job losses", "AI replacing jobs", "job cuts"]
+    local: false
+  B17:
+    label: Startup IPOs, ESOPs and paper millionaires
+    keywords: ["ESOP", "ESOPs", "startup IPO", "startup IPOs", "IPO-bound", "lock-in expiry", "paper millionaires", "unicorn", "unicorns", "listing gains", "valuation", "valuations", "DRHP"]
+    local: false
+  B18:
+    label: Tech-bro culture and 'Koramangala overheard'
+    keywords: ["tech bro", "tech bros", "tech-bro", "techbro", "Koramangala", "overheard", "Peak Bengaluru", "Peak Bangalore", "startup bro", "building in public"]
+    local: true
+  B19:
+    label: 10-minute delivery - convenience or curse
+    keywords: ["10-minute delivery", "10 minute delivery", "quick commerce", "q-commerce", "dark store", "dark stores", "Blinkit", "Zepto", "Swiggy Instamart", "Instamart", "Flipkart Minutes", "BigBasket", "delivery riders", "gig workers", "kirana"]
+    local: false
+  B20:
+    label: Is Bengaluru still India's tech capital?
+    keywords: ["tech capital", "Silicon Valley of India", "India's Silicon Valley", "Bengaluru Tech Summit", "Bengaluru vs Hyderabad", "Bangalore vs Hyderabad", "Hyderabad vs Bengaluru", "moving to Hyderabad", "relocate to Hyderabad", "HITEC City", "losing investments", "companies leaving"]
+    local: true
+  B21:
+    label: Kannada vs Hindi, signage, learning Kannada
+    keywords: ["Kannada signage", "Kannada signboards", "60% Kannada", "learn Kannada", "speak Kannada", "Hindi imposition", "Kannada vs Hindi", "pro-Kannada", "Karnataka Rakshana Vedike", "Rajyotsava", "language row", "ಕನ್ನಡ ನಾಮಫಲಕ", "ಹಿಂದಿ ಹೇರಿಕೆ", "ಕನ್ನಡ ರಾಜ್ಯೋತ್ಸವ"]
+    local: false
+  B22:
+    label: What makes someone a Bengalurean?
+    keywords: ["Bengalurean", "Bengalureans", "true Bengalurean", "migrants", "migrant workers", "outsider", "outsiders", "North Indians", "locals vs migrants", "locals vs outsiders", "Kannadigas", "ವಲಸಿಗ"]
+    local: true
+  B23:
+    label: City wars - Bengaluru vs other metros
+    keywords: ["Bengaluru vs Hyderabad", "Bangalore vs Hyderabad", "Bengaluru vs Mumbai", "Bangalore vs Mumbai", "Mumbai vs Bengaluru", "Bengaluru vs Delhi", "Delhi vs Bengaluru", "Bengaluru vs Pune", "Bengaluru vs Chennai", "best city to live", "best city to work", "most liveable city", "Ease of Living Index", "city rankings"]
+    local: false
+  B24:
+    label: Bengaluru then vs now
+    keywords: ["old Bengaluru", "old Bangalore", "Bengaluru then and now", "nostalgia", "MG Road", "single screen", "single-screen", "pensioners' paradise", "pensioners paradise", "AC city", "Garden City", "vintage Bengaluru"]
+    local: true
+  B25:
+    label: Rent, deposits and brokers
+    keywords: ["rent", "rents", "rent hike", "rental", "security deposit", "10-month deposit", "broker", "brokerage", "NoBroker", "landlord", "landlords", "tenant", "tenants", "ಬಾಡಿಗೆ"]
+    local: true
+  B26:
+    label: PG life, flatmates, 'bachelors not allowed'
+    keywords: ["PG", "PGs", "paying guest", "PG accommodation", "PG hostel", "flatmate", "flatmates", "bachelors not allowed", "no bachelors", "bachelors", "co-living", "coliving", "ಪಿಜಿ"]
+    local: true
+    exclude: ["NEET PG", "NEET-PG", "PG course", "PG courses", "postgraduate", "PG medical"]
+  B27:
+    label: Rent vs buy in Bengaluru
+    keywords: ["rent vs buy", "home loan", "home loans", "EMI", "EMIs", "property prices", "housing prices", "apartment prices", "real estate", "homebuyers", "home buyers", "under-construction", "Sarjapur", "Whitefield", "North Bengaluru"]
+    local: true
+  B28:
+    label: Is 1 lakh a month enough in Bengaluru?
+    keywords: ["cost of living", "1 lakh a month", "1 lakh per month", "Rs 1 lakh", "middle class", "LPA", "50 LPA", "salary breakdown", "in-hand salary", "monthly expenses", "lifestyle inflation", "expensive city"]
+    local: true
+  B29:
+    label: Bengaluru dating scene and apps
+    keywords: ["dating", "dating app", "dating apps", "dating scene", "Hinge", "Bumble", "Tinder", "first date", "situationship", "matchmaking"]
+    local: true
+  B30:
+    label: Pubs, breweries, 1 am rule, age 21, ID checks
+    keywords: ["pub", "pubs", "brewery", "breweries", "microbrewery", "pub timings", "closing time", "drinking age", "legal drinking age", "ID check", "ID checks", "nightlife", "excise department", "ಪಬ್"]
+    local: true
+  B31:
+    label: Café culture and laptop camping
+    keywords: ["cafe culture", "café culture", "cafe", "cafes", "café", "cafés", "filter coffee", "specialty coffee", "third wave", "Blue Tokai", "laptop ban", "no laptops", "laptop", "latte", "darshini"]
+    local: true
+  B32:
+    label: Food wars - darshinis, dosa, biryani
+    keywords: ["dosa", "dosas", "masala dosa", "biryani", "donne biryani", "darshini", "darshinis", "filter coffee", "idli", "vada", "MTR", "Vidyarthi Bhavan", "CTR", "military hotel", "ದೋಸೆ"]
+    local: true
+  B33:
+    label: Neighbourhood wars across Bengaluru localities
+    keywords: ["Koramangala", "Indiranagar", "HSR Layout", "Whitefield", "Jayanagar", "Malleshwaram", "Basavanagudi", "JP Nagar", "Bellandur", "Sarjapur", "Electronic City", "Marathahalli", "BTM Layout", "Hebbal"]
+    local: false
+  B34:
+    label: Bengaluru weather - still India's best?
+    keywords: ["weather", "heatwave", "heat wave", "temperature", "hottest", "IMD", "summer heat", "pleasant weather", "air conditioner", "AC sales", "rainfall", "ಬಿಸಿಲು", "ತಾಪಮಾನ"]
+    local: true
+  B35:
+    label: Women's safety at night - commute, cabs, shifts
+    keywords: ["women's safety", "women safety", "safety of women", "cab driver", "molestation", "molested", "sexual harassment", "harassed", "night shift", "late-night shift", "Pink Hoysala", "Rani Chennamma", "ಮಹಿಳಾ ಸುರಕ್ಷತೆ", "ಲೈಂಗಿಕ ಕಿರುಕುಳ"]
+    local: true
+  B36:
+    label: Commute mode wars - two-wheeler, car, metro, EV
+    keywords: ["two-wheeler", "two-wheelers", "two wheeler", "electric scooter", "e-scooter", "EV", "EVs", "electric vehicle", "electric vehicles", "parking", "parking policy", "car ownership", "Ather", "Ola Electric"]
+    local: true
+  B37:
+    label: "Fitness culture: run clubs, Cubbon Park, padel"
+    keywords: ["run club", "run clubs", "running club", "running clubs", "padel", "pickleball", "Cubbon Park", "car-free Cubbon Park", "marathon", "TCS World 10K", "World 10K", "gym culture", "fitness trend", "ಕಬ್ಬನ್ ಪಾರ್ಕ್"]
+    local: true
+  B39:
+    label: "RCB fandom: identity, loyalty, celebrations"
+    keywords: ["RCB", "Royal Challengers", "Royal Challengers Bengaluru", "Royal Challengers Bangalore", "Ee Sala Cup Namde", "Chinnaswamy", "Chinnaswamy stampede", "victory parade", "RCB fans", "Rajat Patidar", "ಆರ್‌ಸಿಬಿ", "ಚಿನ್ನಸ್ವಾಮಿ"]
+    local: false
+  B42:
+    label: "NYE in Bengaluru: Brigade Road, curbs, party timings"
+    keywords: ["New Year's Eve", "New Year Eve", "NYE", "New Year celebrations", "New Year celebration", "Brigade Road", "Church Street", "pub timings", "flyovers closed", "ಹೊಸ ವರ್ಷ", "ಬ್ರಿಗೇಡ್ ರಸ್ತೆ"]
+    local: true
+  B43:
+    label: "Old Bengaluru festivals: Karaga, Kadalekai Parishe, Lalbagh"
+    keywords: ["Karaga", "Bengaluru Karaga", "Kadalekai Parishe", "Kadlekai Parishe", "groundnut fair", "Basavanagudi", "Lalbagh flower show", "Lalbagh", "flower show", "Dharmaraya Swamy temple", "ಕರಗ", "ಕಡಲೆಕಾಯಿ ಪರಿಷೆ", "ಲಾಲ್‌ಬಾಗ್"]
+    local: false
+  B44:
+    label: "Festival eco debates: crackers, lake immersion, noise"
+    keywords: ["green crackers", "firecrackers", "crackers ban", "cracker ban", "idol immersion", "Ganesha immersion", "PoP idols", "PoP idol", "Plaster of Paris", "immersion tanks", "noise pollution", "eco-friendly Ganesha", "ಪಟಾಕಿ", "ಗಣೇಶ ವಿಸರ್ಜನೆ"]
+    local: true
+  K01:
+    label: "Karnataka guarantee schemes: welfare or freebies?"
+    keywords: ["guarantee schemes", "guarantee scheme", "five guarantees", "Gruha Lakshmi", "Gruha Jyothi", "Anna Bhagya", "Yuva Nidhi", "Shakti scheme", "freebies", "fiscal deficit", "ಗ್ಯಾರಂಟಿ", "ಗೃಹಲಕ್ಷ್ಮಿ", "ಗೃಹಜ್ಯೋತಿ", "ಅನ್ನಭಾಗ್ಯ"]
+    local: true
+  K02:
+    label: "Shakti free bus travel for women"
+    keywords: ["Shakti scheme", "free bus", "free bus travel", "free bus ride", "free bus rides", "free travel for women", "zero ticket", "ಶಕ್ತಿ ಯೋಜನೆ", "ಉಚಿತ ಬಸ್"]
+    local: true
+  K03:
+    label: "Local job quota for Kannadigas"
+    keywords: ["job quota", "job reservation", "jobs reservation", "local reservation", "reservation for Kannadigas", "Kannadigas", "local candidates bill", "Employment of Local Candidates", "Sarojini Mahishi report", "Sarojini Mahishi", "private sector reservation", "domicile quota", "ಕನ್ನಡಿಗರಿಗೆ ಉದ್ಯೋಗ", "ಸರೋಜಿನಿ ಮಹಿಷಿ"]
+    local: true
+  K04:
+    label: "Karnataka caste survey and reservation share"
+    keywords: ["caste survey", "caste census", "socio-economic survey", "socio-educational survey", "Kantharaj report", "Jayaprakash Hegde", "Backward Classes Commission", "internal reservation", "reservation hike", "OBC quota", "ಜಾತಿ ಗಣತಿ", "ಜಾತಿ ಸಮೀಕ್ಷೆ", "ಒಳ ಮೀಸಲಾತಿ"]
+    local: true
+  K05:
+    label: "Karnataka power politics: CM vs rivals, high command"
+    keywords: ["Siddaramaiah", "D K Shivakumar", "DK Shivakumar", "DKS", "high command", "power sharing", "power-sharing", "CM change", "leadership change", "cabinet reshuffle", "Vijayendra", "ಸಿದ್ದರಾಮಯ್ಯ", "ಡಿ.ಕೆ. ಶಿವಕುಮಾರ್", "ಹೈಕಮಾಂಡ್"]
+    local: false
+  K06:
+    label: "Women in Karnataka politics"
+    keywords: ["women ministers", "woman minister", "women MLAs", "women MLA", "women legislators", "women's reservation", "women's representation", "Lakshmi Hebbalkar", "women in politics", "Nari Shakti Vandan", "ಮಹಿಳಾ ಸಚಿವ", "ಮಹಿಳಾ ಮೀಸಲಾತಿ"]
+    local: true
+  K07:
+    label: "Kannada Rajyotsava: celebration, brand posts, holiday"
+    keywords: ["Rajyotsava", "Kannada Rajyotsava", "Karnataka Rajyotsava", "Rajyotsava award", "Rajyotsava awards", "Karnataka formation day", "November 1", "Kannada flag", "ರಾಜ್ಯೋತ್ಸವ", "ಕನ್ನಡ ರಾಜ್ಯೋತ್ಸವ"]
+    local: false
+  K08:
+    label: "Mysuru Dasara and Mysuru vs Bengaluru"
+    keywords: ["Mysuru Dasara", "Mysore Dasara", "Dasara", "Jamboo Savari", "Jumbo Savari", "Mysuru palace", "Mysore palace", "Abhimanyu elephant", "ಮೈಸೂರು ದಸರಾ", "ದಸರಾ", "ಜಂಬೂ ಸವಾರಿ"]
+    local: false
+    exclude: ["Mysore Pak"]
+  K09:
+    label: "Weekend getaways: Coorg, Chikmagalur, Gokarna, Nandi Hills"
+    keywords: ["Coorg", "Kodagu", "Chikmagalur", "Chikkamagaluru", "Gokarna", "Nandi Hills", "Wayanad", "Ooty", "Hampi", "weekend getaway", "weekend getaways", "homestay", "homestays", "ನಂದಿ ಬೆಟ್ಟ", "ಚಿಕ್ಕಮಗಳೂರ"]
+    local: false
+  K10:
+    label: "Kannada cinema vs pan-India: KGF/Kantara effect"
+    keywords: ["Kantara", "Kantara Chapter 1", "KGF", "KGF 2", "Sandalwood", "Kannada cinema", "Kannada film", "Kannada films", "Kannada movie", "Rishab Shetty", "Hombale Films", "ಕಾಂತಾರ", "ಸ್ಯಾಂಡಲ್‌ವುಡ್", "ಕನ್ನಡ ಸಿನಿಮಾ"]
+    local: false
+  K11:
+    label: "Bigg Boss Kannada"
+    keywords: ["Bigg Boss Kannada", "BBK", "BBK12", "BBK13", "Bigg Boss", "Kichcha Sudeep", "Kiccha Sudeep", "Sudeep", "Bigg Boss eviction", "evicted from Bigg Boss", "Colors Kannada", "ಬಿಗ್ ಬಾಸ್", "ಬಿಗ್‌ಬಾಸ್", "ಸುದೀಪ್"]
+    local: false
+    exclude: ["Bigg Boss Telugu", "Bigg Boss Tamil", "Bigg Boss Malayalam", "Bigg Boss 19", "Bigg Boss 20", "Salman Khan"]
+  K12:
+    label: "Celebrity accountability and fan culture"
+    keywords: ["Darshan", "Renukaswamy", "Renukaswamy murder", "Pavithra Gowda", "fan clubs", "fan club", "star fans", "fan culture", "fan war", "fan wars", "celebrity arrest", "actor arrested", "ದರ್ಶನ್", "ರೇಣುಕಾಸ್ವಾಮಿ"]
+    local: false
+  K13:
+    label: "Kambala, Yakshagana, Kodava culture"
+    keywords: ["Kambala", "Yakshagana", "Kodava", "Kodavas", "buffalo race", "buffalo races", "Bengaluru Kambala", "Bhoota Kola", "Huttari", "Puthari", "Tulu Nadu", "ಕಂಬಳ", "ಯಕ್ಷಗಾನ", "ಕೊಡವ"]
+    local: false
+  K14:
+    label: "Beyond Bengaluru: tier-2 Karnataka tech hubs"
+    keywords: ["Beyond Bengaluru", "tier-2 cities", "tier-2 city", "tier 2 cities", "Mysuru tech", "Hubballi", "Hubli", "Dharwad", "Mangaluru", "Mangalore", "Belagavi", "Kalaburagi", "IT decentralisation", "Invest Karnataka"]
+    local: true
+  K15:
+    label: "Karnataka exam and results season: PUC, KCET"
+    keywords: ["PUC", "II PUC", "2nd PUC", "PUC results", "SSLC", "SSLC results", "KCET", "CET", "Karnataka Examinations Authority", "board exams", "topper", "toppers", "ಪಿಯುಸಿ", "ಎಸ್ಸೆಸ್ಸೆಲ್ಸಿ", "ಸಿಇಟಿ"]
+    local: true
+  SI01:
+    label: "Delimitation and tax devolution: North vs South"
+    keywords: ["delimitation", "tax devolution", "devolution", "Finance Commission", "16th Finance Commission", "tax share", "fiscal federalism", "southern states", "South Indian states", "seat share", "Lok Sabha seats", "my tax my right", "ಕ್ಷೇತ್ರ ಪುನರ್ವಿಂಗಡಣೆ", "ತೆರಿಗೆ ಹಂಚಿಕೆ"]
+    local: false
+  SI02:
+    label: "Mekedatu and Cauvery water with Tamil Nadu"
+    keywords: ["Mekedatu", "Cauvery", "Kaveri", "Cauvery Water Management Authority", "CWMA", "CWRC", "Cauvery tribunal", "KRS dam", "KRS", "Mettur", "Cauvery dispute", "water sharing", "ಮೇಕೆದಾಟು", "ಕಾವೇರಿ"]
+    local: false
+  SI03:
+    label: "Three-language policy and Hindi in schools"
+    keywords: ["three-language policy", "three language policy", "three-language formula", "two-language policy", "two-language", "Hindi imposition", "Hindi mandate", "Hindi in schools", "NEP", "language policy", "State Education Policy", "ತ್ರಿಭಾಷಾ", "ದ್ವಿಭಾಷಾ", "ಹಿಂದಿ ಹೇರಿಕೆ"]
+    local: false
+  SI04:
+    label: "South cinema rivalry: Telugu, Tamil, Malayalam, Kannada"
+    keywords: ["Tollywood", "Kollywood", "Mollywood", "Sandalwood", "Telugu cinema", "Tamil cinema", "Malayalam cinema", "Kannada cinema", "South cinema", "South Indian cinema", "box office", "box-office", "pan-India film", "pan-India films"]
+    local: false
+  SI05:
+    label: "Food origin wars: Mysore Pak, dosa, biryani, filter coffee"
+    keywords: ["Mysore Pak", "filter coffee", "dosa", "masala dosa", "biryani", "Donne biryani", "Hyderabadi biryani", "Ambur biryani", "Dindigul biryani", "GI tag", "Taste Atlas", "TasteAtlas", "ಮೈಸೂರ್ ಪಾಕ್", "ಫಿಲ್ಟರ್ ಕಾಫಿ"]
+    local: false
+  SI06:
+    label: "South Indian cities better to live in?"
+    keywords: ["most liveable city", "liveable cities", "livability index", "Ease of Living", "Ease of Living Index", "Quality of Living", "safest city", "safest cities", "best city for women", "Chennai vs Bengaluru", "Hyderabad vs Bengaluru", "Bengaluru vs Hyderabad", "Bengaluru vs Chennai", "city rankings", "Mercer"]
+    local: false
+  P01:
+    label: "70/90-hour work week"
+    keywords: ["70-hour work week", "70-hour week", "70 hour work week", "90-hour work week", "90-hour week", "72-hour", "work week", "workweek", "Narayana Murthy", "S N Subrahmanyan", "SN Subrahmanyan", "stare at your wife", "996", "working hours", "right to disconnect"]
+    local: false
+  P02:
+    label: "WFH vs office vs hybrid"
+    keywords: ["work from home", "work-from-home", "WFH", "return to office", "return-to-office", "hybrid work", "hybrid model", "office mandate", "remote work", "work from office", "WFO", "office return"]
+    local: false
+  P03:
+    label: "AI replacing jobs"
+    keywords: ["AI layoffs", "AI job losses", "AI job loss", "AI replacing jobs", "jobs to AI", "AI-led layoffs", "AI-linked layoffs", "automation", "layoffs", "layoff", "job cuts", "reskilling", "upskilling", "AI threat to jobs", "white-collar jobs"]
+    local: false
+  P04:
+    label: "Salary, appraisals and job hopping"
+    keywords: ["appraisal", "appraisals", "salary hike", "salary hikes", "pay hike", "increment", "increments", "variable pay", "Diwali bonus", "job hopping", "job-hopping", "attrition", "pay transparency", "salary survey", "Aon"]
+    local: false
+  P05:
+    label: "Mental health and burnout at work"
+    keywords: ["burnout", "workplace stress", "work stress", "work pressure", "mental health", "toxic workplace", "toxic work culture", "quiet quitting", "Anna Sebastian", "EY Pune", "World Mental Health Day", "employee suicide", "overwork", "work-life balance"]
+    local: false
+  P06:
+    label: "Gig worker rights and quick-commerce riders"
+    keywords: ["gig workers", "gig worker", "gig economy", "delivery partners", "delivery partner", "delivery riders", "10-minute delivery", "quick commerce", "quick-commerce", "Blinkit", "Zepto", "Swiggy Instamart", "Platform-based Gig Workers", "gig workers bill", "ಗಿಗ್ ಕಾರ್ಮಿಕ"]
+    local: false
+  P07:
+    label: "Brain drain and the US dream: H-1B, Canada, Germany"
+    keywords: ["H-1B", "H1B", "H-1B visa", "H-1B fee", "green card", "F-1 visa", "student visa", "study abroad", "brain drain", "US visa", "Canada visa", "Opportunity Card"]
+    local: false
+  P08:
+    label: "Is engineering / MBA / college brand worth it?"
+    keywords: ["engineering seats", "engineering colleges", "engineering degree", "MBA", "IIM", "IIT", "IITs", "IIMs", "placements", "placement season", "campus placements", "Christ University", "degree worth", "NIRF", "NIRF rankings"]
+    local: false
+  P09:
+    label: "Middle-class tax burden: new vs old regime"
+    keywords: ["new tax regime", "old tax regime", "tax regime", "income tax", "ITR", "ITR filing", "tax slabs", "tax slab", "standard deduction", "middle class", "middle-class", "Union Budget", "salaried taxpayers", "taxpayers", "ಆದಾಯ ತೆರಿಗೆ"]
+    local: false
+  P10:
+    label: "F&O, trading and crypto: investing or gambling?"
+    keywords: ["F&O", "futures and options", "derivatives trading", "options trading", "weekly expiry", "weekly options", "intraday", "SEBI", "retail traders", "crypto", "cryptocurrency", "Bitcoin", "finfluencer", "finfluencers", "Jane Street"]
+    local: false
+  P11:
+    label: "Save vs spend: FIRE, EMIs, YOLO"
+    keywords: ["EMI", "EMIs", "no-cost EMI", "buy now pay later", "BNPL", "credit card debt", "credit card", "credit cards", "personal loan", "personal loans", "FIRE movement", "early retirement", "lifestyle inflation", "household savings", "household debt"]
+    local: false
+  P13:
+    label: "Freebies vs welfare (national)"
+    keywords: ["freebies", "freebie", "revdi", "revdi culture", "cash transfer", "cash transfers", "poll promises", "poll promise", "welfare schemes", "Ladki Bahin", "Mahtari Vandan", "Ladli Behna", "Maiyan Samman", "fiscal prudence"]
+    local: false
+  P14:
+    label: "One Nation One Election"
+    keywords: ["One Nation One Election", "One Nation, One Election", "ONOE", "simultaneous elections", "simultaneous polls", "Kovind panel", "Kovind committee", "JPC", "129th Constitution Amendment", "Constitution (129th Amendment)", "ಒಂದು ದೇಶ ಒಂದು ಚುನಾವಣೆ"]
+    local: false
+  P15:
+    label: "Reservation and merit (EWS, creamy layer, private quotas)"
+    keywords: ["reservation", "reservations", "EWS", "EWS quota", "creamy layer", "sub-classification", "SC/ST quota", "OBC quota", "OBC reservation", "Maratha quota", "caste census", "ಮೀಸಲಾತಿ", "ಕೆನೆಪದರ"]
+    local: false
+  P16:
+    label: "Gen Z and politics: does youth activism work?"
+    keywords: ["Gen Z", "GenZ", "Gen-Z", "Gen Z protest", "Gen Z protests", "youth activism", "young voters", "first-time voters", "first time voters", "youth vote", "National Voters' Day", "student protest", "student protests"]
+    local: false
+  P17:
+    label: "Delhi AQI and pollution refugees"
+    keywords: ["Delhi AQI", "Delhi pollution", "Delhi smog", "Delhi air", "AQI", "air quality", "air pollution", "smog", "GRAP", "stubble burning", "pollution refugees", "PM2.5", "cracker ban", "ವಾಯು ಮಾಲಿನ್ಯ"]
+    local: false
+  P18:
+    label: "EVs vs petrol vs hybrid"
+    keywords: ["EV", "EVs", "electric vehicle", "electric vehicles", "electric car", "electric cars", "electric scooter", "hybrid car", "charging stations", "EV charging", "Ola Electric", "Ather", "Tata EV", "PM E-DRIVE", "FAME subsidy"]
+    local: false
+  P19:
+    label: "Gen Z vs Millennials at work and life"
+    keywords: ["Gen Z", "GenZ", "Gen-Z", "Millennials", "millennial", "Gen Alpha", "Boomers", "Gen Z employees", "Gen Z workers", "Gen Z hiring", "corporate memes"]
+    local: false
+  P20:
+    label: "Influencer culture, creator economy, comedy free speech"
+    keywords: ["influencer", "influencers", "content creator", "content creators", "creator economy", "YouTuber", "YouTubers", "stand-up comedian", "standup comedian", "Samay Raina", "Ranveer Allahbadia", "India's Got Latent", "Kunal Kamra", "free speech", "comedy show"]
+    local: false
+  P21:
+    label: "Bollywood vs South cinema; nepotism"
+    keywords: ["Bollywood", "Hindi cinema", "Hindi film industry", "nepotism", "star kid", "star kids", "pan-India", "South films", "South cinema", "box office", "Karan Johar", "Bollywood debut"]
+    local: false
+  P22:
+    label: "Theatres vs OTT; ticket and popcorn prices"
+    keywords: ["OTT", "OTT release", "multiplex", "multiplexes", "PVR", "PVR INOX", "INOX", "ticket prices", "ticket price", "ticket price cap", "popcorn", "theatrical release", "single screen", "ಟಿಕೆಟ್ ದರ"]
+    local: false
+  P23:
+    label: "Cricket culture: IPL vs international, star worship"
+    keywords: ["IPL", "Test cricket", "BCCI", "Virat Kohli", "Rohit Sharma", "Shubman Gill", "Team India", "Neeraj Chopra", "Pro Kabaddi", "ISL"]
+    local: false
+  P24:
+    label: "Sport and politics (e.g. India vs Pakistan)"
+    keywords: ["India vs Pakistan", "India-Pakistan", "Ind vs Pak", "IND vs PAK", "boycott match", "boycott", "handshake row", "no handshake", "Asia Cup", "neutral venue", "PCB", "Mohsin Naqvi", "bilateral cricket", "Operation Sindoor"]
+    local: false
+  P25:
+    label: "Arranged vs love marriage; marriage age; kids"
+    keywords: ["arranged marriage", "arranged marriages", "love marriage", "love marriages", "marriage age", "late marriage", "DINK", "childfree", "child-free", "fertility rate", "big fat wedding", "wedding season", "wedding costs", "matrimony", "matrimonial"]
+    local: false
+  P26:
+    label: "Dowry, live-in relationships, splitting the bill"
+    keywords: ["dowry", "dowry death", "dowry harassment", "live-in", "live-in relationship", "live-in relationships", "live-in registration", "UCC", "Uniform Civil Code", "split the bill", "splitting the bill", "household chores", "ವರದಕ್ಷಿಣೆ"]
+    local: false

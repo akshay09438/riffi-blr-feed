@@ -2,7 +2,7 @@ import textwrap
 
 import pytest
 
-from riffi_ingest.tagging.keywords import KeywordTagger, compile_phrases
+from riffi_ingest.tagging.keywords import KeywordTagger, check_against_topics_csv, compile_phrases
 
 CONFIG = textwrap.dedent(
     """
@@ -74,3 +74,50 @@ def test_regex_characters_in_keywords_are_plain_text():
     p = compile_phrases(["C++", "Rs 1.5 lakh", "(PUC)"])
     assert p.search("Learn C++ today") and p.search("costs Rs 1.5 lakh") and p.search("results (PUC) out")
     assert not p.search("Rs 105 lakh")
+
+
+# ---- the real keyword file
+
+
+@pytest.fixture(scope="module")
+def real(repo_root_module):
+    return KeywordTagger.load(repo_root_module / "config" / "topic_keywords.yaml")
+
+
+@pytest.fixture(scope="module")
+def repo_root_module():
+    from tests.conftest import REPO_ROOT
+
+    return REPO_ROOT
+
+
+def test_every_topic_in_topics_csv_has_5_to_15_keywords(real, repo_root_module):
+    assert check_against_topics_csv(real, repo_root_module / "topics.csv") == []
+    assert len(real.topics) == 151
+    for t in real.topics:
+        assert 5 <= len(t.keywords) <= 15, t.topic_id
+        assert t.label and len(t.label) <= 60, t.topic_id
+
+
+@pytest.mark.parametrize(
+    "headline,topic",
+    [
+        ("BBMP floats tender for Hebbal–Silk Board tunnel road", "O06"),
+        ("Namma Metro Yellow Line to open on October 15, says BMRCL", "B04"),
+        ("Karnataka cabinet approves caste survey report", "K04"),
+        ("Infosys asks employees to return to office three days a week", "B16"),
+        ("Water tariff hike: BWSSB to raise rates from November", "O12"),
+        ("ಬೆಂಗಳೂರಿನಲ್ಲಿ ಭಾರಿ ಮಳೆ, ಶಾಲೆಗಳಿಗೆ ರಜೆ", "O11"),
+    ],
+)
+def test_real_keywords_catch_typical_headlines(real, headline, topic):
+    assert topic in real.tag(headline).topics
+
+
+def test_real_keywords_leave_unrelated_news_alone(real):
+    for headline in (
+        "Gold rate today in Mumbai",
+        "Tenant eviction rules tightened in Delhi",
+        "Stock markets close flat",
+    ):
+        assert real.tag(headline).topics == {}, headline
