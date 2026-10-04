@@ -1,6 +1,6 @@
 # Technical spec - Riffi ingestion engine
 
-*How the engine is built. Status on 4 Oct 2026: **planned, nothing built yet** - this is the target design from `BRIEF.md` and `DECISIONS.md`. Rewrite each section to "as-built" in the same change that builds it.*
+*How the engine is built. Status on 4 Oct 2026: **step 1 (fetchers) partly built** - the feed routes are as-built (see "Fetchers (as built)"); everything else is the target design from `BRIEF.md` and `DECISIONS.md`. Rewrite each section to "as-built" in the same change that builds it.*
 
 ## Stack
 
@@ -21,12 +21,15 @@ riffi_ingest/
   __init__.py
   __main__.py            python -m riffi_ingest -> the Typer CLI
   cli.py                 import-sources, import-topics, test-feeds, fetch, digest, report
-  config.py              settings from the environment / .env
+  config.py              settings from the environment / .env (RSSHUB_BASE_URL so far)
+  sources.py             feeds.csv -> Source rows (until step 6 stores them in the database)
   db/                    [dangerous] schema, connection, idempotent CSV importers, retention
   fetchers/
     http.py              [dangerous] the one HTTP client: identity, timeouts, retries, rate limit, conditional GET
     gnews.py             [dangerous] Google News queries and link resolution (+ cache, per-run cap)
-    rss.py, pagemonitor.py, telegram.py, youtube.py, xbackup.py
+    parse.py             RSS/Atom -> one entry shape (title, link, date, summary, author, image, GN <source>)
+    feeds.py             every feed route: publisher RSS, Google News, X/Instagram backup, Telegram, YouTube
+    pagemonitor.py       (next) web page monitors: trafilatura text, hash, snapshot, "updated" item
   normalise.py           one item shape, HTML stripping, IST dates, language detection
   dedupe.py              URL de-dup and title clustering
   safety/                [dangerous] blocklist, excluded-topic drop, sensitive flag
@@ -52,6 +55,14 @@ data/                    [dangerous, gitignored] engine.db, page snapshots, grou
 reports/                 [gitignored] daily outputs
 tests/
 ```
+
+## Fetchers (as built, 4 Oct 2026)
+
+- `fetchers/http.py` - `PoliteClient`, the only way the engine touches the network. Browser User-Agent (D-004); one request at a time per domain and 2-2.5 s between request starts on a domain (other domains run in parallel); 20 s read timeout plus a 60 s overall deadline; 2 retries with 2 s / 4 s backoff on network errors, 429 (Retry-After, capped at 30 s) and 5xx, none on DNS/TLS failures; conditional GET (ETag / Last-Modified in, 304 reported as "not modified"); 15 MB cap; TLS always verified. Never raises for a network problem - the result carries the error.
+- `fetchers/parse.py` - feedparser (fed a `BytesIO`) into `Entry` (title, link, published in UTC, summary stripped of HTML and cut to 1,000 chars, author, image from media:content / media:thumbnail / enclosure / first `<img>`, Google News `<source>`, guid). Dates feedparser cannot read go through the Indian-government formats, with no-timezone dates taken as IST. `looks_like_html` catches feeds that answer 200 with a web page.
+- `fetchers/feeds.py` - `plan()` decides per route what to fetch (table in the module); `fetch_source()` returns a `FetchOutcome` (`ok` / `not_modified` / `skipped` / `error`, reason, HTTP status, entries, validators) and never raises; `fetch_sources()` runs many at once. X/Instagram rows fetch only `backup_google_news_url` and are marked `on_backup`; `rss_app_url()` is the stub for the 5 `priority_x_feed` rows. Rows whose fetch_url is an instruction (S047, S107, S121) or that lack a backup (S108) are skipped with the reason.
+- `fetchers/gnews.py` - `Resolver` turns Google News article links into publisher URLs: offline base64 decode first, else the two-request online decode (article page signature, then batchexecute). Answers are cached by article id (the cache can be passed in, so step 6 can persist it); online look-ups stop at 100 per run and the rest stay as Google News links for a later run. Wiring it into the pipeline is step 2.
+- Not yet: storing outcomes (fetch_runs, items) is step 6; the page monitor is the next change; `test-feeds` is step 7 (CLI).
 
 ## Data model
 
