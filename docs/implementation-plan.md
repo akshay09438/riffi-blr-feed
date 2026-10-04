@@ -2,7 +2,7 @@
 
 *How far along the engine is, what is in flight, what is left, and the drift log. Update it in the same change that moves any item.*
 
-**Status on 4 Oct 2026:** step 1 under way (feed fetchers built, page monitor next). Before that: set up only. Zuko bootstrapped (Python-adapted CI and hooks), inputs and brief in the repo, a smoke test on the input files (5 passing), the panel project's reusable code copied to `reference/riffi-feeds/`. No engine code yet. Building continues in a Claude Code cloud session (founder's cloud credits, expire 5 Nov 2026); live feed tests and the two-week run stay on the laptop.
+**Status on 4 Oct 2026:** step 1 (fetchers) built; next is step 2 (normalise and clean). Before that: set up only. Zuko bootstrapped (Python-adapted CI and hooks), inputs and brief in the repo, a smoke test on the input files (5 passing), the panel project's reusable code copied to `reference/riffi-feeds/`. No engine code yet. Building continues in a Claude Code cloud session (founder's cloud credits, expire 5 Nov 2026); live feed tests and the two-week run stay on the laptop.
 
 **Deadline context:** Riffi launches end of Oct / first week of Nov 2026. The two-week source test needs ~14 days of running, so the engine should be fetching by about 10-12 Oct to finish the test before launch.
 
@@ -11,7 +11,7 @@
 | # | Step | Status |
 |---|---|---|
 | 0 | Look before building; choose the path | Done - standalone Python 3.11 (D-001), separate from the panel (D-006) |
-| 1 | Fetchers, one per route type | In progress - HTTP client, feed parsing, all feed routes and Google News resolution built and tested offline (4 Oct 2026); page monitor next; live run on the laptop |
+| 1 | Fetchers, one per route type | Built and tested offline (4 Oct 2026): HTTP client, feed parsing, all feed routes, Google News resolution, web page monitor. Live run on the laptop with `test-feeds` (step 7) |
 | 2 | Normalise and clean (incl. Google News resolution, blocklist, 7-day drop) | Not started |
 | 3 | De-duplicate into story clusters | Not started |
 | 4 | Tag topics (keyword pass + Claude Code AI pass, D-005) | Not started |
@@ -53,3 +53,4 @@
 
 - 4 Oct 2026 - `docs/technical-spec.md` planned one module per route (`rss.py`, `telegram.py`, `youtube.py`, `xbackup.py`). All of them are "GET a feed and parse it", so they became one `fetchers/feeds.py` (no near-copies); the page monitor stays its own module. Spec updated.
 - 4 Oct 2026 - Google News resolution caps online look-ups at 100 per run (the brief gives no number; the panel project only said "cap it"). Revisit after the first live run on the laptop.
+- 4 Oct 2026 - The brief says page monitors ignore "date-stamp-only changes". Removing every date before comparing would also hide real changes (a new effective date), so only stamp *lines* are ignored (e.g. "Last updated: 04/10/2026 10:32 AM", visitor counters); dates inside content still count.
