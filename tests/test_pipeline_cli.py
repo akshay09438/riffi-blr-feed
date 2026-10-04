@@ -8,7 +8,7 @@ from typer.testing import CliRunner
 
 from riffi_ingest import cli, health, pipeline
 from riffi_ingest.db import connect, store
-from riffi_ingest.db.importers import import_sources
+from riffi_ingest.db.importers import import_sources, import_topics
 from riffi_ingest.fetchers.outcome import FetchOutcome
 from riffi_ingest.fetchers.parse import Entry
 from riffi_ingest.pipeline import run_fetch
@@ -58,6 +58,7 @@ def network(tunnel_title="BBMP floats tender for tunnel road"):
 def db(tmp_path, repo_root):
     conn = connect(tmp_path / "engine.db")
     import_sources(conn, repo_root / "feeds.csv")
+    import_topics(conn, repo_root / "topics.csv")
     # two test sources standing in for real rows
     conn.execute("UPDATE sources SET fetch_url = ? WHERE source_id = 'S011'", (DH_FEED,))
     conn.commit()
@@ -97,6 +98,10 @@ def test_one_full_cycle_stores_clean_tagged_stories(db):
     assert "https://www.thehindu.com/news/tunnel.ece" in urls  # Google News link resolved
     assert db.execute("SELECT COUNT(*) FROM fetch_runs").fetchone()[0] == 3
     assert db.execute("SELECT etag FROM sources WHERE source_id = 'S011'").fetchone()[0] == '"v1"'
+    # scored: O06 tunnel road (High 30, Bangalore 25) + 2 sources (5) + best tier Official (10), no AI points yet
+    scored = db.execute("SELECT relevance_score, label FROM story_clusters").fetchone()
+    assert scored["relevance_score"] == 30 + 25 + 5 + 10 and scored["label"] == "High"
+    assert sum(s.labels.values()) == 1
 
 
 def test_a_second_run_adds_nothing_twice(db):
@@ -203,7 +208,16 @@ def test_cli_fetch_needs_a_choice_and_imports_on_first_run(tmp_path, repo_root, 
         cli.app, ["fetch", "--source", "s112", "--db", str(db_path), "--feeds", str(repo_root / "feeds.csv")]
     )
     assert r.exit_code == 0, r.output
-    assert "First run: imported 131 sources" in r.output and "1 skipped" in r.output
+    assert "First run: imported 131 sources" in r.output and "imported 151 topics" in r.output
+    assert "1 skipped" in r.output
+
+
+def test_a_run_without_topics_stops_with_a_clear_message(tmp_path, repo_root):
+    conn = connect(tmp_path / "e.db")
+    import_sources(conn, repo_root / "feeds.csv")
+    handler, _ = network()
+    with pytest.raises(RuntimeError, match="import-topics"):
+        asyncio.run(run_fetch(conn, store.load_sources(conn, ["S112"]), client=fake_client(handler)))
 
 
 def test_cli_rejects_unclear_requests(tmp_path, repo_root):
@@ -251,3 +265,22 @@ def test_only_one_fetch_runs_at_a_time(tmp_path):
                 pass
     with run_lock(lock):  # released afterwards
         pass
+
+
+def test_cli_stories_lists_the_best_first(tmp_path, repo_root, monkeypatch):
+    handler, _ = network()
+    monkeypatch.setattr(pipeline, "PoliteClient", lambda: fake_client(handler))
+    runner = CliRunner()
+    db_path = str(tmp_path / "e.db")
+    empty = runner.invoke(cli.app, ["stories", "--db", db_path])
+    assert "No stories" in empty.output
+    conn = connect(db_path)
+    import_sources(conn, repo_root / "feeds.csv")
+    import_topics(conn, repo_root / "topics.csv")
+    conn.execute("UPDATE sources SET fetch_url = ? WHERE source_id = 'S011'", (DH_FEED,))
+    conn.commit()
+    gn = gn_source_id(conn)
+    asyncio.run(run_fetch(conn, store.load_sources(conn, ["S011", gn]), client=fake_client(handler)))
+    r = runner.invoke(cli.app, ["stories", "--db", db_path])
+    assert r.exit_code == 0, r.output
+    assert "BBMP floats tender for tunnel road" in r.output and " 70 High" in r.output and "[awaiting AI]" in r.output

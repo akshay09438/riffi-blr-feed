@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 from ..dedupe import Cluster, Member, story_title
 from ..fetchers.outcome import FetchOutcome, PageSnapshot, Validators
 from ..normalise import Item
+from ..scoring import Score, StoryFacts, TopicFacts
 from ..sources import Source
 from ..tagging.keywords import TagResult
 from .connection import from_iso, utc_iso
@@ -296,3 +297,50 @@ def prune(conn: sqlite3.Connection, now: datetime) -> tuple[int, int]:
             (cutoff,),
         ).rowcount
     return payloads, texts
+
+
+def story_facts(conn: sqlite3.Connection, cluster_id: str) -> StoryFacts:
+    """What a story is scored on. Topics: the AI's when it has tagged the story, else the keyword pass's."""
+    tagged = conn.execute(
+        "SELECT it.topic_id, it.match_method, t.priority, t.geography, t.sensitive_note FROM item_topics it"
+        " LEFT JOIN topics t ON t.topic_id = it.topic_id WHERE it.cluster_id = ?",
+        (cluster_id,),
+    ).fetchall()
+    methods = {r["match_method"] for r in tagged}
+    use = "llm" if "llm" in methods else "keyword"
+    topics = [
+        TopicFacts(r["topic_id"], r["priority"] or "", r["geography"] or "", bool((r["sensitive_note"] or "").strip()))
+        for r in tagged
+        if r["match_method"] == use
+    ]
+    tiers = [
+        r["tier"] or ""
+        for r in conn.execute(
+            "SELECT DISTINCT s.source_id, s.tier FROM items i JOIN sources s ON s.source_id = i.source_id"
+            " WHERE i.cluster_id = ?",
+            (cluster_id,),
+        )
+    ]
+    return StoryFacts(topics=topics, source_tiers=tiers)
+
+
+def save_score(conn: sqlite3.Connection, cluster_id: str, score: Score) -> None:
+    with conn:
+        conn.execute(
+            "UPDATE story_clusters SET relevance_score = ?, label = ?, sensitive = ? WHERE cluster_id = ?",
+            (score.total, score.label, int(score.sensitive), cluster_id),
+        )
+
+
+def top_stories(conn: sqlite3.Connection, since: datetime, limit: int, label: str | None = None) -> list[sqlite3.Row]:
+    """Stories last updated since `since`, best first, with their topic ids (AI's if any, else keyword)."""
+    return conn.execute(
+        "SELECT c.cluster_id, c.headline, c.relevance_score, c.label, c.sensitive, c.source_count, c.started_at,"
+        " (SELECT group_concat(topic_id, ' ') FROM (SELECT DISTINCT topic_id FROM item_topics it"
+        "   WHERE it.cluster_id = c.cluster_id ORDER BY topic_id)) AS topics,"
+        " EXISTS (SELECT 1 FROM item_topics it WHERE it.cluster_id = c.cluster_id AND it.match_method = 'llm')"
+        "   AS ai_checked"
+        " FROM story_clusters c WHERE c.updated_at >= ? AND (? IS NULL OR c.label = ?)"
+        " ORDER BY c.relevance_score DESC, c.source_count DESC, c.started_at DESC LIMIT ?",
+        (utc_iso(since), label, label, limit),
+    ).fetchall()

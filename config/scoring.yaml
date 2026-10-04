@@ -1,0 +1,42 @@
+# Relevance score weights (step 5, BRIEF.md "Relevance score"). Team-editable: tune after the two-week test.
+# A story's score is the sum of the points below, 0-100; the label comes from the score.
+#
+# Several topics on one story: the story scores by its best topic (highest priority + geography points).
+# AI points (new_development, debate_angle) come from the AI pass; until it has run on a story they are 0
+# and the story is marked "awaiting AI pass" (open question 1 in docs/implementation-plan.md).
+
+priority:            # topics.csv `priority`
+  High: 30
+  Medium: 20
+  Low: 10
+
+geography:           # topics.csv `geography`: the FIRST place named counts ("Pan-India (Bangalore angle)" = Pan-India)
+  Bengaluru: 25
+  Karnataka: 20
+  South India: 12
+  Pan-India: 10
+geography_aliases:   # other spellings in topics.csv -> one of the names above
+  Bangalore: Bengaluru
+  Tamil Nadu: South India
+
+new_development: 15  # AI says it is new, not a recap
+debate_angle: 10     # AI found a debate angle
+
+source_spread:       # distinct sources in the story
+  "3+": 10
+  "2": 5
+  "1": 0
+
+tier:                # feeds.csv `tier`: the word(s) before any bracket ("Media (Kannada)" = Media); best source in the story counts
+  Official: 10
+  Media: 6
+  Aggregator: 3
+  Fact-checker: 6
+  Research: 6
+  Civic org: 6
+  Union: 6
+
+labels:              # minimum score for each label; anything lower is Drop
+  High: 70
+  Medium: 45
+  Low: 20
