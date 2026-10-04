@@ -20,7 +20,9 @@ The dangerous-path globs in `CLAUDE.md` point at these exact names. Build them w
 riffi_ingest/
   __init__.py
   __main__.py            python -m riffi_ingest -> the Typer CLI
-  cli.py                 import-sources, import-topics, test-feeds, fetch, digest, report
+  cli.py                 (as built) import-sources, import-topics, test-feeds, fetch; later digest, report
+  pipeline.py            (as built) one fetch cycle: fetch -> clean -> stories -> tags -> store
+  health.py              (as built) health checks and suggested fixes
   config.py              settings from the environment / .env (RSSHUB_BASE_URL so far)
   sources.py             feeds.csv -> Source rows (until step 6 stores them in the database)
   db/                    [dangerous] schema, connection, idempotent CSV importers, retention
@@ -80,6 +82,12 @@ tests/
 
 - `config/topic_keywords.yaml` - team-editable: for each of the 151 topics a label and 5-15 plain keyword phrases (1,904 in all, drafted by Claude from each topic's title and debate angles on 4 Oct 2026), optional `local: true` (64 topics) and optional `exclude` phrases; plus the `local_context` list of place and body names. The header explains the rules for editors.
 - `tagging/keywords.py` - `KeywordTagger.load(path)`; `tag(text)` / `tag_texts([...])` return `TagResult(topics={topic_id: [matched keywords]}, local, unmatched_local)`. Matching is case-insensitive; English keywords match whole words only; Kannada keywords match at a word start (suffixes allowed; `\b` does not work in Kannada script); keywords are plain text, never regexes; the longest keyword at a position is reported. A story is tagged from all its members' titles and summaries at once. `local: true` topics need a `local_context` name somewhere in the story; `exclude` vetoes. This pass favours recall - the AI pass (step 4, part 2) confirms or rejects candidates. `unmatched_local` = names Bengaluru/Karnataka but matches no topic (BRIEF.md: weekly human review). `check_against_topics_csv` lists topics.csv ids without keywords and vice versa (a test keeps it empty).
+
+## Pipeline and commands (as built, 4 Oct 2026)
+
+- `pipeline.run_fetch(conn, sources)` - one cycle: load conditional-GET validators, page snapshots and the Google News cache from the database; fetch; clean (incl. Google News resolution); record every fetch's health; drop items already stored; group into stories against the last 48 h of stories; save items and stories in one transaction; tag each touched story from all its stored reports; save new Google News resolutions; prune (D-002). Returns a `RunSummary` (statuses, entries, new items, drops by reason, new / grown stories, tagged, unmatched local, Google News look-ups).
+- `health.check(outcome, now)` - BRIEF.md checks Reachable / Valid / Alive (7 days) / Fields (title, link, date) with a suggested fix per failure (wrong URL, blocks bots, needs self-hosted RSSHub, needs a channel ID or backup URL, page-not-feed, Google News query empty). "Useful" needs history and belongs to the daily report.
+- `cli.py` (Typer; `python -m riffi_ingest`): `import-sources`, `import-topics`, `test-feeds` (stores nothing; prints the table and writes `reports/test-feeds/<IST stamp>.csv/.md`), `fetch --all | --source ID` (imports sources on the first run). Default paths are anchored on the project folder. `digest`, `report` and the scheduler come with steps 7-8.
 
 ## Data model (as built, 4 Oct 2026)
 
