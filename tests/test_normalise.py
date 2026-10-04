@@ -51,7 +51,7 @@ def test_publisher_item_shape():
         "https://dh.com/1.jpg",
         "g1",
     )
-    assert item.raw_payload["title"] == "Tunnel road tender floated" and len(item.item_id) == 40
+    assert item.raw_payload["title"] == "Tunnel road tender floated" and len(item.item_id) == 64
 
 
 def test_google_news_links_are_resolved_and_titles_cleaned():

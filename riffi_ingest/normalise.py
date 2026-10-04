@@ -94,7 +94,7 @@ def canonical_url(url: str) -> str:
 
 
 def item_id(canonical: str) -> str:
-    return hashlib.sha1(canonical.encode("utf-8")).hexdigest()
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def clean_title(title: str, publisher: str = "") -> str:
