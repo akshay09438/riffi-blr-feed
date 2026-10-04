@@ -59,14 +59,18 @@ OTHER_LETTER_RE = re.compile(r"[^\W\d_A-Za-zಀ-೿]")
 
 def canonical_url(url: str) -> str:
     """One spelling per article: https, no www-less/amp/mobile variants, no tracking parameters."""
-    parts = urlsplit(url.strip())
+    try:
+        parts = urlsplit(url.strip())
+        host = (parts.hostname or "").lower()
+        port = parts.port
+    except ValueError:  # e.g. "http://[::1" or a port of 99999: keep the link as it is
+        return url.strip()
     if not parts.scheme or not parts.netloc:
         return url.strip()
-    host = (parts.hostname or "").lower()
     host = HOST_ALIASES.get(host, host)
     if host.startswith("amp."):
         host = host[4:]
-    netloc = host if not parts.port or parts.port in (80, 443) else f"{host}:{parts.port}"
+    netloc = host if not port or port in (80, 443) else f"{host}:{port}"
 
     path = unquote(parts.path) if "%2f" in parts.path.lower() else parts.path
     path = re.sub(r"^/amp/story(?=/)", "", path)
@@ -106,10 +110,14 @@ def norm_title(title: str) -> str:
     return WS_RE.sub(" ", PUNCT_RE.sub(" ", title.lower())).strip()
 
 
+KANNADA_SHARE = 0.3  # "Namma Metro ಹಳದಿ ಮಾರ್ಗ" is a Kannada headline; one Kannada word in English is not
+
+
 def detect_language(text: str) -> str:
     kannada, latin = len(KANNADA_RE.findall(text)), len(LATIN_RE.findall(text))
     other = len(OTHER_LETTER_RE.findall(text))
-    if kannada and kannada >= latin and kannada >= other:
+    total = kannada + latin + other
+    if total and kannada / total >= KANNADA_SHARE:
         return "kn"
     if other > latin:
         return "other"
@@ -142,6 +150,14 @@ class CleanResult:
     dropped: Counter = field(default_factory=Counter)  # reason -> count
 
 
+def _gnews_id(link: str) -> str | None:
+    """The Google News article id in `link`, or None (also for a link too broken to read)."""
+    try:
+        return gnews.article_id(link)
+    except ValueError:
+        return None
+
+
 def _payload(entry: Entry) -> dict:
     data = asdict(entry)
     data["published"] = entry.published.isoformat() if entry.published else None
@@ -157,7 +173,7 @@ def _publisher(entry: Entry, source: Source, outcome: FetchOutcome, from_gnews: 
 
 
 async def _resolve_all(entries: list[Entry], resolver: gnews.Resolver | None) -> dict[str, str | None]:
-    links = sorted({e.link for e in entries if gnews.article_id(e.link)})
+    links = sorted({e.link for e in entries if _gnews_id(e.link)})
     if not links or resolver is None:
         return {}
     answers = await asyncio.gather(*(resolver.resolve(link) for link in links))
@@ -166,7 +182,61 @@ async def _resolve_all(entries: list[Entry], resolver: gnews.Resolver | None) ->
 
 def _published(entry: Entry, now: datetime) -> datetime:
     published = entry.published
+    if published is not None and published.tzinfo is None:
+        published = published.replace(tzinfo=timezone.utc)  # Entry dates are UTC by contract
     return now if published is None or published > now + FUTURE_TOLERANCE else published
+
+
+def _blocked_before_resolving(entry: Entry, blocklist: Blocklist) -> str | None:
+    """Check everything already known: the link, and for Google News the <source> URL and name
+    (a name can be the publisher's domain, e.g. "bengalurumetro.in")."""
+    name = entry.source_title or ""
+    return (
+        blocklist.match(entry.link)
+        or blocklist.match(entry.source_url or "")
+        or ("." in name and blocklist.match(name))
+        or None
+    )
+
+
+def _make_item(
+    outcome: FetchOutcome, entry: Entry, source: Source, resolved: dict, blocklist: Blocklist, now: datetime
+) -> Item | str:
+    """The clean item, or the reason it is dropped."""
+    link = entry.link.strip()
+    from_gnews = bool(_gnews_id(link))
+    url = (resolved.get(link) or link) if from_gnews else link
+    url_resolved = not from_gnews or url != link
+    if from_gnews and (hit := blocklist.match(url)):  # the resolved article is on a blocklisted site
+        return f"blocklisted ({hit})"
+    if from_gnews and not url_resolved and not (entry.source_url or "." in (entry.source_title or "")):
+        # nothing says which site this is, so the blocklist cannot be checked: hold it back until a later
+        # run resolves the link, rather than risk letting a copycat site through
+        return "google news link not resolved and publisher site unknown"
+    summary_text = entry.summary or ""
+    title = clean_title(entry.title or "", entry.source_title if from_gnews else "")
+    if not title and source.route_type == TELEGRAM:
+        title = summary_text.split(". ")[0][:200]  # a Telegram post's first line
+    summary = "" if summary_text.strip() == title else summary_text
+    canon = canonical_url(url)
+    return Item(
+        item_id=item_id(canon),
+        source_id=source.source_id,
+        title=title,
+        url=url,
+        canonical_url=canon,
+        publisher=_publisher(entry, source, outcome, from_gnews),
+        published_at=_published(entry, now).astimezone(IST),
+        fetched_at=now.astimezone(IST),
+        summary=summary,
+        image_url=entry.image_url or "",
+        author=entry.author or "",
+        language=detect_language(f"{title} {summary}"),
+        raw_guid=entry.guid or "",
+        raw_payload=_payload(entry),
+        url_resolved=url_resolved,
+        on_backup=outcome.on_backup,
+    )
 
 
 async def clean(
@@ -177,7 +247,8 @@ async def clean(
     resolver: gnews.Resolver | None,
     now: datetime | None = None,
 ) -> CleanResult:
-    """Clean every entry of every successful fetch. `sources` is keyed by source_id.
+    """Clean every entry of every successful fetch. `sources` is keyed by source_id. Never raises for
+    an odd entry: it is dropped with the reason.
 
     The cheap checks (link, age, blocklist on what is already known) run before Google News links are
     resolved, so the per-run cap on online look-ups is never spent on items that would be dropped."""
@@ -188,48 +259,28 @@ async def clean(
         if outcome.status != "ok":
             continue
         for entry in outcome.entries:
-            if not (entry.link or "").strip():
-                result.dropped["no link"] += 1
-            elif now - _published(entry, now) > MAX_AGE:
-                result.dropped["older than 7 days"] += 1
-            elif hit := blocklist.match(entry.link) or (
-                blocklist.match(entry.source_url) if entry.source_url else None
-            ):
-                result.dropped[f"blocklisted ({hit})"] += 1
-            else:
-                kept.append((outcome, entry))
+            try:
+                if not isinstance(entry.link, str) or not entry.link.strip():
+                    result.dropped["no link"] += 1
+                elif outcome.source_id not in sources:
+                    result.dropped["unknown source"] += 1
+                elif now - _published(entry, now) > MAX_AGE:
+                    result.dropped["older than 7 days"] += 1
+                elif hit := _blocked_before_resolving(entry, blocklist):
+                    result.dropped[f"blocklisted ({hit})"] += 1
+                else:
+                    kept.append((outcome, entry))
+            except Exception as exc:  # one odd entry must not stop the run
+                result.dropped[f"could not read entry ({type(exc).__name__})"] += 1
     resolved = await _resolve_all([e for _, e in kept], resolver)
     for outcome, entry in kept:
-        source = sources[outcome.source_id]
-        link = entry.link.strip()
-        from_gnews = bool(gnews.article_id(link))
-        url = (resolved.get(link) or link) if from_gnews else link
-        if from_gnews and (hit := blocklist.match(url)):  # the resolved article is on a blocklisted site
-            result.dropped[f"blocklisted ({hit})"] += 1
+        try:
+            item = _make_item(outcome, entry, sources[outcome.source_id], resolved, blocklist, now)
+        except Exception as exc:  # one odd entry must not stop the run
+            result.dropped[f"could not read entry ({type(exc).__name__})"] += 1
             continue
-        title = clean_title(entry.title, entry.source_title if from_gnews else "")
-        if not title and source.route_type == TELEGRAM:
-            title = entry.summary.split(". ")[0][:200]  # a Telegram post's first line
-        summary = "" if entry.summary.strip() == title else entry.summary
-        canon = canonical_url(url)
-        result.items.append(
-            Item(
-                item_id=item_id(canon),
-                source_id=source.source_id,
-                title=title,
-                url=url,
-                canonical_url=canon,
-                publisher=_publisher(entry, source, outcome, from_gnews),
-                published_at=_published(entry, now).astimezone(IST),
-                fetched_at=now.astimezone(IST),
-                summary=summary,
-                image_url=entry.image_url,
-                author=entry.author,
-                language=detect_language(f"{title} {summary}"),
-                raw_guid=entry.guid,
-                raw_payload=_payload(entry),
-                url_resolved=not from_gnews or url != link,
-                on_backup=outcome.on_backup,
-            )
-        )
+        if isinstance(item, Item):
+            result.items.append(item)
+        else:
+            result.dropped[item] += 1
     return result

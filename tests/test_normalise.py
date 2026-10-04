@@ -64,10 +64,14 @@ def test_google_news_links_are_resolved_and_titles_cleaned():
     assert item.title == "Metro fare hike" and item.publisher == "The Hindu"
 
 
-def test_an_unresolved_google_news_link_is_kept_and_marked():
-    e = entry(link=f"https://news.google.com/rss/articles/{NEW_STYLE}", source_title="DH")
-    (item,) = run_clean([outcome("S019", [e])])[0].items  # the fake network answers 404
+def test_an_unresolved_google_news_link_is_kept_only_when_its_site_is_known():
+    link = f"https://news.google.com/rss/articles/{NEW_STYLE}"
+    known = entry(link=link, source_title="DH", source_url="https://www.deccanherald.com")
+    unknown = entry(link=link + "x", source_title="DH")
+    result, _ = run_clean([outcome("S019", [known, unknown])])  # the fake network answers 404
+    (item,) = result.items
     assert item.url.startswith("https://news.google.com/") and not item.url_resolved
+    assert result.dropped == {"google news link not resolved and publisher site unknown": 1}
 
 
 def test_x_backup_items_are_marked():
@@ -139,3 +143,48 @@ def test_canonical_url_and_titles():
     assert clean_title("Fare hike - The Hindu", "The Hindu") == "Fare hike"
     assert clean_title("A - B", "") == "A - B"
     assert norm_title("Metro: fare HIKE!") == "metro fare hike"
+
+
+# ---- found by the adversarial review, 4 Oct 2026
+
+
+def test_copycats_cannot_hide_behind_google_news_amp_or_spelling(repo_root):
+    from riffi_ingest.safety.blocklist import load_blocklist
+
+    bl = load_blocklist(repo_root / "blocklist.csv")
+    unresolved = f"https://news.google.com/rss/articles/{NEW_STYLE}"
+    sneaky = [
+        entry(link=unresolved, source_title="bengalurumetro.in"),  # no <source> url, name is the domain
+        entry(link="https://www-bengalurumetro-in.cdn.ampproject.org/c/s/bengalurumetro.in/x"),
+        entry(link="https://www.google.com/amp/s/bengalurumetro.in/x"),
+        entry(link="https://twitter.com/Cockroachisback/status/1"),
+        entry(link="https://x.com//Cockroachisback"),
+        entry(link="https://x.com/%43ockroachisback"),
+        entry(link="https://bengalurumetro.in\\@good.com/"),
+        entry(link="https://bengalurumetro\u3002in/x"),
+    ]
+    result, _ = run_clean([outcome("S019", sneaky)], blocklist=bl, resolver_kw={"online_cap": 0})
+    assert result.items == []
+    assert sum(result.dropped.values()) == len(sneaky)
+
+
+def test_one_odd_entry_never_stops_the_run():
+    odd = [
+        entry(link="http://[::1/x"),
+        entry(link="https://a.in:99999/x"),
+        Entry(title="t", link="https://a.in/none", summary=None, author=None, guid=None),
+        Entry(title="naive", link="https://a.in/naive", published=datetime(2026, 10, 4, 5, 0)),
+        entry(link="https://a.in/good"),
+    ]
+    result, _ = run_clean(
+        [outcome("S011", odd), FetchOutcome("S999", "Native publisher RSS/Atom", "ok", entries=[entry()])]
+    )
+    urls = [i.url for i in result.items]
+    assert "https://a.in/good" in urls and "https://a.in/none" in urls and "https://a.in/naive" in urls
+    assert result.dropped["unknown source"] == 1
+    assert len(result.items) + sum(result.dropped.values()) == len(odd) + 1
+
+
+def test_mixed_headlines():
+    assert detect_language("Namma Metro ಹಳದಿ ಮಾರ್ಗ") == "kn"
+    assert detect_language("Bengaluru: ಮೆಟ್ರೋ fare hike announced today") == "en"

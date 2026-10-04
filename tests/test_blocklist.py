@@ -46,3 +46,17 @@ def test_the_real_official_site_is_not_caught_by_its_copycats(repo_root):
     assert bl.match("https://www.cockroachjantaparty.org/") is None  # the real one (S015)
     assert bl.match("https://www.wetheleader.org/") is None  # the real one (S018)
     assert bl.match("https://cockroachjanataparty.pro/join") == "cockroachjanataparty.pro"
+
+
+def test_file_names_and_tool_names_are_not_domains():
+    bl = Blocklist()
+    assert bl.add("see notice.pdf and Node.js docs") == 0
+    assert bl.domains == set()
+
+
+def test_matching_never_raises_on_unreadable_links():
+    bl = Blocklist()
+    bl.add("bengalurumetro.in")
+    for url in ("http://[::1/x", "https://a.in:99999/", "::::", "https://good.com@bengalurumetro.in/x"):
+        bl.match(url)
+    assert bl.match("https://good.com@bengalurumetro.in/x") == "bengalurumetro.in"

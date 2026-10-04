@@ -33,7 +33,7 @@
 
 5. **Page monitors to watch on the first live run** (found in review, 4 Oct 2026): BookMyShow (S041) and District (S042, S131) build their listings with JavaScript, so the downloaded HTML may hold little more than a shell and new events would be missed; IMD (S029) and ISL (S040) change numbers every visit (weather, scores) and may alert on most runs. Decide per source after the live run: a different URL, a JSON endpoint, changedetection.io, or drop.
 
-6. **blocklist.csv rows without a domain** (found 4 Oct 2026): "Generic holiday sites (CalendarLabs, PocketHRMS, GoDigit, BankBazaar)" and "Khel Now fixture tables" name sites but give no domain, so they cannot be applied yet. A person adds the domains (e.g. calendarlabs.com, khelnow.com) - the engine never guesses. blocklist.csv is on the dangerous list.
+6. **blocklist.csv rows without a domain** (found 4 Oct 2026): "Generic holiday sites (CalendarLabs, PocketHRMS, GoDigit, BankBazaar)" and "Khel Now fixture tables" name sites but give no domain, so they cannot be applied yet. A person adds the domains (e.g. calendarlabs.com, khelnow.com) - the engine never guesses. blocklist.csv is on the dangerous list. `Blocklist.problems` lists them; the health report (step 9) / `test-feeds` (step 7) must show it.
 
 ## Reuse map (from the panel project, copied not imported - D-006)
 
