@@ -121,3 +121,18 @@ def test_real_keywords_leave_unrelated_news_alone(real):
         "Stock markets close flat",
     ):
         assert real.tag(headline).topics == {}, headline
+
+
+@pytest.mark.parametrize(
+    "headline",
+    [
+        "Alert RCB: Rządowe Centrum Bezpieczeństwa ostrzega przed silnym wiatrem",
+        "Poland's Government Security Centre sends RCB alert to phones in Mazovia",
+    ],
+)
+def test_polands_rcb_alerts_are_not_rcb_the_team(real, headline):
+    assert not {"O24", "D27", "B39"} & set(real.tag(headline).topics)
+
+
+def test_rcb_the_team_still_matches(real):
+    assert {"O24", "D27", "B39"} <= set(real.tag("RCB fans throng Chinnaswamy as Kohli returns").topics)

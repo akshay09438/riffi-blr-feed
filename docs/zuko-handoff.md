@@ -48,7 +48,7 @@
    - Old ESPNcricinfo scorecards appear as recent.
    - `stories --hours` filters on `updated_at` (`db/store.py` is dangerous).
    - ~~Count within-run duplicates in `RunSummary`.~~ Done 5 Oct 2026 (cloud): `fetch` now prints "already stored" and "repeated within this run", so the numbers add up. Check on the next laptop run that the gap is gone.
-   - Tighten the "RCB" keyword.
+   - ~~Tighten the "RCB" keyword.~~ Done 5 Oct 2026 (cloud): O24, D27 and B39 now exclude Poland's "Alert RCB" (Rządowe Centrum Bezpieczeństwa). Check on the next laptop run that the Polish story is gone.
    - The Namma Metro timing story was split into 3 (check against `tests/test_dedupe.py` pairs).
 5. Fix and re-test `feeds.csv` URLs:
    - S057 (VK, 404), S007 (KSEC, DNS), S055 / S045 / S058 (native Kannada feeds), S073, S021, S011.

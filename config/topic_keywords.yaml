@@ -137,6 +137,7 @@ topics:
     label: IPL 2027 retention deadline (RCB)
     keywords: ["IPL retention", "IPL retentions", "retention list", "retained players", "IPL 2027", "IPL auction", "mega auction", "RCB", "Royal Challengers", "Virat Kohli", "Kohli", "trade window", "ಆರ್‌ಸಿಬಿ"]
     local: false
+    exclude: ["Alert RCB", "Rządowe Centrum Bezpieczeństwa", "Government Security Centre"]  # Poland's RCB alert system
   D28:
     label: GBA civic poll notification and campaign
     keywords: ["GBA polls", "GBA elections", "GBA election", "civic polls", "civic poll", "corporation elections", "ward elections", "corporators", "369 wards", "five corporations", "5 corporations", "ward reservation", "ಜಿಬಿಎ ಚುನಾವಣೆ", "ಪಾಲಿಕೆ ಚುನಾವಣೆ"]
@@ -270,6 +271,7 @@ topics:
     label: RCB fandom and Chinnaswamy crowd safety
     keywords: ["RCB", "Royal Challengers Bengaluru", "Royal Challengers Bangalore", "Chinnaswamy", "Chinnaswamy Stadium", "Chinnaswamy stampede", "RCB stampede", "RCB fans", "crowd safety", "victory parade", "ಆರ್‌ಸಿಬಿ", "ಆರ್ಸಿಬಿ", "ಚಿನ್ನಸ್ವಾಮಿ"]
     local: false
+    exclude: ["Alert RCB", "Rządowe Centrum Bezpieczeństwa", "Government Security Centre"]  # Poland's RCB alert system
   O25:
     label: Bigg Boss Kannada 13 and Bigg Boss Hindi 20
     keywords: ["Bigg Boss", "Bigg Boss Kannada", "Bigg Boss Kannada 13", "BBK13", "BBK 13", "Bigg Boss 20", "Bigg Boss Hindi", "BB20", "Weekend Ka Vaar", "Kichcha Sudeep", "Kiccha Sudeep", "ಬಿಗ್ ಬಾಸ್", "ಬಿಗ್‌ಬಾಸ್"]
@@ -440,6 +442,7 @@ topics:
     label: "RCB fandom: identity, loyalty, celebrations"
     keywords: ["RCB", "Royal Challengers", "Royal Challengers Bengaluru", "Royal Challengers Bangalore", "Ee Sala Cup Namde", "Chinnaswamy", "Chinnaswamy stampede", "victory parade", "RCB fans", "Rajat Patidar", "ಆರ್‌ಸಿಬಿ", "ಚಿನ್ನಸ್ವಾಮಿ"]
     local: false
+    exclude: ["Alert RCB", "Rządowe Centrum Bezpieczeństwa", "Government Security Centre"]  # Poland's RCB alert system
   B42:
     label: "NYE in Bengaluru: Brigade Road, curbs, party timings"
     keywords: ["New Year's Eve", "New Year Eve", "NYE", "New Year celebrations", "New Year celebration", "Brigade Road", "Church Street", "pub timings", "flyovers closed", "ಹೊಸ ವರ್ಷ", "ಬ್ರಿಗೇಡ್ ರಸ್ತೆ"]
