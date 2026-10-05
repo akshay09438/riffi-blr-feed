@@ -49,6 +49,8 @@ class RunSummary:
     entries: int = 0
     items_new: int = 0
     dropped: Counter = field(default_factory=Counter)
+    already_stored: int = 0  # kept entries that an earlier run stored (feeds list the same articles for days)
+    repeated: int = 0  # kept entries that are a second copy of one in this run (one article in two feeds)
     stories_new: int = 0
     stories_grown: int = 0
     tagged: int = 0
@@ -131,6 +133,7 @@ async def run_fetch(
     # items already stored (in a story older than the 48 h window) are not re-clustered
     known = store.known_item_ids(conn, [i.item_id for i in cleaned.items])
     fresh = [i for i in cleaned.items if i.item_id not in known]
+    summary.already_stored = len(cleaned.items) - len(fresh)
     clusterer = Clusterer(existing=store.load_recent_clusters(conn, now, WINDOW))
     route_types = {s.source_id: s.route_type for s in sources}
     results = clusterer.add_all(fresh, route_types)
@@ -138,6 +141,7 @@ async def run_fetch(
     summary.stories_new = len({r.cluster.cluster_id for r in results if r.new_cluster})
     summary.stories_grown = len(touched) - summary.stories_new
     summary.items_new = store.save_run(conn, fresh, list(touched.values()), now)
+    summary.repeated = len(fresh) - summary.items_new  # so entries = new + dropped + already stored + repeated
     for outcome in outcomes:  # after the items: see the docstring
         store.record_fetch(conn, outcome, now)
         summary.statuses[outcome.status] += 1

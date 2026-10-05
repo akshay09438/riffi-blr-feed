@@ -106,14 +106,27 @@ def test_one_full_cycle_stores_clean_tagged_stories(db):
     assert sum(s.labels.values()) == 1
 
 
+def accounted(s):
+    return s.items_new + sum(s.dropped.values()) + s.already_stored + s.repeated
+
+
 def test_a_second_run_adds_nothing_twice(db):
     handler, _ = network()
     gn = gn_source_id(db)
-    run(db, ["S011", gn], handler)
+    first = run(db, ["S011", gn], handler)
+    assert (first.entries, first.already_stored, first.repeated) == (4, 0, 0) and accounted(first) == 4
     again = run(db, ["S011", gn], handler, now=NOW + timedelta(minutes=30))
     assert again.items_new == 0 and again.stories_new == 0
+    assert (again.entries, again.already_stored, again.repeated) == (4, 2, 0) and accounted(again) == 4
     assert db.execute("SELECT COUNT(*) FROM items").fetchone()[0] == 2
     assert db.execute("SELECT COUNT(*) FROM story_clusters").fetchone()[0] == 1
+
+
+def test_an_article_listed_twice_in_one_run_is_counted_as_repeated(db):
+    one = {"title": "BBMP floats tender for tunnel road", "link": "https://www.deccanherald.com/city/tunnel-1"}
+    body = rss([{**one, "date": rfc822(NOW - timedelta(hours=2))}] * 2, feed_title="DH Bengaluru")
+    s = run(db, ["S011"], lambda request: httpx.Response(200, content=body))
+    assert (s.entries, s.items_new, s.already_stored, s.repeated) == (2, 1, 0, 1) and accounted(s) == 2
 
 
 def test_a_failing_source_is_recorded_and_the_run_continues(db):
