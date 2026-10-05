@@ -348,23 +348,27 @@ def top_stories(conn: sqlite3.Connection, since: datetime, limit: int, label: st
 
 # ---- the run diary (step 7, D-008)
 
-DIARY_MODES = {"due", "all", "source"}  # the timer's `fetch --due`, or a person's `fetch --all` / `--source`
-FINISHED_OUTCOMES = {"ok", "offline", "failed"}  # how a started run ends
-TICK_OUTCOMES = {"nothing_due", "busy", "failed"}  # one-shot rows: fetched nothing, or failed before a run could start
+DIARY_MODES = frozenset({"due", "all", "source"})  # the timer's `fetch --due`, or a person's `fetch --all` / `--source`
+FINISHED_OUTCOMES = frozenset({"ok", "offline", "failed"})  # how a started run ends
+TICK_OUTCOMES = frozenset({"nothing_due", "busy", "failed"})  # one-shot rows: fetched nothing, or failed before a start
 
 
-def _check(value: str, allowed: set[str], what: str) -> None:
+def _check(value: str, allowed: frozenset[str], what: str) -> None:
     # free text in the table, so a typo here would quietly mislead `status` and the day-14 report
     if value not in allowed:
         raise ValueError(f"unknown run {what}: {value!r} (expected one of {sorted(allowed)})")
 
 
-def last_attempted(conn: sqlite3.Connection) -> dict[str, datetime]:
-    """When each source was last tried, whatever the result: the scheduler counts intervals from here. One index
-    lookup per source, so it stays fast however long fetch_runs grows."""
+def last_attempted(conn: sqlite3.Connection, now: datetime | None = None) -> dict[str, datetime]:
+    """When each source was last tried, whatever the result: the scheduler counts intervals from here. With `now`,
+    attempts stamped after it are ignored: they come from a laptop clock that was wrong, and counting them would
+    make the source due at every check until real time caught up. One index lookup per source, so it stays fast
+    however long fetch_runs grows."""
+    stamp = utc_iso(now)
     rows = conn.execute(
-        "SELECT s.source_id, (SELECT MAX(f.started_at) FROM fetch_runs f WHERE f.source_id = s.source_id) AS last"
-        " FROM sources s"
+        "SELECT s.source_id, (SELECT MAX(f.started_at) FROM fetch_runs f WHERE f.source_id = s.source_id"
+        " AND (? IS NULL OR f.started_at <= ?)) AS last FROM sources s",
+        (stamp, stamp),
     )
     return {r["source_id"]: from_iso(r["last"]) for r in rows if r["last"]}
 

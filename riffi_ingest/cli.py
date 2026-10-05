@@ -233,8 +233,8 @@ def _first_run_imports(conn, feeds: Path, topics: Path) -> None:
 
 
 def _log(path: Path, when: datetime, mode: str, outcome: str, detail: str = "") -> None:
-    """One line per run in engine.log beside the database. Windows' timer runs the engine with no window, so
-    this file and `status` are how anyone sees what happened."""
+    """One line per run (plus a traceback under a failure) in engine.log beside the database. Windows' timer runs
+    the engine with no window, so this file and `status` are how anyone sees what happened."""
     path.parent.mkdir(parents=True, exist_ok=True)
     line = f"{when.astimezone(IST):%Y-%m-%d %H:%M} IST  {mode:<6} {outcome:<11} {detail}".rstrip()
     with open(path, "a", encoding="utf-8") as f:
@@ -245,16 +245,31 @@ def _trace() -> str:
     return textwrap.indent(traceback.format_exc().rstrip(), "    ")
 
 
+def _reason(exc: BaseException) -> str:
+    """'RuntimeError: disk full', or just 'KeyboardInterrupt' when the error has no message."""
+    return (f"{type(exc).__name__}: {exc}" if str(exc) else type(exc).__name__)[:500]
+
+
 def _note_failure(conn, log: Path, now: datetime, mode: str, exc: Exception, sources_due: int = 0) -> None:
     """A run that could not start still leaves a trace: a line in engine.log and, if the database answers, a
     'failed' row in the diary, so `status` does not mistake it for the laptop being off."""
-    reason = f"{type(exc).__name__}: {exc}"[:500]
+    reason = _reason(exc)
     _log(log, now, mode, "failed", f"{reason}\n{_trace()}")
     if conn is not None:
         try:
             store.log_engine_tick(conn, now, mode, "failed", sources_due, error=reason)
         except sqlite3.Error:
             pass  # the database itself is the problem (still locked, say): the log line above is the trace
+
+
+def _tick(conn, log: Path, now: datetime, mode: str, outcome: str, sources_due: int = 0) -> None:
+    """A check that fetched nothing ('nothing_due', or 'busy' while another run held the lock). The log line goes
+    first, so a database that will not answer still leaves a trace."""
+    _log(log, now, mode, outcome, f"sources {sources_due}" if sources_due else "")
+    try:
+        store.log_engine_tick(conn, now, mode, outcome, sources_due)
+    except sqlite3.Error as exc:
+        _log(log, now, mode, "warning", f"could not write the diary row: {_reason(exc)}")
 
 
 def _pick_for_run(conn, mode: str, wanted: list[str], schedule: Path, now: datetime, log: Path) -> list[Source]:
@@ -272,7 +287,7 @@ def _pick_for_run(conn, mode: str, wanted: list[str], schedule: Path, now: datet
     for problem in speeds.problems(active):
         typer.echo(f"Warning: {problem} in {schedule}; those sources are never fetched.")
         _log(log, now, mode, "warning", problem)
-    return due(active, store.last_attempted(conn), speeds, now)
+    return due(active, store.last_attempted(conn, now), speeds, now)
 
 
 def _run_and_record(conn, sources: list[Source], mode: str, now: datetime, log: Path) -> RunSummary:
@@ -282,9 +297,12 @@ def _run_and_record(conn, sources: list[Source], mode: str, now: datetime, log: 
     try:
         s = asyncio.run(run_fetch(conn, sources, paths=Paths(), now=now, on_progress=_progress(len(sources))))
     except BaseException as exc:
-        reason = f"{type(exc).__name__}: {exc}"[:500]
-        store.finish_engine_run(conn, run_id, datetime.now(timezone.utc), "failed", error=reason)
-        _log(log, now, mode, "failed", f"due {len(sources)}\n{_trace()}")
+        reason = _reason(exc)
+        _log(log, now, mode, "failed", f"sources {len(sources)}, {reason}\n{_trace()}")
+        try:
+            store.finish_engine_run(conn, run_id, datetime.now(timezone.utc), "failed", error=reason)
+        except sqlite3.Error as db_exc:  # the log line above is the trace; `status` will say 'did not finish'
+            _log(log, now, mode, "warning", f"could not close the diary row: {_reason(db_exc)}")
         if isinstance(exc, Exception):
             raise RunFailed(reason) from exc
         raise
@@ -292,25 +310,28 @@ def _run_and_record(conn, sources: list[Source], mode: str, now: datetime, log: 
     failed, skipped = s.statuses["error"], s.statuses["skipped"]
     finished = datetime.now(timezone.utc)
     outcome = "offline" if s.offline else "ok"
-    store.finish_engine_run(
-        conn,
-        run_id,
-        finished,
-        outcome,
-        sources_ok=ok,
-        sources_failed=failed,
-        sources_skipped=skipped,
-        items_new=s.items_new,
-        google_refusals=s.google_refusals,
-    )
     _log(
         log,
         now,
         mode,
         outcome,
-        f"due {len(sources)}, ok {ok}, failed {failed}, skipped {skipped}, new items {s.items_new},"
+        f"sources {len(sources)}, ok {ok}, failed {failed}, skipped {skipped}, new items {s.items_new},"
         f" google refusals {s.google_refusals}, {(finished - now).total_seconds() / 60:.1f} min",
     )
+    try:
+        store.finish_engine_run(
+            conn,
+            run_id,
+            finished,
+            outcome,
+            sources_ok=ok,
+            sources_failed=failed,
+            sources_skipped=skipped,
+            items_new=s.items_new,
+            google_refusals=s.google_refusals,
+        )
+    except sqlite3.Error as exc:  # the run itself worked and the log says so; the diary row stays 'running'
+        _log(log, now, mode, "warning", f"could not close the diary row: {_reason(exc)}")
     return s
 
 
@@ -344,8 +365,7 @@ def fetch(
         _note_failure(conn, log, now, mode, exc)
         _fail(f"could not start: {exc} (details in {log})")
     if not sources:
-        store.log_engine_tick(conn, now, mode, "nothing_due")
-        _log(log, now, mode, "nothing_due")
+        _tick(conn, log, now, mode, "nothing_due")
         typer.echo("Nothing is due yet.")
         return
     typer.echo(
@@ -358,8 +378,7 @@ def fetch(
     except AlreadyRunning as exc:
         if mode != "due":
             _fail(str(exc))
-        store.log_engine_tick(conn, now, mode, "busy", len(sources))
-        _log(log, now, mode, "busy", f"due {len(sources)}")
+        _tick(conn, log, now, mode, "busy", len(sources))
         typer.echo("Another fetch is still running; this check is skipped.")
         return
     except RunFailed as exc:

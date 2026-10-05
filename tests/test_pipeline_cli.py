@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sqlite3
 from datetime import datetime, timedelta, timezone
 
 import httpx
@@ -407,6 +408,7 @@ def test_a_check_while_a_run_is_going_is_skipped_and_noted(tmp_path, repo_root):
     assert r.exit_code == 0 and "still running" in r.output
     assert by_hand.exit_code == 1 and "already running" in by_hand.output
     assert [(x["outcome"], x["sources_due"]) for x in diary(conn)] == [("busy", 1)]
+    assert " busy " in (tmp_path / "engine.log").read_text(encoding="utf-8")
 
 
 def test_a_crashed_run_is_marked_failed_with_its_reason(tmp_path, repo_root, monkeypatch):
@@ -442,6 +444,7 @@ def test_no_internet_is_recorded_as_offline(tmp_path, repo_root, monkeypatch):
     assert r.exit_code == 0 and "No internet" in r.output
     assert [(x["outcome"], x["sources_failed"]) for x in diary(conn)] == [("offline", 2)]
     assert conn.execute("SELECT COUNT(*) FROM fetch_runs").fetchone()[0] == 0
+    assert " offline " in (tmp_path / "engine.log").read_text(encoding="utf-8")
 
 
 def test_runs_by_hand_are_in_the_diary_too(tmp_path, repo_root, monkeypatch):
@@ -466,6 +469,59 @@ def test_a_broken_or_missing_schedule_leaves_a_failed_row(tmp_path, repo_root):
     assert "fortnightly" in rows[0]["error"] and "nope.yaml" in rows[1]["error"]
     log = (tmp_path / "engine.log").read_text(encoding="utf-8")
     assert "fortnightly" in log and "nope.yaml" in log
+
+
+def test_a_quiet_check_with_a_locked_database_still_leaves_a_log_line(tmp_path, repo_root, monkeypatch):
+    def locked(*args, **kwargs):
+        raise sqlite3.OperationalError("database is locked")
+
+    db_path, _ = prepared_db(tmp_path, repo_root)
+    monkeypatch.setattr(store, "log_engine_tick", locked)
+    r = fetch_due(db_path, schedule_file(tmp_path, {}))  # every source 'never': nothing is due
+    assert r.exit_code == 0 and "Nothing is due" in r.output
+    log = (tmp_path / "engine.log").read_text(encoding="utf-8")
+    assert "nothing_due" in log and "could not write the diary row: OperationalError: database is locked" in log
+
+
+def test_a_run_that_cannot_start_is_recorded(tmp_path, repo_root, monkeypatch):
+    def locked(*args, **kwargs):
+        raise sqlite3.OperationalError("database is locked")
+
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    monkeypatch.setattr(store, "start_engine_run", locked)
+    r = fetch_due(db_path, schedule_file(tmp_path, {"S011": "2h"}))
+    assert r.exit_code == 1 and "could not start" in r.output
+    rows = diary(conn)
+    assert [x["outcome"] for x in rows] == ["failed"] and "database is locked" in rows[0]["error"]
+    assert "database is locked" in (tmp_path / "engine.log").read_text(encoding="utf-8")
+
+
+def test_a_database_that_will_not_open_still_leaves_a_log_line(tmp_path, monkeypatch):
+    def unopenable(*args, **kwargs):
+        raise sqlite3.OperationalError("unable to open database file")
+
+    monkeypatch.setattr(cli, "connect", unopenable)
+    r = fetch_due(tmp_path / "engine.db", schedule_file(tmp_path, {}))
+    assert r.exit_code == 1 and "could not start" in r.output
+    log = (tmp_path / "engine.log").read_text(encoding="utf-8")
+    assert " failed " in log and "unable to open database file" in log
+
+
+def test_after_a_clock_jump_a_source_is_fetched_once_then_keeps_its_speed(tmp_path, repo_root, monkeypatch):
+    handler, calls = network()
+    monkeypatch.setattr(pipeline, "PoliteClient", lambda: fake_client(handler))
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    future = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(timespec="seconds")
+    conn.execute("INSERT INTO fetch_runs (source_id, started_at, status) VALUES ('S011', ?, 'ok')", (future,))
+    conn.commit()
+    schedule = schedule_file(tmp_path, {"S011": "2h"})
+    assert fetch_due(db_path, schedule).exit_code == 0  # the stamp from a wrong clock is ignored: due now
+    assert fetch_due(db_path, schedule).exit_code == 0  # then normal speed: not due again for 2 hours
+    assert calls == ["www.deccanherald.com"]
+    assert [x["outcome"] for x in diary(conn)] == ["ok", "nothing_due"]
+
+
+# ---- the test safety net
 
 
 def test_tests_never_use_the_real_database(tmp_path):
