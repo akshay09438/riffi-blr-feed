@@ -4,6 +4,16 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-014 · S004 follows the Chief Minister's English news page, not DIPR's homepage (5 Oct 2026, founder)
+
+On the laptop on the evening of 5 Oct 2026, the real DIPR homepage (`dipr.karnataka.gov.in`, S004) turned out to hold no current press releases: its "latest news" list is in a hidden pop-up, and its newest entry is two years old. The founder chose to point S004 at the Chief Minister's English news page, `https://cm.karnataka.gov.in/en`, still as a page monitor. That page lists the government's press notes in English, written by DIPR, visible on the page, with a dateline on each (12 between 19 Sep and 2 Oct 2026). S004 is renamed "CM's office press releases (DIPR)". Route counts do not change: still 19 page monitors.
+
+Ruled out the same evening: DIPR's "News and Press branch" page (forms and award lists); the CM site's "ವಿವಿಧ ಇಲಾಖೆಯ ಪ್ರಕಟಣೆಗಳು" archive (daily press-release PDFs, last dated 20 Jul 2024); `karnatakavarthe.org` (no longer DIPR's: one post from 2021 and a page of hidden casino-spam links, so never use it; with the founder's OK it was added to `blocklist.csv` the same evening, on branch `safety/blocklist-karnatakavarthe`); `karnatakainformation.gov.in` (does not resolve); and DIPR's Google Group `varthasoudhabengaluru` (a real daily "DIPR NEWS" bulletin, but its posts appear only with JavaScript and Google no longer offers group feeds). DIPR's X account is already S003 (RSS.app later).
+
+Two limits. The page uses the same karnataka.gov.in template as the other blind monitors, so until the page-monitor fix lands it stores only the template's English privacy policy. And it carries what the CM announces, not every department: cabinet decisions announced by other ministers may be missing, which S003's backup search ("Karnataka cabinet decision") covers. A copy of the page is in `tests/fixtures/karnataka_gov_real_S004_cm_en.html`.
+
+---
+
 ## D-013 · Three unreachable sites are followed through Google News instead (5 Oct 2026, founder)
 
 On the laptop run on 5 Oct 2026, three page monitors could not be read: S007 Karnataka State Election Commission (`karsec.gov.in` does not resolve for anyone), S015 Cockroach Janta Party website and S041 BookMyShow Bengaluru (both answer 403 to the engine). The founder chose to follow each through a Google News search instead:
@@ -53,6 +63,8 @@ The Windows timer from D-008 is **not installed**. Do not install it, and do not
 What this means: `status` will show long gaps and "no checks at all" between the founder's runs. That is expected, not a fault. The two-week test's timeliness figure (caught within 24 h) and its gap attribution assume regular runs, so for the test to measure what the brief asks, fetches need to happen at least daily. If they don't, the day-14 report must say so.
 
 Why: the founder wants to control when the engine reaches out to the sites.
+
+**Confirmed 5 Oct 2026, late evening (founder):** the timer stays off until the whole engine is built. The founder will first look at what the engine produces, by hand and over many iterations, before any automatic timing is set up. The working pattern: when the founder asks for "the news of the last 24 hours", a laptop session backs up the database, runs `fetch --all` and `digest`, and shows the top stories. That request is itself the go-ahead for that fetch, so do not ask again. The two-week source test therefore starts after the build and these iterations, not on 10-12 Oct as first planned.
 
 ## D-008 · The engine runs on Windows' own timer; Google News every 2 h during the two-week test (5 Oct 2026, founder)
 
