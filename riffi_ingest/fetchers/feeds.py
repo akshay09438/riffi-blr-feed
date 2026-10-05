@@ -5,7 +5,8 @@
 | Native publisher RSS/Atom  | fetch_url                                                              |
 | Google News RSS            | fetch_url                                                              |
 | X/Instagram via RSS.app    | never X or Instagram itself: backup_google_news_url, marked on_backup |
-| RSSHub Telegram            | fetch_url, re-pointed at the configured RSSHub base                    |
+| RSSHub Telegram            | the channel's public page t.me/s/<name> (telegram.py); or, when        |
+|                            | RSSHUB_BASE_URL is set, fetch_url re-pointed at that RSSHub             |
 | YouTube Atom               | fetch_url, skipped when it is not a real URL (e.g. "Needs channel ID") |
 | Web page monitor           | fetch_url, compared with its last snapshot (pagemonitor.py)            |
 | Manual                     | skipped                                                                |
@@ -22,10 +23,11 @@ from urllib.parse import urlsplit, urlunsplit
 from ..config import DEFAULT_RSSHUB_BASE
 from ..sources import Source
 from .gnews import is_gnews_feed
-from .http import PoliteClient, domain_key
+from .http import PAGE_ACCEPT, PoliteClient, domain_key
 from .outcome import FetchOutcome, PageSnapshot, Validators
 from .pagemonitor import monitor_page
 from .parse import looks_like_html, parse_feed
+from .telegram import PAGE_BASE, page_url, parse_page
 
 NATIVE = "Native publisher RSS/Atom"
 GOOGLE_NEWS = "Google News RSS"
@@ -74,7 +76,11 @@ def plan(source: Source, rsshub_base: str = DEFAULT_RSSHUB_BASE) -> tuple[str, b
             return "", False, f"needs a YouTube channel ID (fetch_url is {source.fetch_url!r})"
         return "", False, f"fetch_url is not a URL: {source.fetch_url!r}"
     if route == TELEGRAM:
-        return _with_base(source.fetch_url, rsshub_base), False, ""
+        if rsshub_base:
+            return _with_base(source.fetch_url, rsshub_base), False, ""
+        if not (url := page_url(source.fetch_url)):
+            return "", False, f"no Telegram channel name in {source.fetch_url!r}"
+        return url, False, ""
     return source.fetch_url, False, ""
 
 
@@ -96,6 +102,19 @@ async def _fetch_feed(client: PoliteClient, out: FetchOutcome, v: Validators) ->
             out.validators = Validators(res.etag, res.last_modified)
 
 
+async def _fetch_telegram_page(client: PoliteClient, out: FetchOutcome) -> None:
+    res = await client.fetch(out.url, accept=PAGE_ACCEPT)
+    out.http_status, out.error_kind = res.status, res.error_kind
+    if not res.ok:
+        out.status, out.reason = "error", res.error or f"HTTP {res.status}"
+        return
+    title, entries, posts = parse_page(res.content)
+    if not posts:
+        out.status, out.reason = "error", "the channel page shows no posts (not public, or Telegram changed the page)"
+    else:
+        out.status, out.feed_title, out.entries = "ok", title, entries
+
+
 async def fetch_source(
     client: PoliteClient,
     source: Source,
@@ -114,6 +133,8 @@ async def fetch_source(
     try:
         if source.route_type == PAGE_MONITOR:
             out = await monitor_page(client, source, url, previous=snapshot, validators=v)
+        elif url.startswith(PAGE_BASE):
+            await _fetch_telegram_page(client, out)
         else:
             await _fetch_feed(client, out, v)
     except Exception as exc:  # a parser bug on one odd source must not stop the other 130

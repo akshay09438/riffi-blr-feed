@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
+from .fetchers.http import domain_key
 from .fetchers.outcome import FetchOutcome
 
 STALE_AFTER = timedelta(days=7)
@@ -42,6 +43,11 @@ def _fields(outcome: FetchOutcome) -> list[str]:
 def _fix_for_error(outcome: FetchOutcome) -> str:
     reason = (outcome.reason or "").lower()
     status = outcome.http_status
+    if outcome.route_type == TELEGRAM and domain_key(outcome.url) == "t.me":
+        if status in (403, 429, 503):
+            return "t.me is refusing or rate-limiting: fetch Telegram less often, or self-host RSSHub (RSSHUB_BASE_URL)"
+        if status in (404, 410) or "no posts" in reason:
+            return "Telegram shows no public page for this channel: check the name, and that it is a public channel"
     if outcome.route_type == TELEGRAM:
         if status in (403, 429, 503):
             return "rsshub.app is refusing or rate-limiting: self-host RSSHub and set RSSHUB_BASE_URL"

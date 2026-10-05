@@ -222,7 +222,7 @@ def _make_item(
     summary_text = entry.summary or ""
     title = clean_title(entry.title or "", entry.source_title if from_gnews else "")
     if not title and source.route_type == TELEGRAM:
-        title = summary_text.split(". ")[0][:200]  # a Telegram post's first line
+        title = summary_text.strip().split("\n")[0].split(". ")[0][:200]  # a Telegram post's first sentence
     summary = "" if summary_text.strip() == title else summary_text
     canon = canonical_url(url)
     # a page monitor reports every change of one page under the same URL; its guid tells changes apart

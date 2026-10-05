@@ -176,6 +176,10 @@ def test_health_checks_and_fixes():
         "error", reason="HTTP 404", http_status=404, route_type="RSSHub Telegram", url="https://rsshub.app/x"
     )
     assert "cannot find this channel" in health.check(tg404, now).fix
+    page = {"route_type": "RSSHub Telegram", "url": "https://t.me/s/x"}
+    assert "t.me is refusing" in health.check(outcome("error", reason="HTTP 429", http_status=429, **page), now).fix
+    no_posts = outcome("error", reason="the channel page shows no posts (not public, ...)", **page)
+    assert "public channel" in health.check(no_posts, now).fix
     backup = health.check(outcome("skipped", reason="backup is not a Google News feed: 'https://x.com/a'"), now)
     assert "news.google.com/rss/search" in backup.fix
 

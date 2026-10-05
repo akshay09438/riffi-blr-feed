@@ -4,6 +4,12 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-011 · Telegram channels are read from their public t.me page (5 Oct 2026, founder)
+
+The brief reads Telegram through RSSHub (`rsshub.app`). On the first live run, rsshub.app answered 403 for all three channels (S016, S101, S102). The founder chose the channels' own public web page instead: `https://t.me/s/<channel>`, which shows the latest posts (about 20) to anyone, with no login. `fetchers/telegram.py` reads the posts from it: text, link and time. The quoted post in a reply is ignored, and posts with no text are skipped. The channel name comes from the row's `fetch_url` (its last path part), so `feeds.csv` and the route type `RSSHub Telegram` stay as they are. Setting `RSSHUB_BASE_URL` (a self-hosted RSSHub) switches back to RSSHub. Telegram is not X, Instagram or WhatsApp, so the never-scrape rule does not apply. The fetch goes through the same polite HTTP client, with the same identity and limits.
+
+A channel page with no posts at all counts as a failure, not as quiet: it means the channel turned off its public preview, or Telegram changed the page. Built and tested in the cloud against a sample page; the real proof is `test-feeds --source S016 --source S101 --source S102` on the laptop.
+
 ## D-009 · No timer for now: the engine fetches only when the founder asks (5 Oct 2026, founder)
 
 The Windows timer from D-008 is **not installed**. Do not install it, and do not offer to, until the founder says otherwise. Fetching happens only when the founder asks for it: a session on the laptop runs `python -m riffi_ingest fetch --all` (or `--due`, or `--source ...`) by hand. Everything else in D-008 stays: the speeds in `config/schedule.yaml`, the run diary, `engine.log` and `status`. `scripts/schedule-windows.ps1` stays in the repo, unused, so switching to the timer later is one command.
