@@ -2,7 +2,7 @@
 
 Collects new developments on Riffi's 151 tracked topics from 131 sources, cleans them, groups them into stories and tags them by topic. It only collects, ranks and reports: it never posts anything. What it does and why: `BRIEF.md`; where the team decided differently: `DECISIONS.md`; how it is built: `docs/technical-spec.md`; how far along it is: `docs/implementation-plan.md`.
 
-**Built so far:** fetching every route, cleaning, Google News link resolution, the blocklist, grouping into stories, keyword tagging, scoring and labels, the database, the scheduler (`fetch --due`, which fetches each source at its own speed, the run diary and the `status` check are tested; the Windows timer that runs it every 30 minutes is written and checked but has never been registered, and is only switched on after the founder says yes, see "Running on its own"), the daily digest and health report (`digest`, `report`), and the commands below. **Not yet:** the AI tagging pass, the dashboard and `/api/stories`, and the two-week recall test.
+**Built so far:** fetching every route, cleaning, Google News link resolution, the blocklist, grouping into stories, keyword tagging, scoring and labels, the database, the scheduler (`fetch --due`, which fetches each source at its own speed, the run diary and the `status` check are tested; the Windows timer that runs it every 30 minutes is written and checked but has never been registered, and is only switched on after the founder says yes, see "Running on its own"), the daily digest and health report (`digest`, `report`), the AI pass through files (`ai-batch`, `ai-apply`; D-005, D-016), and the commands below. **Not yet:** the exclusions word-list filter, the dashboard and `/api/stories`, and the two-week recall test.
 
 ## Setup (Windows laptop, once)
 
@@ -25,7 +25,9 @@ Then every command below is run as `.venv\Scripts\python.exe -m riffi_ingest <co
 | `import-sources` | Loads `feeds.csv` into the database. Safe to run again after editing the CSV: rows are updated, history is kept, and a removed source is marked inactive, never deleted. |
 | `import-topics` | Loads `topics.csv` into the database. Safe to run again. |
 | `fetch --all` | One full cycle for every active source: fetch, clean, group into stories, tag, store. `fetch --source S004 --source S011` does just those. `fetch --due` does only the sources whose time is up (speeds in `config/schedule.yaml`): this is what the Windows timer runs every 30 minutes. Say exactly one of `--all`, `--source`, `--due`. The first `fetch` imports the sources by itself. Takes up to about 12 minutes for everything (the source fetches plus up to 100 Google News link look-ups); please leave it running. Only one fetch can run at a time. Every run, by hand or by the timer, goes into the run diary and one line into `data/engine.log`. |
-| `stories` | The best stories of the last 24 hours, highest score first: score, label (High / Medium / Low / Drop), number of sources, topics and headline. `--top 50`, `--hours 48`, `--label High`. Until the AI pass exists, scores leave out its 25 points and stories show `[awaiting AI]`. |
+| `stories` | The best stories of the last 24 hours, highest score first: score, label (High / Medium / Low / Drop), number of sources, topics and headline. `--top 50`, `--hours 48`, `--label High`. A story the AI pass has not checked yet leaves out its 25 points and shows `[awaiting AI]`. |
+| `ai-batch` | Writes the stories waiting for the AI pass (reports fetched in the last 24 hours, tagged by keyword or local, never checked or grown since) into `data/ai/<time>/batch-01.json`, `batch-02.json` ... (20 stories each, best first, at most 400; `--max`, `--hours`). Prints the folder. The database only records what each batch holds; no story changes. |
+| `ai-apply <folder>` | After a Claude Code session has written `answer-NN.json` next to each batch (following `config/prompts/ai_pass.md`): checks every answer, stores the ones that pass and re-scores their stories. Lists each rejected answer with its reason; its story keeps waiting. Safe to run again. |
 | `status` | Is the engine alive? Prints the last run, what happened in the last 24 hours (checks by outcome, the longest gap with no check, Google refusals) and the sources failing 3 or more runs in a row. Changes nothing, and is safe to run at any time, even while a fetch is running. |
 | `digest` | Makes the day's files in `reports/<date>/`: `digest.md` and `digest.csv` (the stories of the 24 hours before you run it, best first; the topics that moved; the High-priority topics with nothing for 7+ days) plus the two health files below. `--top 50` shows more stories in `digest.md` (the CSV has every listed story). `--date 2026-10-06` remakes a past day: the 24 hours ending 07:00 IST that day. Running it again replaces the files. Reads the database, never changes it. |
 | `report` | Makes only the health files in `reports/<date>/`: `health.md` (is the engine alive; sources working, failing, stale, not useful, skipped; blocklist problems) and `sources_health.csv` (the four health columns to paste into the source sheet). Health is always as of now. |
@@ -40,7 +42,15 @@ Every command has `--help`.
 2. Fix what you can in `feeds.csv`, then `import-sources`.
 3. `fetch --all`, then `stories` to see the top 30 with their scores and topics (a dashboard comes in step 8).
 
-## The daily report
+## The news of the last 24 hours (D-009 addendum, D-016)
+
+When the founder asks a Claude Code session on the laptop for "the news of the last 24 hours", that request is the go-ahead for all of this:
+
+1. Back up `data/engine.db` (SQLite backup API; check the table counts and `integrity_check`).
+2. `fetch --all`.
+3. `ai-batch`, then answer every batch in the folder it prints by following `config/prompts/ai_pass.md`, then `ai-apply <folder>`. Fix and re-apply any rejected answer.
+4. `digest`, and show the founder the top stories in plain words. Until the exclusions word-list filter is built, also set aside by eye any communal or religious story the AI pass did not exclude.
+
 
 After a `fetch --all`, run `digest`. It writes four files into `reports/<today's date>/` (D-012):
 
@@ -49,7 +59,7 @@ After a `fetch --all`, run `digest`. It writes four files into `reports/<today's
 - `health.md` - is the engine alive, and which sources are broken (3+ failures in a row), quiet (nothing new for 7 days; 30 for page monitors), not useful (no tagged story in 7 days) or skipped because `feeds.csv` needs a fix.
 - `sources_health.csv` - `last_status`, `last_ok_at`, `newest_item_at` and `fields_present` per source, in source order, ready to paste into the source sheet.
 
-Until the AI pass exists, every story says **awaiting AI**: its score leaves out up to 25 points, "what's new" reads "awaiting AI pass", and the debate angle is the topic's general one from `topics.csv`, marked "topic angle, not this story". Never post it as a take on the story itself.
+A story the AI pass has checked shows the AI's own "what's new" and debate angle, and its score includes the AI's points (up to 25). A story it has dropped as a communal or religious flashpoint is counted as Drop, never listed. A story it has not checked yet says **awaiting AI**: its score leaves out up to 25 points, "what's new" reads "awaiting AI pass", and the debate angle is the topic's general one from `topics.csv`, marked "topic angle, not this story". Never post that as a take on the story itself.
 
 ## Running on its own (the two-week test)
 

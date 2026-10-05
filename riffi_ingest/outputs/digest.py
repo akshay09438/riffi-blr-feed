@@ -3,9 +3,10 @@
 Who it is for: the content team and the founder, once per run, by hand after a fetch (D-009, D-012). It answers
 "what are today's best stories", "which topics moved" and "which High-priority topics went quiet".
 
-Before the AI pass exists (D-005), stories carry keyword topics and keyword-only scores (up to 25 points lower),
-"what's new" reads "awaiting AI pass", and the debate angle is the topic's general one from topics.csv, always
-marked "topic angle, not this story" so nobody mistakes it for a take on the story itself (D-012).
+A story the AI pass has checked (D-016) shows the AI's own "what's new" and debate angle. A story still waiting for
+it carries keyword topics and a keyword-only score (up to 25 points lower), "what's new" reads "awaiting AI pass",
+and its debate angle is the topic's general one from topics.csv, always marked "topic angle, not this story" so
+nobody mistakes it for a take on the story itself (D-012).
 
 Drop stories (excluded topics, or too far from Riffi's audience) are counted, never listed.
 """
@@ -13,6 +14,7 @@ Drop stories (excluded topics, or too far from Riffi's audience) are counted, ne
 from __future__ import annotations
 
 import csv
+import re
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -29,6 +31,15 @@ AWAITING = "awaiting AI pass"
 MD_SOURCE_NAMES = 3  # names shown per story in digest.md; digest.csv has them all
 MD_ANGLE_CHARS = 240
 LABELS = ("High", "Medium", "Low", "Drop")
+# link schemes (data: and file: only as links, so "Data: 3 lakh" is left alone), and domains: a name followed by a
+# common top-level domain or by "/", or any all-lowercase name.ext (addresses are written that way). "B.Tech",
+# "Mr.Siddaramaiah", "Node.js" and "Rs.500" are left alone.
+SCHEME_RE = re.compile(r"(?i)\b(https?|ftp|mailto|javascript|vbscript|data(?=\s*:[^\s])|file(?=\s*:/))\s*:")
+DOMAIN_RE = re.compile(
+    r"(?i)\b([a-z0-9-]+)\.((?:com|in|org|net|io|co|gov|edu|info|me|ai|app|xyz|ly|us|uk|biz|site|online|link|to|cc)"
+    r"\b|[a-z]{2,}(?=/))"
+)
+LOWER_DOMAIN_RE = re.compile(r"\b([a-z0-9-]+)\.([a-z]{2,})\b")
 CSV_FIELDS = (
     "rank", "score", "label", "topics", "source_count", "sources", "headline", "url", "sensitive", "ai_checked",
     "whats_new", "debate_angle",
@@ -49,6 +60,8 @@ class Story:
     ai_checked: bool
     angle_topic: str = ""
     angle: str = ""  # the best topic's general debate angles (topics.csv), never this story's own
+    whats_new: str = ""  # the AI pass's, once it has checked the story
+    ai_angle: str = ""  # the AI pass's debate angle for this story; shown instead of the topic's
 
 
 @dataclass
@@ -73,6 +86,24 @@ def at_text(when: datetime) -> str:
 def cell(text: object) -> str:
     """Text safe inside a Markdown table cell: a `|` would end the cell, a line break the row."""
     return " ".join(str(text if text is not None else "").split()).replace("|", "\\|")
+
+
+def plain(text: object) -> str:
+    """A cell of text written by the AI pass: no link, web or email address, HTML or Markdown styling can come
+    through it. Addresses are defanged ("https[:]//", "evil[.]example", "a[@]b") so they stay readable but no
+    viewer turns them into links."""
+    text = SCHEME_RE.sub(r"\1[:]", cell(text))
+    while (defanged := LOWER_DOMAIN_RE.sub(r"\1[.]\2", DOMAIN_RE.sub(r"\1[.]\2", text))) != text:  # evil[.]co[.]in
+        text = defanged
+    text = text.replace("@", "[@]")
+    for ch in ("[", "]", "`", "*", "_"):  # no link, code or emphasis markup
+        text = text.replace(ch, "\\" + ch)
+    return text.replace("<", "&lt;").replace(">", "&gt;")
+
+
+def csv_safe(text: str) -> str:
+    """Text from the web or the AI pass in a CSV cell: a leading = + - @ would make Excel run it as a formula."""
+    return "'" + text if text[:1] in ("=", "+", "-", "@", "\t", "\r") else text
 
 
 def _link(headline: str, url: str) -> str:
@@ -106,6 +137,8 @@ def _story(rank: int, row: sqlite3.Row, topics: list[sqlite3.Row], scorer: Score
         ai_checked=bool(row["ai_checked"]),
         angle_topic=best["topic_id"] if best else "",
         angle=((best["debate_angles"] or "").strip() if best else ""),
+        whats_new=row["ai_whats_new"] or "",
+        ai_angle=row["ai_angle"] or "",
     )
 
 
@@ -121,11 +154,21 @@ def ai_points(scorer: Scorer) -> int:
     return int(scorer.w.get("new_development", 0)) + int(scorer.w.get("debate_angle", 0))
 
 
+def _cut(text: str, limit: int | None) -> str:
+    return text if limit is None or len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
 def _angle_text(s: Story, limit: int | None = None) -> str:
+    """The AI's angle for this story once it has one; before the AI pass, the topic's general one, marked."""
+    if s.ai_checked:
+        return _cut(s.ai_angle, limit)
     if not s.angle:
         return ""
-    angle = s.angle if limit is None or len(s.angle) <= limit else s.angle[: limit - 1].rstrip() + "…"
-    return f"{ANGLE_MARK} ({s.angle_topic}): {angle}"
+    return f"{ANGLE_MARK} ({s.angle_topic}): {_cut(s.angle, limit)}"
+
+
+def _whats_new_text(s: Story) -> str:
+    return s.whats_new if s.ai_checked else AWAITING
 
 
 def _flags(s: Story) -> str:
@@ -171,17 +214,18 @@ def _top_section(stories: list[Story], top: int, c: queries.Counts) -> list[str]
     shown = stories[:top]
     lines += [
         f"The best {len(shown)} of {listed:,} stories (Drop stories are counted above, never listed; every listed"
-        " story is in digest.csv). The debate angle is the topic's general one until the AI pass runs:"
-        f' it is marked "{ANGLE_MARK}".',
+        " story is in digest.csv). What's new and the debate angle are the AI pass's; on a story it has not"
+        f' checked yet, the angle is the topic\'s general one, marked "{ANGLE_MARK}".',
         "",
-        "| # | Score | Label | Topics | Sources | Headline | Debate angle | Flags |",
-        "|---:|---:|---|---|---|---|---|---|",
+        "| # | Score | Label | Topics | Sources | Headline | What's new | Debate angle | Flags |",
+        "|---:|---:|---|---|---|---|---|---|---|",
     ]
     for s in shown:
         score = "" if s.score is None else s.score
         lines.append(
             f"| {s.rank} | {score} | {s.label or '-'} | {cell(' '.join(s.topics)) or '-'} | {cell(_sources_text(s))}"
-            f" | {_link(s.headline, s.url)} | {cell(_angle_text(s, MD_ANGLE_CHARS))} | {_flags(s)} |"
+            f" | {_link(s.headline, s.url)} | {plain(_whats_new_text(s))} | {plain(_angle_text(s, MD_ANGLE_CHARS))}"
+            f" | {_flags(s)} |"
         )
     return lines + [""]
 
@@ -243,12 +287,12 @@ def csv_row(s: Story) -> dict:
         "topics": " ".join(s.topics),
         "source_count": s.source_count,
         "sources": "; ".join(s.sources),
-        "headline": s.headline,
+        "headline": csv_safe(s.headline),
         "url": s.url,
         "sensitive": "yes" if s.sensitive else "no",
         "ai_checked": "yes" if s.ai_checked else "no",
-        "whats_new": "" if s.ai_checked else AWAITING,
-        "debate_angle": _angle_text(s),
+        "whats_new": csv_safe(_whats_new_text(s)),
+        "debate_angle": csv_safe(_angle_text(s)),
     }
 
 

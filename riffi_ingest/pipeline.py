@@ -1,8 +1,9 @@
 """One fetch cycle, end to end: fetch -> clean -> group into stories -> tag -> score -> store
 (BRIEF.md steps 1-6).
 
-The AI pass (step 4, part 2) is not wired in yet: stories are tagged by keyword and scored without the AI
-points, marked "awaiting AI pass".
+The AI pass (step 4, part 2) is not part of a fetch: it runs through files when the founder asks for the news
+(tagging/llm_batches.py, D-016). A story it has checked keeps its AI verdict and scores by it (store.story_facts);
+the others are scored without the AI points, marked "awaiting AI pass".
 
 A run where no site could be reached at all (this machine's internet was down) stores nothing per source, so no
 source takes a strike for it and every one of them is still due at the next tick (D-008).

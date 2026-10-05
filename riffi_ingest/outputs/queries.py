@@ -16,17 +16,18 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 
 from ..db.connection import from_iso, utc_iso
+from ..db.store import AI_CHECKED_SQL
 from ..fetchers.parse import IST
 
 DAY = timedelta(hours=24)
 DIGEST_HOUR = time(7, 0)  # BRIEF.md: the digest is due at 07:00 IST; --date regenerates the 24 h ending then
 QUIET_AFTER = timedelta(days=7)  # a High-priority topic with nothing for this long is called out
 
-# Topics follow the scoring rule (store.story_facts): the AI's tags when the AI has tagged the story, else the
-# keyword pass's. `it` is the item_topics row being tested.
+# Topics follow the scoring rule (store.story_facts): the AI's tags while the story's AI verdict is current
+# (none, if it found none), else the keyword pass's. `it` is the item_topics row being tested.
 TOPIC_RULE = (
-    "it.match_method = CASE WHEN EXISTS (SELECT 1 FROM item_topics x WHERE x.cluster_id = it.cluster_id"
-    " AND x.match_method = 'llm') THEN 'llm' ELSE 'keyword' END"
+    "it.match_method = CASE WHEN EXISTS (SELECT 1 FROM ai_verdicts v WHERE v.cluster_id = it.cluster_id"
+    f" AND {AI_CHECKED_SQL}) THEN 'llm' ELSE 'keyword' END"
 )
 TOUCHED = (
     "touched AS (SELECT DISTINCT cluster_id FROM items"
@@ -82,8 +83,8 @@ def counts(conn: sqlite3.Connection, w: Window) -> Counts:
     rows = conn.execute(
         f"WITH {TOUCHED} SELECT COALESCE(c.label, 'Unscored') AS label, COUNT(*) AS n,"
         " SUM(c.first_seen_at >= ? AND c.first_seen_at < ?) AS new,"
-        " SUM(NOT EXISTS (SELECT 1 FROM item_topics it WHERE it.cluster_id = c.cluster_id"
-        "   AND it.match_method = 'llm')) AS awaiting"
+        f" SUM(NOT EXISTS (SELECT 1 FROM ai_verdicts v WHERE v.cluster_id = c.cluster_id AND {AI_CHECKED_SQL}))"
+        "   AS awaiting"
         " FROM touched JOIN story_clusters c ON c.cluster_id = touched.cluster_id GROUP BY 1",
         (start, end, start, end),
     )
@@ -102,13 +103,14 @@ def ranked_stories(conn: sqlite3.Connection, w: Window, limit: int) -> list[sqli
     return conn.execute(
         f"WITH {TOUCHED} SELECT c.cluster_id, c.headline, c.relevance_score, c.label, c.sensitive,"
         " c.source_count, c.started_at,"
-        " EXISTS (SELECT 1 FROM item_topics it WHERE it.cluster_id = c.cluster_id AND it.match_method = 'llm')"
-        "   AS ai_checked,"
+        f" (v.cluster_id IS NOT NULL AND {AI_CHECKED_SQL}) AS ai_checked, v.whats_new AS ai_whats_new,"
+        " v.debate_angle AS ai_angle,"
         " (SELECT i.url FROM items i WHERE i.cluster_id = c.cluster_id"
         "   ORDER BY i.url_resolved DESC, i.published_at, i.item_id LIMIT 1) AS url,"
         " (SELECT group_concat(name, '; ') FROM (SELECT s.name FROM json_each(c.sources) j"
         "   JOIN sources s ON s.source_id = j.value ORDER BY s.source_id)) AS source_names"
         " FROM touched JOIN story_clusters c ON c.cluster_id = touched.cluster_id"
+        " LEFT JOIN ai_verdicts v ON v.cluster_id = c.cluster_id"
         " WHERE COALESCE(c.label, '') <> 'Drop'"
         " ORDER BY c.relevance_score IS NULL, c.relevance_score DESC, c.source_count DESC, c.started_at DESC,"
         " c.cluster_id LIMIT ?",

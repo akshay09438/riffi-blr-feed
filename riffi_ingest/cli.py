@@ -6,6 +6,8 @@
     fetch             one full cycle (fetch, clean, group, tag, score, store): --all, --source S004 --source S011,
                       or --due (only the sources whose interval is up: what Windows' timer runs every 30 minutes)
     stories           the best stories of the last 24 hours with score, label, sources and topics
+    ai-batch          write the stories waiting for the AI pass into batch files (D-005, D-016)
+    ai-apply          check the AI pass's answers, store the good ones and re-score their stories
     status            is the engine alive: the last run, the last 24 hours, sources failing 3+ runs in a row
     log-template      the editor's empty ground-truth log and the High-priority topics to log from
     check-log         check the editor's ground-truth log for mistakes, row by row
@@ -48,6 +50,7 @@ from .safety.blocklist import load_blocklist
 from .scheduler import Schedule, ScheduleError, due
 from .scoring import Scorer
 from .sources import Source, load_sources
+from .tagging import llm_batches
 
 app = typer.Typer(help="Riffi news ingestion engine.", no_args_is_help=True, add_completion=False)
 
@@ -468,6 +471,60 @@ def stories(
             f"{n:>3}. {score:>3} {r['label'] or '-':<6} {r['source_count']:>2} src  {(r['topics'] or '-')[:24]:<24}"
             f"  {r['headline'][:90]}{flags}"
         )
+
+
+AiOutOption = typer.Option(PROJECT_ROOT / "data" / "ai", "--out", help="Batch folders go in <out>/<IST time>/.")
+AiFolderArgument = typer.Argument(..., help="The folder ai-batch printed.")
+AiMaxOption = typer.Option(llm_batches.MAX_STORIES, "--max", help="At most this many stories (best first).")
+
+
+@app.command("ai-batch")
+def ai_batch(
+    hours: int = HoursOption, max_stories: int = AiMaxOption, out: Path = AiOutOption, db: Path = DbOption
+) -> None:
+    """Write the stories waiting for the AI pass (fetched in the last --hours, tagged or local, never checked or
+    grown since) into batch files of 20, for a Claude Code session to answer (D-005, D-016). The database only
+    records what each batch holds; no story changes."""
+    if max_stories < 1:
+        _fail("--max must be at least 1")
+    _, conn = _open_existing(db)
+    now = datetime.now(timezone.utc)
+    run = llm_batches.write_batches(conn, out, since=now - timedelta(hours=hours), now=now, max_stories=max_stories)
+    if not run.stories:
+        typer.echo(f"Nothing waits for the AI pass in the last {hours} hours.")
+        return
+    batches = len(run.batches)
+    typer.echo(f"{run.stories} stories in {batches} batch{'es' if batches != 1 else ''}. Folder: {run.folder}")
+    if run.left_out:
+        typer.echo(f"  {run.left_out} more wait over the --max cap; they go in the next ai-batch.")
+    typer.echo(
+        f"  Next: answer each batch by following {llm_batches.INSTRUCTIONS},"
+        f" then: python -m riffi_ingest ai-apply {run.folder}"
+    )
+
+
+@app.command("ai-apply")
+def ai_apply(folder: Path = AiFolderArgument, db: Path = DbOption) -> None:
+    """Check every answer file in an ai-batch folder, store the answers that pass and re-score their stories.
+    A rejected answer is listed with its reason and its story keeps waiting. Safe to run again."""
+    db_path, conn = _open_existing(db)
+    if not llm_batches.batches_in(conn, folder):
+        _fail(f"{folder} is not a folder written by ai-batch for this database")
+    try:
+        with run_lock(db_path.parent / "fetch.lock"):
+            r = llm_batches.apply_answers(conn, folder, Scorer.load(Paths().scoring), now=datetime.now(timezone.utc))
+    except AlreadyRunning:
+        _fail("a fetch is running; run ai-apply again when it has finished")
+    typer.echo(
+        f"AI pass: {r.applied} applied ({r.excluded} excluded as communal or religious), {len(r.rejected)} rejected,"
+        f" {r.unanswered} not answered, {r.older} skipped (a newer batch already checked them)."
+    )
+    for name, sid, why in r.rejected:
+        typer.echo(f"  rejected {name} {sid or '(whole file)'}: {why}")
+    for sid, why in r.excluded_by_reason:
+        typer.echo(f"  excluded only because a reason was given (check it): {sid}: {why}")
+    if r.files_missing:
+        typer.echo(f"  no answer file yet for: {', '.join(r.files_missing)}")
 
 
 @app.command("status")
