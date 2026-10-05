@@ -9,8 +9,11 @@
     status            is the engine alive: the last run, the last 24 hours, sources failing 3+ runs in a row
     log-template      the editor's empty ground-truth log and the High-priority topics to log from
     check-log         check the editor's ground-truth log for mistakes, row by row
+    digest            the day's files in reports/YYYY-MM-DD/: digest.md and digest.csv (ranked stories, topics that
+                      moved, quiet High-priority topics) plus the health report; --date regenerates a past day
+    report            the health report only: health.md and sources_health.csv
 
-Coming with later steps: digest --date and report.
+Every command has --help.
 """
 
 from __future__ import annotations
@@ -36,9 +39,14 @@ from .fetchers.feeds import fetch_sources, plan
 from .fetchers.gnews import ONLINE_CAP_PER_RUN
 from .fetchers.http import DOMAIN_INTERVAL, PoliteClient, domain_key
 from .fetchers.parse import IST
+from .outputs import queries
+from .outputs.digest import CSV_CAP, day_text, write_digest
+from .outputs.health_report import write_health
 from .pipeline import Paths, RunSummary, run_fetch
 from .runlock import AlreadyRunning, run_lock
+from .safety.blocklist import load_blocklist
 from .scheduler import Schedule, ScheduleError, due
+from .scoring import Scorer
 from .sources import Source, load_sources
 
 app = typer.Typer(help="Riffi news ingestion engine.", no_args_is_help=True, add_completion=False)
@@ -62,6 +70,10 @@ DueOption = typer.Option(
 ScheduleOption = typer.Option(
     PROJECT_ROOT / "config" / "schedule.yaml", "--schedule", help="How often each source is fetched."
 )
+DayOption = typer.Option(
+    None, "--date", help="Regenerate a past day (YYYY-MM-DD): the 24 hours ending 07:00 IST on that date."
+)
+OutputsOption = typer.Option(PROJECT_ROOT / "reports", "--out", help="Reports go in <out>/YYYY-MM-DD/.")
 LogOption = typer.Option(PROJECT_ROOT / "data" / "ground_truth.csv", "--log", help="The editor's ground-truth log.")
 LogTopicsOption = typer.Option(
     PROJECT_ROOT / "data" / "ground_truth_topics.csv", "--topic-list", help="Where to write the topics to log from."
@@ -454,6 +466,12 @@ def status(db: Path = DbOption, schedule: Path = ScheduleOption) -> None:
     failing 3+ runs in a row. Changes nothing."""
     db_path = Path(db) if db else default_db_path()
     conn = connect(db_path)
+    for line in _engine_lines(conn, db_path, schedule, datetime.now(timezone.utc)):
+        typer.echo(line)
+
+
+def _engine_lines(conn, db_path: Path, schedule: Path, now: datetime) -> list[str]:
+    """What `status` prints: the run diary's story plus any problem with the speeds. Shared with the health report."""
     try:  # a fetch holding the run lock right now is the only run that can still be going
         with run_lock(db_path.parent / "fetch.lock"):
             run_in_progress = False
@@ -464,13 +482,15 @@ def status(db: Path = DbOption, schedule: Path = ScheduleOption) -> None:
     except (OSError, ScheduleError) as exc:
         speeds, problem = None, exc
     timer = speeds.timer if speeds else True
-    for line in runstatus.report(conn, datetime.now(timezone.utc), run_in_progress=run_in_progress, timer=timer):
-        typer.echo(line)
+    lines = runstatus.report(conn, now, run_in_progress=run_in_progress, timer=timer)
     if speeds:
-        for p in speeds.problems(store.load_sources(conn)):
-            typer.echo(f"Warning: {p} in {schedule}; those sources are never fetched.")
+        lines += [
+            f"Warning: {p} in {schedule}; those sources are never fetched."
+            for p in speeds.problems(store.load_sources(conn))
+        ]
     else:
-        typer.echo(f"Warning: cannot read the speeds ({problem}); timed runs fail until it is fixed.")
+        lines.append(f"Warning: cannot read the speeds ({problem}); timed runs fail until it is fixed.")
+    return lines
 
 
 @app.command("log-template")
@@ -502,6 +522,102 @@ def check_log(log: Path = LogOption, topics: Path = TopicsOption) -> None:
     )
     if check.errors:
         raise typer.Exit(code=1)
+
+
+def _report_day(text: str | None, now: datetime):
+    """--date as a date, refused when it is not YYYY-MM-DD or lies after today (IST)."""
+    if text is None:
+        return None
+    try:
+        day = datetime.strptime(text.strip(), "%Y-%m-%d").date()
+    except ValueError:
+        _fail(f"--date {text!r} is not a date: write it as YYYY-MM-DD, e.g. 2026-10-06")
+    if day > now.astimezone(IST).date():
+        _fail(f"--date {text} is in the future: give today or a past day")
+    return day
+
+
+def _open_existing(db: Path | None) -> tuple[Path, sqlite3.Connection]:
+    """The reports only read: a missing database is an error, never quietly created empty."""
+    db_path = Path(db) if db else default_db_path()
+    if not db_path.exists():
+        _fail(f"there is no database at {db_path} yet. Fetch first: python -m riffi_ingest fetch --all")
+    return db_path, connect(db_path)
+
+
+def _write_health_files(conn, db_path: Path, schedule: Path, folder: Path, now: datetime, day) -> None:
+    try:
+        problems = load_blocklist(Paths().blocklist).problems
+    except OSError as exc:
+        problems = [f"cannot read blocklist.csv ({exc}): nothing is being blocked"]
+    h = write_health(
+        conn,
+        folder,
+        now=now,
+        day=day,
+        engine_lines=_engine_lines(conn, db_path, schedule, now),
+        blocklist_problems=problems,
+    )
+    flagged = h.categories["failing"] + h.not_useful
+    typer.echo(
+        f"Health: {h.categories['working']} sources working, {h.categories['failing']} failing 3+ in a row,"
+        f" {h.categories['stale']} stale, {h.not_useful} not useful in 7 days ({flagged} flagged in all)."
+    )
+    typer.echo(f"  {h.md_path}\n  {h.csv_path}")
+
+
+@app.command("digest")
+def digest(
+    date: str = DayOption,
+    out: Path = OutputsOption,
+    top: int = TopOption,
+    db: Path = DbOption,
+    schedule: Path = ScheduleOption,
+) -> None:
+    """The daily files (BRIEF.md step 8, D-012) in <out>/YYYY-MM-DD/: digest.md and digest.csv (the stories of the
+    24 hours before now, best first; the topics that moved; High-priority topics quiet for 7+ days) plus
+    health.md and sources_health.csv. --date YYYY-MM-DD regenerates a past day (the 24 hours ending 07:00 IST).
+    A rerun overwrites. Reads the database, never changes it."""
+    now = datetime.now(timezone.utc)
+    day = _report_day(date, now)
+    if not 1 <= top <= CSV_CAP:
+        _fail(f"--top must be between 1 and {CSV_CAP}")
+    db_path, conn = _open_existing(db)
+    if not queries.has_items(conn):
+        _fail(
+            "the database has no articles yet, so there is nothing to report. Run: python -m riffi_ingest fetch --all"
+        )
+    w = queries.window_for(now, day)
+    folder = Path(out) / w.day.isoformat()
+    d = write_digest(conn, w, folder, top=top, scorer=Scorer.load(Paths().scoring))
+    c = d.counts
+    typer.echo(
+        f"Digest for {day_text(w.day)}: {c.items} items fetched, {c.stories} stories ({c.new_stories} new);"
+        f" {c.labels.get('High', 0)} High, {c.labels.get('Medium', 0)} Medium, {c.labels.get('Low', 0)} Low,"
+        f" {c.labels.get('Drop', 0)} Drop; {d.listed} listed in the CSV."
+    )
+    if c.items == 0:
+        typer.echo("No articles were fetched in this window. Run a fetch first: python -m riffi_ingest fetch --all")
+    typer.echo(f"  {d.md_path}\n  {d.csv_path}")
+    _write_health_files(conn, db_path, schedule, folder, now, w.day)
+
+
+@app.command("report")
+def report(
+    date: str = DayOption,
+    out: Path = OutputsOption,
+    db: Path = DbOption,
+    schedule: Path = ScheduleOption,
+) -> None:
+    """The feed health report only (BRIEF.md steps 8-9): health.md (engine status; sources working, failing,
+    stale, not useful, skipped; blocklist problems) and sources_health.csv (the four columns to paste into the
+    source sheet), in <out>/YYYY-MM-DD/. Health is always as of now. Reads the database, never changes it."""
+    now = datetime.now(timezone.utc)
+    day = _report_day(date, now) or now.astimezone(IST).date()
+    db_path, conn = _open_existing(db)
+    if conn.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == 0:
+        _fail("the database has no sources yet. Run: python -m riffi_ingest import-sources (or fetch --all)")
+    _write_health_files(conn, db_path, schedule, Path(out) / day.isoformat(), now, day)
 
 
 def main() -> None:

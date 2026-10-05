@@ -15,7 +15,8 @@
   - An offline run blames no source, and Google 403/429 refusals are counted.
   - `python -m riffi_ingest status` answers "is it alive?".
 - **The editor's log is ready (cloud session, 5 Oct 2026):** `log-template` creates `data/ground_truth.csv` and the list of High-priority topics, and `check-log` checks each row. Run `log-template` on the laptop before day 1 of the test.
-- **Not built yet:** AI tagging pass, 07:00 digest + health report, dashboard and `/api/stories`, exclusions filter, matching the log to stories + the recall report.
+- **The digest and health report are built (cloud session, 5 Oct 2026, D-012; not merged yet):** `digest` writes `reports/<IST date>/digest.md`, `digest.csv`, `health.md` and `sources_health.csv` for the 24 hours before it is run (`--date` regenerates a past day, 24 h ending 07:00 IST); `report` writes the two health files only. Read-only on the database. Run it on the laptop after a `fetch --all` to see it on real data.
+- **Not built yet:** AI tagging pass, dashboard and `/api/stories`, exclusions filter, matching the log to stories + the recall report.
 - **Deadline:** collecting daily by about 10-12 Oct 2026 so the two-week test finishes before launch.
 - **Merge rule (D-007):** Claude may merge its own PR when every CI check is green AND no dangerous-list file changed. This PR changes dangerous files, and the founder approved each change in the session (see the PR), so it merges with the founder's OK once CI is green.
 
@@ -60,12 +61,12 @@ Everything below needs the laptop: the cloud cannot reach the news sites or the 
    - old ESPNcricinfo scorecards showing as recent: find the items and see what dates their feed gives;
    - the Namma Metro timing story split into 3: take the three headlines and add them as labelled pairs in `tests/test_dedupe.py` before changing anything.
 8. **The editor's log:** `py log-template`, then give the founder `data\ground_truth.csv` and `data\ground_truth_topics.csv` for the editor.
-9. **The morning report** (if PR "digest" is merged by then): `py digest`, then open `reports\<today>\digest.md` with the founder.
+9. **The morning report** (built 5 Oct 2026): `py digest`, then open `reports\<today>\digest.md` with the founder.
 10. Update this file, then stop.
 
 ## Do first next session
 
-1. Read this file, then `BRIEF.md`, `DECISIONS.md` (wins over the brief, now up to D-011), `docs/implementation-plan.md` (open questions 1-10, drift log) and `docs/technical-spec.md` (as-built, including "Scheduler (as built)").
+1. Read this file, then `BRIEF.md`, `DECISIONS.md` (wins over the brief, now up to D-012), `docs/implementation-plan.md` (open questions 1-11, drift log) and `docs/technical-spec.md` (as-built, including "Scheduler (as built)" and "Outputs (as built)").
 2. The timer is not installed (D-009). Run `status` first anyway and act on it.
    - `FAILED`, `did not finish` or `no checks at all`: run `/zuko:fix`.
    - Google refusals: stop the timer, then ask the founder.
@@ -82,7 +83,7 @@ Everything below needs the laptop: the cloud cannot reach the news sites or the 
 5. Fix and re-test `feeds.csv` URLs:
    - S057 (VK, 404), S007 (KSEC, DNS), S055 / S045 / S058 (native Kannada feeds), S073, S021, S011.
    - The founder must supply S047, S107, S108 and S121.
-6. Next build steps: 07:00 digest + health report (step 8), dashboard + `/api/stories` (dangerous), AI pass (open questions 1-2), exclusions filter (dangerous; needs the founder's word lists), matching the ground-truth log to stories + the recall test (the log itself is built: run `log-template` on the laptop before day 1).
+6. Next build steps: ~~digest + health report (step 8)~~ built 5 Oct 2026 (D-012), dashboard + `/api/stories` (dangerous), AI pass (open questions 1-2), exclusions filter (dangerous; needs the founder's word lists), matching the ground-truth log to stories + the recall test (the log itself is built: run `log-template` on the laptop before day 1).
 
 ## How to work here
 
