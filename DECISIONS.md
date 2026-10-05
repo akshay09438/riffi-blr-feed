@@ -4,6 +4,14 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-009 · No timer for now: the engine fetches only when the founder asks (5 Oct 2026, founder)
+
+The Windows timer from D-008 is **not installed**. Do not install it, and do not offer to, until the founder says otherwise. Fetching happens only when the founder asks for it: a session on the laptop runs `python -m riffi_ingest fetch --all` (or `--due`, or `--source ...`) by hand. Everything else in D-008 stays: the speeds in `config/schedule.yaml`, the run diary, `engine.log` and `status`. `scripts/schedule-windows.ps1` stays in the repo, unused, so switching to the timer later is one command.
+
+What this means: `status` will show long gaps and "no checks at all" between the founder's runs. That is expected, not a fault. The two-week test's timeliness figure (caught within 24 h) and its gap attribution assume regular runs, so for the test to measure what the brief asks, fetches need to happen at least daily. If they don't, the day-14 report must say so.
+
+Why: the founder wants to control when the engine reaches out to the sites.
+
 ## D-008 · The engine runs on Windows' own timer; Google News every 2 h during the two-week test (5 Oct 2026, founder)
 
 The brief names APScheduler (in its STEP 0, the standalone path; D-001 lists it too) and these speeds ("What the engine must do" step 2 and STEP 7): every 30 min for Google News queries on High-priority topics, Telegram and (in step 2) the priority X feeds; every 2 h for all other feeds; every 6 h for page monitors. STEP 7 also asks for a 07:00 IST digest job; that comes with step 8 (outputs), not here. D-008 narrows the "every 30 min (High-priority) to 2 h" Google News range in D-004 to 2 h for the two-week test.
