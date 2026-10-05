@@ -41,7 +41,7 @@
 
 9. **Telegram (decision B, still open):** rsshub.app answers 403 for S016, S101 and S102. Options: read each channel's public page (`t.me/s/<channel>`), self-host RSSHub (the base URL is already a setting), or drop them. Until this is decided the three are expected to keep failing at every 30-minute check and to show under "failing 3+ runs" in `status`.
 
-10. **README note on PyYAML (decision C, still open):** on the laptop (Windows ARM64, Python 3.11) PyYAML 6.0.3 has no prebuilt wheel, so the laptop session installed it without the C extension. Whether to add a note about it to the README is not decided.
+10. ~~**README note on PyYAML (decision C)**~~ Resolved 5 Oct 2026: the founder said yes, and the note is in the README's Setup section. Background: on the laptop (Windows ARM64, Python 3.11) PyYAML 6.0.3 has no prebuilt wheel, so the laptop session installed it without the C extension. Whether to add a note about it to the README is not decided.
 
 ## Reuse map (from the panel project, copied not imported - D-006)
 
