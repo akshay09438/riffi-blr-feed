@@ -17,7 +17,7 @@
 | 4 | Tag topics (keyword pass + Claude Code AI pass, D-005) | Keyword pass built and tested offline (4 Oct 2026), keywords drafted for all 151 topics; AI pass not started (open questions 1-2) |
 | 5 | Score (scoring.yaml) | Built and tested (4 Oct 2026): every story scored and labelled each run; AI points await the AI pass (open question 1) |
 | 6 | Store (7 tables, idempotent CSV import) | Built and tested (4 Oct 2026): schema, importers, run storage, pruning, wired into the CLI; the run diary (`engine_runs`) was added on 5 Oct 2026 with step 7 |
-| 7 | Schedule + CLI | Built (5 Oct 2026): CLI and scheduler (`fetch --due` every 30 min through Windows Task Scheduler, D-008), run diary, `status`. The timer is written and tested but not installed yet (needs the founder's yes after merge). Digest and report come with step 8 |
+| 7 | Schedule + CLI | Built (5 Oct 2026): CLI and scheduler (`fetch --due` every 30 min through Windows Task Scheduler, D-008), run diary, `status`. The engine side (`fetch --due`, diary, `status`) is tested; the Windows timer script is checked (parses, settings built and read back in memory, `pythonw` ran `fetch --due` with no window) but has never been registered, so registering it, after merge and with the founder's yes, is its real test. Digest and report come with step 8 |
 | 8 | Outputs (dashboard, digest, /api/stories, sources_health.csv) | Not started |
 | 9 | Health checks | Not started |
 | 10 | Two-week recall test (ground-truth form, nightly match, day-14 report) | Not started |

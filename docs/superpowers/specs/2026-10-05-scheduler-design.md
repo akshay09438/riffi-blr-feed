@@ -2,7 +2,7 @@
 
 *Approved by the founder on 5 Oct 2026 in a /zuko:build session. Decisions taken: Google News every 2 h during the two-week test; Windows' own timer (Task Scheduler) instead of APScheduler.*
 
-*Updated to as-built after the safety review, 5 Oct 2026. Three independent reviewers and an independent test author went over the change; where the first design and the code differ, this page now describes the code. The timer itself is written and tested but not installed on the laptop yet: that waits for the merge and the founder's separate yes.*
+*Updated to as-built after the safety review, 5 Oct 2026. Three independent reviewers and an independent test author went over the change; where the first design and the code differ, this page now describes the code. The engine side (`fetch --due`, the diary, `status`) is tested. The Windows task script has been checked (it parses, its settings were built and read back in memory, and `pythonw` ran `fetch --due` with no window) but has never been registered with Windows: that waits for the merge and the founder's separate yes, and is the script's real test.*
 
 ## Why
 
@@ -55,7 +55,7 @@ Windows Task Scheduler starts `pythonw.exe -m riffi_ingest fetch --due` every 30
 8. Any exception: the row is closed as `failed` with the reason in `error`, the traceback goes to the log, and the command exits 1. Ctrl+C closes the row as `failed` too (the reason is `KeyboardInterrupt`). Only a hard kill (power cut, killed process) leaves the row at `running`.
 9. A check that fails **before a run can start** (an unreadable `schedule.yaml`, a database that stays locked for 30 s, any other failure while starting the run) writes a one-shot `failed` row, if the database answers, and a log line with the traceback. `status` then does not mistake it for the laptop being off.
 
-The log line is always written first. The diary row is best-effort: if the database refuses it, the log gets a `warning` line and the fetch is never hidden or stopped.
+The log line is always written first. The diary rows for a quiet check (`nothing_due`, `busy`) and the row that closes a run are best-effort: if the database refuses one, the log gets a `warning` line and the result is never hidden. The opening `running` row (`start_engine_run`) is not: if the database refuses it, nothing is fetched and the check ends as "could not start" (exit 1) with a log line and, if the database answers, a `failed` row (item 9 above).
 
 `fetch --all` and `fetch --source` write the same diary rows and log line (mode `all` / `source`), so the test history is complete.
 
@@ -130,7 +130,9 @@ One line per check, appended: the IST time, mode, outcome, then due / ok / faile
 - **Battery and missed starts:** allowed on battery, not stopped when the laptop goes onto battery, and started as soon as possible after a missed start.
 - **One at a time:** a new instance is ignored while one is running, and a run is stopped after 1 hour.
 
-Installing replaces an existing task of the same name. **It has not been run yet.** It is run on the laptop only after this branch is merged and the founder says yes, then verified with `Get-ScheduledTask` and one `Start-ScheduledTask` run checked through `status`.
+Installing replaces an existing task of the same name. **It has not been registered yet.** What has been checked so far: the script parses, its settings objects were built and read back in memory, and `pythonw` ran `fetch --due` with no window. It is registered on the laptop only after this branch is merged and the founder says yes, then verified with `Get-ScheduledTask` and one `Start-ScheduledTask` run checked through `status`; that is its real test.
+
+**The task runs whatever code is in the project folder**, every 30 minutes, against the real database. Keep the folder on `main` while the timer is on, and turn the timer off (`-Remove`) before trying other branches or half-finished code there.
 
 The laptop's sleep setting is the founder's to change (a system setting). The recommendation for the test window is plugged in, with no sleep on mains power. If the laptop sleeps, the next check catches up and the diary shows the gap.
 
