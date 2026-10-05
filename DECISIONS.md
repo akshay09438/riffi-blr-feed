@@ -4,6 +4,20 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-015 · The Election Commission (S008) and GBA (S009) are followed through Google News (6 Oct 2026, founder)
+
+The page-monitor fix (PR #35) was checked on the live pages on the laptop late on 5 Oct and early on 6 Oct 2026. S008 (`eci.gov.in`) and S009 (`gba.karnataka.gov.in`) are now fetched in full, but each is a JavaScript app that sends the engine only "You need to enable JavaScript to run this app.", so they stayed blind. Opened in a browser:
+- **ECI** loads its press notes from a JSON API (`eci-backend/public/api/get-file`, with encrypted parameters). The notes are national, many are titled only "PRESS NOTE", and the engine has no route for JSON.
+- **GBA** has no data feed: its ticker and news are built into the site's JavaScript bundle, so they change only when the site is republished. Its "Notifications, Circulars & Orders" page (`updates.bbmp.gov.in/public`) is a search form whose table is empty until someone searches.
+
+The founder chose a Google News search for each, as in D-013:
+- S008: `("Election Commission of India" OR ECI) (Karnataka OR Bengaluru)`
+- S009: `"Greater Bengaluru Authority"`
+
+Both passed `test-feeds` on a draft copy of `feeds.csv` before the change: 100 items each. S008 had 11 in the last 7 days (the SIR Form 7 row, ECI's special enrolment drive). S009 had 8 (TDR approvals, e-Aasthi 2.0, sealing illegal PGs), and all of the top 15 in each were on topic. Each is checked every 2 h (D-008), and `link_or_handle` still names the real site. Route counts are now Google News 64 and page monitors 17 (still 131). The searches overlap S006 (CEO Karnataka), S007 (State Election Commission), S077 (GBA elections) and S079 (Council elections). Overlap is harmless because stories are grouped, but on day 14 it makes each source's unique catches the evidence that counts.
+
+---
+
 ## D-014 · S004 follows the Chief Minister's English news page, not DIPR's homepage (5 Oct 2026, founder)
 
 On the laptop on the evening of 5 Oct 2026, the real DIPR homepage (`dipr.karnataka.gov.in`, S004) turned out to hold no current press releases: its "latest news" list is in a hidden pop-up, and its newest entry is two years old. The founder chose to point S004 at the Chief Minister's English news page, `https://cm.karnataka.gov.in/en`, still as a page monitor. That page lists the government's press notes in English, written by DIPR, visible on the page, with a dateline on each (12 between 19 Sep and 2 Oct 2026). S004 is renamed "CM's office press releases (DIPR)". Route counts do not change: still 19 page monitors.
