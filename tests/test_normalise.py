@@ -204,6 +204,47 @@ def test_each_change_of_a_monitored_page_is_its_own_item():
         del SOURCES["S025"]
 
 
+# ---- found in real data, 5 Oct 2026: Google News re-dates old Cricbuzz pages (S035, backup query q=RCB)
+
+MATCH_RECORD_TITLES = [
+    "RCB vs PWI, 31st Match, Indian Premier League 2013 - Scorecard",
+    "KKR vs RCB, 27th Match, Indian Premier League, 2017 - Scorecard",
+    "RCB vs KKR, 1st match, Indian Premier League 2008 - Scorecard",
+    "RCB vs PBKS, Final, Indian Premier League 2025 - Scorecard",
+    "Highlights: CSK vs RCB | TATA IPL 2026",
+    "RCB vs SRH, 52nd Match, Indian Premier League 2016 - Squads",
+    "MI vs RCB, 14th Match, Indian Premier League 2023 - Commentary",
+    "RCB vs GT, 70th Match, Indian Premier League 2024 - Live Cricket Score",
+]
+KEPT_NEAR_MISSES = [
+    "RCB retain Kohli ahead of IPL 2027 auction",
+    "Chinnaswamy stampede: what the 2025 inquiry found",
+    "Kohli on his 2016 season",
+    "Scorecard of Karnataka's economy: budget 2026",
+]
+
+
+def test_match_record_pages_are_dropped_with_and_without_the_publisher_suffix():
+    entries = []
+    for n, title in enumerate(MATCH_RECORD_TITLES):
+        entries.append(entry(title=title, link=f"https://www.cricbuzz.com/a/{n}"))
+        entries.append(entry(title=f"{title} - Cricbuzz", link=f"https://www.cricbuzz.com/b/{n}"))
+        entries.append(  # as Google News sends it: the publisher is also in <source>
+            entry(title=f"{title} - Cricbuzz", link=f"https://www.cricbuzz.com/c/{n}", source_title="Cricbuzz")
+        )
+    result, _ = run_clean([outcome("S019", entries)])
+    assert result.items == []
+    assert result.dropped == {"match record page (scorecard/commentary/squads/highlights)": len(entries)}
+
+
+def test_real_news_about_seasons_and_scorecards_is_kept():
+    titles = KEPT_NEAR_MISSES + [f"{t} - Cricbuzz" for t in KEPT_NEAR_MISSES]
+    entries = [entry(title=t, link=f"https://a.in/{n}", source_title="Cricbuzz") for n, t in enumerate(titles)]
+    result, _ = run_clean([outcome("S019", entries)])
+    assert [i.title for i in result.items] == titles
+    assert result.dropped == {}
+
+
 def test_a_google_news_item_keeps_its_id_once_resolved():
     link = f"https://news.google.com/rss/articles/{NEW_STYLE}?oc=5"
     e = entry(link=link, source_title="DH", source_url="https://www.deccanherald.com")
