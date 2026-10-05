@@ -15,6 +15,8 @@ py -V:3.11-arm64 -m venv .venv
 
 Then every command below is run as `.venv\Scripts\python.exe -m riffi_ingest <command>`.
 
+**Note on PyYAML (Windows on ARM64).** PyYAML 6.0.3 has no ready-made package for this laptop's chip, so pip builds it while installing and leaves out its optional speed-up written in C. That is expected and nothing needs fixing: the engine works the same, and the config files are far too small for the speed to matter. In a cloud (Linux) session, if pip says it cannot uninstall a PyYAML that came with the system, run `python3 -m pip install --ignore-installed pyyaml==6.0.3` first.
+
 ## Commands
 
 | Command | What it does |

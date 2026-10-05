@@ -43,7 +43,7 @@
 3. Founder decisions still open (open questions 8-10 in the plan):
    - **A. Certificates.** S004, S009, S109 and S110 send an incomplete certificate chain. Proposed fix: the `truststore` library (Windows trust store; TLS stays verified). It touches `fetchers/http.py` and `requirements.txt` and is certificate configuration, so it needs explicit sign-off.
    - **B. Telegram.** rsshub.app answers 403 for S016, S101 and S102. Options: the public `t.me/s/<channel>` page, self-host RSSHub, or drop.
-   - **C. README note.** On the laptop (ARM64), PyYAML 6.0.3 has no prebuilt wheel. Add a note?
+   - ~~**C. README note.**~~ Done 5 Oct 2026: the founder said yes, and the note is in the README's Setup section.
 4. Ranking fixes seen in the first `stories` output, one PR each:
    - Old ESPNcricinfo scorecards appear as recent.
    - `stories --hours` filters on `updated_at` (`db/store.py` is dangerous).
