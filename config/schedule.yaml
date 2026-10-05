@@ -1,0 +1,24 @@
+# How often each source is fetched (step 7, D-008). Team-editable; read on every run.
+#
+# Windows' timer starts `python -m riffi_ingest fetch --due` every 30 minutes (scripts/schedule-windows.ps1).
+# Each time, the engine fetches the sources whose interval is up, counted from their last attempt.
+# A speed is <minutes>m, <hours>h or never. Anything faster than 30m behaves like 30m (the timer's beat).
+#
+# Two-week test (D-008): Google News every 2 h, not the brief's 30 min. Fewer requests to Google lower the risk
+# of a block (D-004), and 2 h already meets the 24 h recall target. Before launch, a feed that broke news first
+# during the test can be sped up under `sources:` below.
+
+early_minutes: 5            # a source counts as due this many minutes early, so timer jitter never costs a whole beat
+
+by_route:                   # feeds.csv route_type -> how often
+  Google News RSS: 2h
+  X/Instagram via RSS.app: 2h      # phase 1 reads each row's backup Google News query; X is never fetched
+  Native publisher RSS/Atom: 2h
+  YouTube Atom: 2h
+  RSSHub Telegram: 30m
+  Web page monitor: 6h
+  Manual: never
+
+sources:                    # per-source speeds that beat the route's, e.g.
+  # S016: 30m
+  # S041: never
