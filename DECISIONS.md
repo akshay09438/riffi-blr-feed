@@ -4,6 +4,14 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-016 · The AI pass runs when the founder asks for the news; the exclusions filter comes later (6 Oct 2026, founder)
+
+Answers open question 2 (when the Claude Code tagging pass runs). The founder: "when I say, for the last 24 hours it should fetch".
+- **The AI pass runs on request, as part of "give me the news of the last 24 hours"** (the D-009 addendum's laptop job): back up, `fetch --all`, the AI pass over the stories waiting for it, `digest`, show. There is no scheduled 06:30 IST run, so D-005's "scheduled task shortly before 07:00 IST" does not apply while D-009 holds. The digest's "awaiting AI pass" behaviour (D-012) stays for any story the pass has not reached.
+- **The exclusions filter (communal and religious flashpoints) is built after the AI pass**, not before it. The founder said: "safety filter - afterwards". Until it exists, nothing drops excluded topics automatically. The 6 Oct digest already listed religious-angle headlines that were set aside by hand, so every "news of the last 24 hours" run keeps setting them aside by eye before showing the founder. Nothing reads the engine's output yet (no `/api/stories`), so nothing can reach the seed agent. `/api/stories` must not go live before the filter.
+
+---
+
 ## D-015 · The Election Commission (S008) and GBA (S009) are followed through Google News (6 Oct 2026, founder)
 
 The page-monitor fix (PR #35) was checked on the live pages on the laptop late on 5 Oct and early on 6 Oct 2026. S008 (`eci.gov.in`) and S009 (`gba.karnataka.gov.in`) are now fetched in full, but each is a JavaScript app that sends the engine only "You need to enable JavaScript to run this app.", so they stayed blind. Opened in a browser:
