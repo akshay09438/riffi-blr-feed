@@ -22,6 +22,19 @@ SAME = [
     ("5 killed in road accident on Mysuru highway", "Five killed in road accident on Mysuru highway"),
     ("BMTC bus fares hiked by 15%", "BMTC hikes bus fares by 15%"),
     ("Bigg Boss Kannada 12: contestant list revealed", "Bigg Boss Kannada 12 contestants list revealed"),
+    # live run, 5 Oct 2026: one story in three clusters (S024, S065); the other two pairs are in KNOWN_SPLITS
+    ("Namma Metro Timings Extended on October 3 in Bengaluru", "Namma Metro extends last-train timings on 3 October"),
+    ("Power cut in Bangalore on Oct 3rd", "Power cut in Bengaluru on 3 October"),
+]
+# Same story, but in different words: title matching cannot join these without also joining
+# "Namma Metro fare hike from October 3" (a DIFFERENT pair below). Left to the AI pass; strict, so a
+# fix that joins them shows up here and the pair moves to SAME.
+KNOWN_SPLITS = [
+    (
+        "Namma Metro services to run beyond midnight on October 3",
+        "Namma Metro Timings Extended on October 3 in Bengaluru",
+    ),
+    ("Namma Metro services to run beyond midnight on October 3", "Namma Metro extends last-train timings on 3 October"),
 ]
 DIFFERENT = [
     ("Metro fare hike", "Metro fare hike rolled back"),
@@ -37,6 +50,13 @@ DIFFERENT = [
     ("Metro fare hike in Delhi", "Metro fare hike in Bengaluru"),
     ("ಬೆಂಗಳೂರು", "ಬೆಂಗಳೂರಿನಲ್ಲಿ ಭಾರಿ ಮಳೆ, ಶಾಲೆಗಳಿಗೆ ರಜೆ"),
     ("Bengaluru", "Bengaluru rains schools shut"),
+    # added 5 Oct 2026 with date matching, word stemming and the Namma Metro = Bengaluru rule
+    ("Namma Metro timings extended on October 3", "Namma Metro timings extended on October 10"),
+    ("Power cut in Bengaluru on October 3", "Power cut in Bengaluru on 4 October"),
+    ("Namma Metro Yellow Line fare hike", "Namma Metro Purple Line timings extended"),
+    ("Namma Metro Purple Line timings extended on Oct 3", "Namma Metro Yellow Line timings extended on Oct 3"),
+    ("Metro fare hike in Delhi", "Namma Metro fare hike in Bengaluru"),
+    ("Namma Metro fare hike from October 3", "Namma Metro services to run beyond midnight on October 3"),
 ]
 
 
@@ -60,6 +80,12 @@ def test_same_story_pairs_merge(a, b):
     first = c.add(item(a, source_id="S011", hours_ago=2))
     second = c.add(item(b, source_id="S019", hours_ago=1))
     assert second.cluster is first.cluster, (a, b)
+
+
+@pytest.mark.xfail(strict=True, reason="same story in different words; needs meaning, not title matching")
+@pytest.mark.parametrize("a,b", KNOWN_SPLITS)
+def test_known_splits_still_split(a, b):
+    test_same_story_pairs_merge(a, b)
 
 
 @pytest.mark.parametrize("a,b", DIFFERENT)
