@@ -128,6 +128,7 @@ def test_real_keywords_leave_unrelated_news_alone(real):
     [
         "Alert RCB: Rządowe Centrum Bezpieczeństwa ostrzega przed silnym wiatrem",
         "Poland's Government Security Centre sends RCB alert to phones in Mazovia",
+        "Poland cancels RCB alert over air attack on Ukraine — Interia",  # the real one, S035 backup, 5 Oct 2026
     ],
 )
 def test_polands_rcb_alerts_are_not_rcb_the_team(real, headline):
