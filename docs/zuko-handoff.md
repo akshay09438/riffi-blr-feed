@@ -4,7 +4,7 @@
 
 ## Last updated
 
-5 Oct 2026, late evening - laptop session (Claude Desktop, Code tab). The founder asked for: pull `main`, install, test, back up the database, `import-sources`, `test-feeds` on S007/S015/S041, `fetch --all`, `digest`, and the top stories of the last 24 hours. No timer. All done. No code changed; this branch (`docs/handoff-2026-10-05-evening`) changes only this file, `docs/implementation-plan.md` and `docs/technical-spec.md`.
+5 Oct 2026, late evening - laptop session (Claude Desktop, Code tab). The founder asked for: pull `main`, install, test, back up the database, `import-sources`, `test-feeds` on S007/S015/S041, `fetch --all`, `digest`, and the top stories of the last 24 hours. No timer. All done. Then, with the founder's yes, saved the real S004 and S109 pages as test fixtures and diagnosed the page-monitor bug offline. No engine code changed. This branch (`docs/handoff-2026-10-05-evening`) changes only this file, `docs/implementation-plan.md`, `docs/technical-spec.md` and two new files in `tests/fixtures/`.
 
 ## Where things stand
 
@@ -21,17 +21,31 @@
 1. Open the PR for `docs/handoff-2026-10-05-evening` (title "Handoff: laptop run of the cloud fixes, 5 Oct evening"). Bind it and merge when CI is green. It changes docs only, so D-007 allows Claude to merge.
 2. **Fix the blind page monitors, test first (`/zuko:fix`).** Two separate faults:
    1. **304 hides a blind snapshot (S008 ECI, S009 GBA).** Tonight both answered 304 Not Modified to the conditional GET. S008 has done so since 18:43 IST; S009 was 200 then and 304 tonight. So the new rules never saw their pages, and the stored text is still "You need to enable JavaScript to run this app.". `monitor_page` already skips validators when there is no snapshot (`fetchers/pagemonitor.py`, around line 279). It should also skip them when the stored snapshot is blind (`was_blind`-style: only JavaScript notices, or policy text). This can be fixed in the cloud without the real page.
-   2. **Pruning misses the real karnataka.gov.in markup (S004 DIPR, S048 Kannada & Culture, S109 BMTC, S110 BWSSB).** All four answered 200 tonight with the new code and still stored the same 3,588-character Kannada privacy policy (hash `eb00a106...`, text starting "ಗೌಪ್ಯತೆ ನೀತಿ: (ವೆಬ್ಸೈಟ್ ಯಾವುದೇ ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ಸಂಗ್ರಹಿಸದಿದ್ದಾಗ)..."). The fixture `tests/fixtures/karnataka_gov_template.html` does not match the real page. `is_policy_title` already accepts that spelling and the trailing colon. A guess, to confirm on the real HTML: the real page prints "ಗೌಪ್ಯತೆ ನೀತಿ:" inline at the start of a paragraph, not as a heading, inside a container with no policy id or class, so no pruning rule fires. **It needs the real HTML:** the next laptop session saves it (laptop item 1). Do not guess the markup.
+   2. **Pruning misses the real karnataka.gov.in markup (S004 DIPR, S048 Kannada & Culture, S109 BMTC, S110 BWSSB).** All four answered 200 tonight with the new code and still stored the same 3,588-character Kannada privacy policy (hash `eb00a106...`). **The real pages are now saved** (founder's yes, one request each, 5 Oct ~20:45 IST): `tests/fixtures/karnataka_gov_real_S004_dipr.html` and `tests/fixtures/karnataka_gov_real_S109_bmtc.html`. Both give exactly that hash through today's `page_lines`, so they reproduce the bug offline. What they show (diagnosed offline; no engine code changed):
+      - Every page in this template has about 21 hidden Bootstrap modals (`div.modal.fade`), the same ids on both sites. The template policy modals and their real headings are:
+        - `#fmyModal3` ಕೃತಿಸ್ವಾಮ್ಯ ನೀತಿ (copyright)
+        - `#fmyModal4` ಹೈಪರ್ಲಿಂಕಿಂಗ್ ನೀತಿ (hyperlinking)
+        - `#fmyModal5` ಭದ್ರತಾ ನೀತಿ (security)
+        - `#fmyModal6` ನಿಯಮ ಮತ್ತು ಶರತ್ತುಗಳು (terms; note ಶ, not ಷ)
+        - `#fmyModal7` ಗೌಪ್ಯತೆ ನೀತಿಗಳು (privacy, plural)
+        - `#fmyModal8` ಸಹಾಯ (help)
+        - `#fmyModal9` and `#screen_reader_kn` ಸ್ಕ್ರೀನ್ ರೀಡರ್ ಪ್ರವೇಶ (screen reader)
+
+        **`is_policy_title` rejects every one of these headings**, so none is pruned. `#myModal1`-`#myModal11` are link lists (useful sites, e-governance, downloads ...), and `#eventModal` is empty.
+      - Accepting only the plural (tried by patching the regex in a scratch script) removes the privacy modal, but trafilatura then takes the terms modal (`#fmyModal6`) instead. Fixing one heading at a time just moves the problem.
+      - **The only content that changes is also in a hidden modal:** `#newsModal` "ಇತ್ತೀಚಿನ ಸುದ್ದಿಗಳು" (latest news). DIPR has 9 entries, and BMTC has 84 plus `#exampleModal` "Quick Announcements". There is no visible copy outside the modals. Dropping every modal leaves only the menu and the minister's intro (788 / 1,134 chars), which never change. So "drop all hidden modals" is wrong. The likely shape of the fix is to watch `#newsModal` (plus `#exampleModal`) on this template and drop the rest; the design is the cloud's call.
+      - Each news line ends in a relative age ("Student Pass 4 months ago", "... 2 years ago"). Those tails change by themselves, so strip a trailing "N minutes/hours/days/months/years ago" (and the Kannada form, if any) or every page fires a false "updated" item each month.
+      - **S004's homepage is not where DIPR's press releases go:** the newest entry in its news box says "2 years ago". Even fixed, S004 will not catch cabinet decisions. It needs a different URL (a founder decision on `feeds.csv`; look for DIPR's press-release listing). BMTC's newest entry is "4 months ago", so it is slow but alive.
 3. Then the build: the AI pass (open question 2 needs the founder), dashboard and `/api/stories` (dangerous), exclusions filter (dangerous; needs the founder's word lists), and matching the log to stories plus the recall report.
 
 **Laptop (ask the founder before every fetch):**
-1. Save the raw HTML of S004's page (one polite request) and one of S048/S109/S110 into `tests/fixtures/`, so the cloud can fix the pruning against the real thing. Push it on a branch; the laptop has no `gh`.
+1. Done 5 Oct: S004's and S109's real pages are saved in `tests/fixtures/` on this branch.
 2. After the page-monitor fix merges: `git pull`, run the suite, back up the database, `test-feeds --source S004 --source S048 --source S109 --source S110 --source S008 --source S009`, then check `page_snapshots` holds real page text, not the policy or the JavaScript notice.
 3. Give the editor `data/ground_truth.csv` and `data/ground_truth_topics.csv` before day 1 of the test.
 
 ## In flight
 
-- `docs/handoff-2026-10-05-evening`: committed and pushed, PR not opened (no `gh` on the laptop). Docs only. Suite green on `main` (below).
+- `docs/handoff-2026-10-05-evening`: committed and pushed, PR not opened (no `gh` on the laptop). Docs and two HTML fixtures only (no test uses them yet). Suite green (below).
 - Timer: **not installed and not to be offered** (D-009). The install steps are in `README.md` and D-008 for when the founder changes D-009.
 
 ## How to work here
