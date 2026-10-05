@@ -1,12 +1,21 @@
 import asyncio
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
 
+from riffi_ingest import health
 from riffi_ingest.fetchers import feeds, pagemonitor
 from riffi_ingest.fetchers.feeds import fetch_source, fetch_sources
-from riffi_ingest.fetchers.outcome import Validators
-from riffi_ingest.fetchers.pagemonitor import change_summary, is_stamp_line, page_lines, page_title
+from riffi_ingest.fetchers.outcome import PageSnapshot, Validators
+from riffi_ingest.fetchers.pagemonitor import (
+    change_summary,
+    is_js_notice,
+    is_policy_title,
+    is_stamp_line,
+    page_lines,
+    page_title,
+)
 from riffi_ingest.sources import Source
 from tests.feedtools import fake_client
 
@@ -210,3 +219,92 @@ def test_pages_and_feeds_run_together():
 
     feed_out, page_out = run(go())
     assert feed_out.status == "ok" and page_out.status == "ok" and page_out.snapshot is not None
+
+
+# --- site-template policy blocks and JavaScript shells (5 Oct 2026: S004, S109, S110, S048; S009, S008) ---
+
+KA_TEMPLATE = (Path(__file__).parent / "fixtures" / "karnataka_gov_template.html").read_text(encoding="utf-8")
+NEW_NOTICE = (
+    '<li><a href="/press/2026-10-05-buses">BMTC adds 500 electric buses on Outer Ring Road from 10 October</a>'
+    ' <span class="date">05/10/2026</span></li>'
+)
+
+
+def test_a_karnataka_template_page_keeps_its_notices_and_drops_the_hidden_policy_modal():
+    text = "\n".join(page_lines(KA_TEMPLATE))
+    assert "Cabinet approves new suburban rail land acquisition for Bengaluru" in text
+    assert "ಟೆಂಡರ್ ಸಂಖ್ಯೆ 17" in text and "Media accreditation cards" in text
+    for policy in ("ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ", "personal information", "ಗೌಪ್ಯತಾ ನೀತಿ", "statement of law", "Disclaimer"):
+        assert policy not in text, policy
+
+
+def test_on_a_template_page_a_new_notice_is_a_change_and_a_policy_edit_is_not():
+    first = visit(KA_TEMPLATE).snapshot
+    policy_edit = KA_TEMPLATE.replace("<!--POLICY-->", " ಈ ನೀತಿಯನ್ನು 05/10/2026 ರಂದು ಪರಿಷ್ಕರಿಸಲಾಗಿದೆ.")
+    assert visit(policy_edit, previous=first).entries == []
+    out = visit(KA_TEMPLATE.replace("<!--NOTICE-->", NEW_NOTICE), previous=first)
+    (item,) = out.entries
+    assert "Added: - BMTC adds 500 electric buses on Outer Ring Road from 10 October 05/10/2026" in item.summary
+    assert "Removed" not in item.summary
+
+
+def test_policy_blocks_named_by_id_or_class_or_printed_under_a_heading_are_dropped():
+    lines = page_lines(
+        page(
+            "<p>Water supply suspended in Jayanagar on 7 October 2026.</p>"
+            "<div id='privacy-policy'><p>We collect your IP address and browser type for statistics.</p></div>"
+            "<section class='terms-of-use'><p>Use of this website is governed by Indian law.</p></section>"
+            "<h2>Hyperlinking Policy</h2><p>Prior permission is required to link to this site.</p>"
+            "<p>Links to other websites are provided for convenience.</p>"
+            "<h2>Tenders</h2><p>Tender 42: pipeline repair in Ward 151.</p>"
+        )
+    )
+    text = "\n".join(lines)
+    assert "Water supply suspended in Jayanagar on 7 October 2026." in lines and "Tender 42" in text
+    for policy in ("IP address", "Indian law", "Prior permission", "convenience", "Hyperlinking"):
+        assert policy not in text, policy
+
+
+def test_policy_headings_are_recognised_but_real_policy_news_is_not():
+    for title in ("Privacy Policy", "ಗೌಪ್ಯತಾ ನೀತಿ", "Disclaimer", "Terms & Conditions", "Hyperlinking Policy",
+                  "Copyright Policy", "ಹಕ್ಕು ನಿರಾಕರಣೆ", "Terms of Use:"):  # fmt: skip
+        assert is_policy_title(title), title
+    for title in ("Policies", "Karnataka EV Policy 2025-30", "Terms and conditions for tender No 17", "Notices"):
+        assert not is_policy_title(title), title
+    lines = page_lines(page("<h2>Policies</h2><ul><li>Karnataka Startup Policy 2025-30 notified.</li></ul>"))
+    assert "Karnataka Startup Policy 2025-30 notified." in "\n".join(lines)
+
+
+JS_SHELL = (
+    "<html><head><title>GBA</title></head><body><noscript>You need to enable JavaScript to run this app."
+    "</noscript><div id='root'></div><script src='/static/js/main.js'></script></body></html>"
+)
+
+
+def test_a_javascript_app_shell_is_an_error_that_keeps_the_snapshot_and_gets_the_javascript_fix():
+    first = visit(V1).snapshot
+    out = visit(JS_SHELL, previous=first)
+    assert out.status == "error" and "needs JavaScript" in out.reason
+    assert out.entries == [] and out.snapshot == first
+    fix = health.check(out, NOW).fix
+    assert "needs JavaScript" in fix and "JSON endpoint" in fix
+    assert visit(JS_SHELL).snapshot is None  # first visit: no snapshot from a shell
+
+
+def test_a_javascript_notice_outside_noscript_is_not_content():
+    shell = "<html><head><title>ECI</title></head><body><div id='app'><p>Please enable JavaScript to view this site.</p></div></body></html>"
+    assert visit(shell).status == "error"
+    assert is_js_notice("You need to enable JavaScript to run this app.")
+    assert not is_js_notice("Workshop on JavaScript for government web developers on 12 October 2026 at Vidhana Soudha")
+    assert "Minimum fare is Rs 10." in page_lines(
+        page("<p>Minimum fare is Rs 10.</p><noscript>Enable JavaScript</noscript>")
+    )
+
+
+def test_a_blind_old_snapshot_is_replaced_without_an_updated_item():
+    real = visit(KA_TEMPLATE).snapshot
+    policy_only = PageSnapshot("old", "ಈ ಜಾಲತಾಣವು ನಿಮ್ಮಿಂದ ಯಾವುದೇ ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ಸಂಗ್ರಹಿಸುವುದಿಲ್ಲ.\nPrivacy Policy", "t")
+    shell_only = PageSnapshot("old", "You need to enable JavaScript to run this app.", "t")
+    for blind in (policy_only, shell_only):
+        out = visit(KA_TEMPLATE, previous=blind)
+        assert out.status == "ok" and out.entries == [] and out.snapshot == real
