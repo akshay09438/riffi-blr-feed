@@ -459,13 +459,18 @@ def status(db: Path = DbOption, schedule: Path = ScheduleOption) -> None:
             run_in_progress = False
     except AlreadyRunning:
         run_in_progress = True
-    for line in runstatus.report(conn, datetime.now(timezone.utc), run_in_progress=run_in_progress):
-        typer.echo(line)
     try:
-        for problem in Schedule.load(schedule).problems(store.load_sources(conn)):
-            typer.echo(f"Warning: {problem} in {schedule}; those sources are never fetched.")
+        speeds, problem = Schedule.load(schedule), None
     except (OSError, ScheduleError) as exc:
-        typer.echo(f"Warning: cannot read the speeds ({exc}); timed runs fail until it is fixed.")
+        speeds, problem = None, exc
+    timer = speeds.timer if speeds else True
+    for line in runstatus.report(conn, datetime.now(timezone.utc), run_in_progress=run_in_progress, timer=timer):
+        typer.echo(line)
+    if speeds:
+        for p in speeds.problems(store.load_sources(conn)):
+            typer.echo(f"Warning: {p} in {schedule}; those sources are never fetched.")
+    else:
+        typer.echo(f"Warning: cannot read the speeds ({problem}); timed runs fail until it is fixed.")
 
 
 @app.command("log-template")

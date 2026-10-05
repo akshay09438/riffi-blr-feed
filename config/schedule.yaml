@@ -8,6 +8,8 @@
 # of a block (D-004), and 2 h already meets the 24 h recall target. Before launch, a feed that broke news first
 # during the test can be sped up under `sources:` below.
 
+timer: off                  # D-009: the founder fetches by hand for now. Set to on only if the Windows timer is installed.
+
 early_minutes: 5            # a source counts as due this many minutes early (0 to 29), so timer jitter never costs a whole beat
 
 by_route:                   # feeds.csv route_type -> how often
