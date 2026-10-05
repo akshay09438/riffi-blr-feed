@@ -20,7 +20,7 @@
 | 7 | Schedule + CLI | Built (5 Oct 2026): CLI and scheduler (`fetch --due` every 30 min through Windows Task Scheduler, D-008), run diary, `status`. The engine side (`fetch --due`, diary, `status`) is tested; the Windows timer script is checked (parses, settings built and read back in memory, `pythonw` ran `fetch --due` with no window) but has never been registered, so registering it, after merge and with the founder's yes, is its real test. Digest and report come with step 8 |
 | 8 | Outputs (dashboard, digest, /api/stories, sources_health.csv) | Not started |
 | 9 | Health checks | Not started |
-| 10 | Two-week recall test (ground-truth form, nightly match, day-14 report) | Not started |
+| 10 | Two-week recall test (ground-truth form, nightly match, day-14 report) | The log is ready (5 Oct 2026, cloud session): its CSV format, `log-template` and `check-log` (`groundtruth.py`), so the editor can log from day 1. A dashboard form, the nightly match and the day-14 report are not started |
 | - | First run: test-feeds over all 131, failures with fixes, top 30 stories | Done 5 Oct 2026 on the laptop: `test-feeds` 96 passed / 35 failed; `fetch --all` 115 ok, 11 errors, 5 skipped, 2,177 new items, 2,065 stories (3 High, 610 Medium, 348 Low, 1,104 Drop). Follow-ups in `docs/zuko-handoff.md` |
 | - | README + .env.example | README written (4 Oct 2026; the timer's runbook added 5 Oct); .env.example not yet (it matches the dangerous `**/.env.*` glob, so it waits for a founder OK) |
 

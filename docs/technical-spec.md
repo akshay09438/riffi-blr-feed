@@ -20,7 +20,7 @@ The dangerous-path globs in `CLAUDE.md` point at these exact names. Build them w
 riffi_ingest/
   __init__.py
   __main__.py            python -m riffi_ingest -> the Typer CLI
-  cli.py                 (as built) import-sources, import-topics, test-feeds, fetch (--all, --source, --due), stories, status; later digest, report
+  cli.py                 (as built) import-sources, import-topics, test-feeds, fetch (--all, --source, --due), stories, status, log-template, check-log; later digest, report
   pipeline.py            (as built) one fetch cycle: fetch -> clean -> stories -> tags -> store
   health.py              (as built) health checks and suggested fixes
   config.py              settings from the environment / .env (RSSHUB_BASE_URL so far)
@@ -43,6 +43,7 @@ riffi_ingest/
   scheduler.py           (as built) speeds from config/schedule.yaml and the due rule
   runstatus.py           (as built) what `status` shows
   runlock.py             (as built) one fetch at a time: an OS file lock beside the database
+  groundtruth.py         (as built) the editor's ground-truth log: its CSV format, template and row checks
   outputs/
     digest.py            reports/YYYY-MM-DD/ Markdown + CSV, sources_health.csv
     sheets.py            [dangerous] (later) writing back to the team's Google Sheet
@@ -124,6 +125,19 @@ Why it exists: the two-week test needs 14 days of unattended fetching where ever
   - *Last run:* the latest run that fetched or tried to (checks with nothing due, or skipped as busy, do not count): when (IST), how long ago, mode, outcome and its counts, or the reason it failed. A row still marked `running` is "running now" if a fetch holds the run lock at this moment, and otherwise "did not finish (stopped or crashed)".
   - *Last 24 hours:* the number of checks by outcome; the longest gap with no check at all (flagged if over 45 minutes, otherwise "No gaps"), measured from the end of one check to the start of the next, so a long run is not mistaken for the laptop being off, and counted from the later of 24 hours ago and the first diary row, so a diary only an hour old does not claim 23 hours of silence; a warning if any diary rows are dated in the future (the laptop's clock jumped, so the times may be wrong); and the Google refusals total, with a warning if above 0. No checks at all in 24 hours is said plainly.
   - *Sources failing 3+ runs in a row* (active sources only), with id, name, count and last status; then any speed problems from `schedule.yaml`. With no run in the diary yet (checks that found nothing due do not count as runs) it says so and how to start one.
+
+## Ground-truth log (as built, 5 Oct 2026)
+
+Why it exists: the recall test (step 10) scores every source against the editor's log, and the editor logs from day 1 of the two-week test, before matching is built. So the format and its checks come first.
+
+- **The file** - `data/ground_truth.csv` (gitignored, on the laptop), kept by the editor in Excel or Google Sheets. The columns are `date, topic_id, what_happened, where_seen, time_seen` (BRIEF.md step 10). Headers are read case-insensitively, with spaces read as `_`. Extra columns are ignored. Files are written as UTF-8 with a BOM, because Excel needs it to show Kannada, and read with or without one. A file that is not UTF-8 is refused, with how to save it.
+- **Reading** - `groundtruth.read_log(path, topics, now)` returns `entries` (`row`, `seen_at` as aware IST, `topic_id` upper-cased, `what_happened`, `where_seen`), `errors` and `warnings`, each naming its spreadsheet row.
+  - Accepted dates: `YYYY-MM-DD`, `DD-MM-YYYY`, `DD/MM/YYYY` (Excel's Indian style).
+  - Accepted times: `HH:MM`, `HH:MM:SS`, `9:15 AM`.
+  - Errors leave the row out: an empty cell, an unreadable date or time, an unknown topic id, or a moment in the future.
+  - Warnings keep the row: a topic that is not High priority; or the same day, topic and development (case and spacing ignored) as an earlier row, which counts once.
+  - Blank rows are skipped. Step 10's import and nightly match read the log through this function; the planned `ground_truth` table maps `date` + `time_seen` to `seen_at`.
+- **Commands** - `log-template` writes the header-only log, never over an existing one, and rewrites `data/ground_truth_topics.csv` (the High-priority topics, from `topics.csv`). `check-log` prints `Fix:` and `Note:` lines and a count, and exits 1 while any row has an error.
 
 ## Data model (as built, 4 Oct 2026; engine_runs added 5 Oct 2026)
 
