@@ -7,15 +7,22 @@ from riffi_ingest.db import connect
 from riffi_ingest.db.connection import from_iso, utc_iso
 from riffi_ingest.db.importers import import_sources, import_topics
 from riffi_ingest.db.store import (
+    engine_runs_since,
+    failing_sources,
+    finish_engine_run,
+    last_attempted,
+    last_engine_run,
     load_gnews_cache,
     load_recent_clusters,
     load_snapshots,
     load_validators,
+    log_engine_tick,
     prune,
     record_fetch,
     save_gnews_cache,
     save_run,
     save_tags,
+    start_engine_run,
     story_texts,
 )
 from riffi_ingest.dedupe import Clusterer
@@ -298,3 +305,366 @@ def test_schema_version_has_exactly_one_row(tmp_path):
     for _ in range(3):
         connect(path).close()
     assert connect(path).execute("SELECT COUNT(*) FROM schema_version").fetchone()[0] == 1
+
+
+# ---- the run diary (engine_runs), 5 Oct 2026: evidence for every 30 minutes of the two-week test
+
+HOUR = timedelta(hours=1)
+HALF_HOUR = timedelta(minutes=30)
+NATIVE = "Native publisher RSS/Atom"
+DIARY_COUNTS = ("sources_ok", "sources_failed", "sources_skipped", "items_new", "google_refusals")
+
+
+def fail(conn, source_id, times, route_type=NATIVE, at=NOW):
+    for _ in range(times):
+        record_fetch(conn, FetchOutcome(source_id, route_type, "error", reason="HTTP 503"), at)
+
+
+def run_row(conn, engine_run_id):
+    return conn.execute("SELECT * FROM engine_runs WHERE engine_run_id = ?", (engine_run_id,)).fetchone()
+
+
+def other_tables(conn):
+    """Every row of every table except the diary (and SQLite's own counter table), for before/after checks."""
+    names = [
+        r[0]
+        for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        if r[0] not in ("engine_runs", "sqlite_sequence")
+    ]
+    return {n: [tuple(r) for r in conn.execute(f'SELECT * FROM "{n}" ORDER BY rowid')] for n in names}
+
+
+def test_the_diary_table_has_the_agreed_columns_and_an_index_on_start_time(tmp_path):
+    conn = connect(tmp_path / "engine.db")
+    info = {r["name"]: r for r in conn.execute("PRAGMA table_info(engine_runs)")}
+    assert set(info) == {
+        "engine_run_id",
+        "started_at",
+        "finished_at",
+        "mode",
+        "outcome",
+        "sources_due",
+        "sources_ok",
+        "sources_failed",
+        "sources_skipped",
+        "items_new",
+        "google_refusals",
+        "error",
+    }
+    assert info["engine_run_id"]["pk"] == 1 and info["engine_run_id"]["type"] == "INTEGER"
+    required = {"started_at", "mode", "outcome", "sources_due"}  # NOT NULL; everything else may be empty
+    assert {name for name, col in info.items() if col["notnull"] and name != "engine_run_id"} == required
+    assert info["sources_due"]["dflt_value"] == "0"
+    assert all(info[c]["type"] == "TEXT" for c in ("started_at", "finished_at", "mode", "outcome", "error"))
+    assert all(info[c]["type"] == "INTEGER" for c in ("sources_due", *DIARY_COUNTS))
+    indexed = [
+        conn.execute(f'PRAGMA index_info("{ix["name"]}")').fetchall()[0]["name"]
+        for ix in conn.execute("PRAGMA index_list(engine_runs)")
+        if ix["origin"] == "c"
+    ]
+    assert "started_at" in indexed  # the diary is read by time
+
+
+def test_diary_ids_are_never_reused(db):
+    first = start_engine_run(db, NOW, "due", 1)
+    db.execute("DELETE FROM engine_runs WHERE engine_run_id = ?", (first,))
+    db.commit()
+    assert start_engine_run(db, NOW + HOUR, "due", 1) > first  # AUTOINCREMENT, not rowid reuse
+
+
+# -- last_attempted
+
+
+def test_last_attempted_is_the_latest_fetch_whatever_its_status(db):
+    assert last_attempted(db) == {}  # nothing fetched yet
+    # S011: the latest start wins even when an older fetch is written afterwards
+    record_fetch(db, FetchOutcome("S011", NATIVE, "error", reason="HTTP 503"), NOW + 3 * HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + HOUR)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "skipped", reason="over the cap"), NOW)
+    record_fetch(db, FetchOutcome("S112", "Manual", "not_modified"), NOW + 2 * HOUR)
+    result = last_attempted(db)
+    assert isinstance(result, dict)
+    assert result == {"S011": NOW + 3 * HOUR, "S034": NOW, "S112": NOW + 2 * HOUR}
+    assert "S019" not in result and "S025" not in result  # never fetched: absent, not "epoch" or None
+    assert all(when.tzinfo is not None for when in result.values())
+
+
+def test_last_attempted_counts_a_source_whose_only_fetches_failed(db):
+    fail(db, "S011", 2, at=NOW - HOUR)
+    assert last_attempted(db) == {"S011": NOW - HOUR}
+
+
+# -- the diary row lifecycle
+
+
+def test_a_diary_row_starts_running_and_is_finished_with_its_counts(db):
+    run_id = start_engine_run(db, NOW, "due", 12)
+    assert isinstance(run_id, int)
+    row = run_row(db, run_id)
+    assert row["started_at"] == utc_iso(NOW)
+    assert row["finished_at"] is None
+    assert (row["mode"], row["outcome"], row["sources_due"]) == ("due", "running", 12)
+    assert row["error"] is None and all(row[c] is None for c in DIARY_COUNTS)
+
+    finish_engine_run(
+        db,
+        run_id,
+        NOW + timedelta(minutes=7),
+        "ok",
+        sources_ok=10,
+        sources_failed=1,
+        sources_skipped=1,
+        items_new=42,
+        google_refusals=3,
+    )
+    row = run_row(db, run_id)
+    assert from_iso(row["finished_at"]) == NOW + timedelta(minutes=7)
+    assert row["outcome"] == "ok"
+    assert (row["sources_ok"], row["sources_failed"], row["sources_skipped"]) == (10, 1, 1)
+    assert (row["items_new"], row["google_refusals"]) == (42, 3)
+    assert row["error"] is None
+    # the start facts are not rewritten
+    assert (row["started_at"], row["mode"], row["sources_due"]) == (utc_iso(NOW), "due", 12)
+    assert db.execute("SELECT COUNT(*) FROM engine_runs").fetchone()[0] == 1
+
+
+def test_finishing_a_run_touches_that_row_only_and_zero_counts_stay_zero(db):
+    earlier = start_engine_run(db, NOW - HOUR, "all", 131)
+    run_id = start_engine_run(db, NOW, "source", 1)
+    finish_engine_run(
+        db,
+        run_id,
+        NOW + timedelta(minutes=2),
+        "failed",
+        sources_ok=0,
+        sources_failed=0,
+        sources_skipped=0,
+        items_new=0,
+        google_refusals=0,
+        error="database is locked",
+    )
+    row = run_row(db, run_id)
+    assert row["outcome"] == "failed" and row["error"] == "database is locked"
+    assert all(row[c] == 0 and row[c] is not None for c in DIARY_COUNTS)  # 0 is a count, not "unknown"
+    left_alone = run_row(db, earlier)
+    assert left_alone["outcome"] == "running" and left_alone["finished_at"] is None
+    assert left_alone["error"] is None and all(left_alone[c] is None for c in DIARY_COUNTS)
+    assert left_alone["mode"] == "all" and left_alone["sources_due"] == 131
+
+
+def test_an_offline_run_records_why_and_leaves_unknown_counts_empty(db):
+    run_id = start_engine_run(db, NOW, "due", 9)
+    finish_engine_run(db, run_id, NOW + timedelta(seconds=20), "offline", error="no internet")
+    row = run_row(db, run_id)
+    assert (row["outcome"], row["error"]) == ("offline", "no internet")
+    assert from_iso(row["finished_at"]) == NOW + timedelta(seconds=20)
+    assert all(row[c] is None for c in DIARY_COUNTS)
+
+
+def test_a_run_started_in_another_time_zone_is_stored_as_utc(db):
+    ist = timezone(timedelta(hours=5, minutes=30))
+    run_id = start_engine_run(db, datetime(2026, 10, 4, 11, 30, tzinfo=ist), "all", 3)
+    assert run_row(db, run_id)["started_at"] == "2026-10-04T06:00:00+00:00"
+
+
+# -- ticks: a timer check that fetched nothing
+
+
+def test_a_tick_is_a_one_shot_row_that_starts_and_ends_at_the_same_moment(db):
+    nothing = log_engine_tick(db, NOW, "due", "nothing_due")
+    busy = log_engine_tick(db, NOW + HALF_HOUR, "due", "busy", sources_due=5)
+    assert isinstance(nothing, int) and isinstance(busy, int) and busy > nothing
+    row = run_row(db, nothing)
+    assert row["started_at"] == row["finished_at"] == utc_iso(NOW)
+    assert (row["mode"], row["outcome"], row["sources_due"]) == ("due", "nothing_due", 0)
+    row = run_row(db, busy)
+    assert row["started_at"] == row["finished_at"] == utc_iso(NOW + HALF_HOUR)
+    assert (row["mode"], row["outcome"], row["sources_due"]) == ("due", "busy", 5)
+    assert db.execute("SELECT COUNT(*) FROM engine_runs").fetchone()[0] == 2
+
+
+# -- engine_runs_since
+
+
+def test_engine_runs_since_lists_oldest_first_from_the_cutoff_ties_by_id(db):
+    too_old = log_engine_tick(db, NOW - HALF_HOUR, "due", "nothing_due")
+    late = start_engine_run(db, NOW + 2 * HOUR, "due", 3)  # written first, started last
+    on_cutoff = start_engine_run(db, NOW, "due", 1)
+    middle = log_engine_tick(db, NOW + HOUR, "due", "busy")
+    on_cutoff_too = log_engine_tick(db, NOW, "due", "nothing_due")  # same instant, higher id
+
+    rows = engine_runs_since(db, NOW)
+    assert isinstance(rows, list)
+    assert [r["engine_run_id"] for r in rows] == [on_cutoff, on_cutoff_too, middle, late]
+    assert [r["outcome"] for r in rows] == ["running", "nothing_due", "busy", "running"]  # ticks are included
+    assert from_iso(rows[0]["started_at"]) == NOW and rows[0]["mode"] == "due" and rows[0]["sources_due"] == 1
+
+    ist = timezone(timedelta(hours=5, minutes=30))
+    assert [r["engine_run_id"] for r in engine_runs_since(db, NOW.astimezone(ist))] == [
+        r["engine_run_id"] for r in rows
+    ]  # the cutoff is an instant, whatever zone it is written in
+    everything = engine_runs_since(db, NOW - timedelta(days=1))
+    assert [r["engine_run_id"] for r in everything] == [too_old, on_cutoff, on_cutoff_too, middle, late]
+    assert engine_runs_since(db, NOW + 3 * HOUR) == []
+
+
+# -- last_engine_run
+
+
+def test_last_engine_run_is_none_when_nothing_has_run(db):
+    assert last_engine_run(db) is None
+
+
+def test_last_engine_run_is_none_when_there_were_only_ticks(db):
+    log_engine_tick(db, NOW, "due", "nothing_due")
+    log_engine_tick(db, NOW + HALF_HOUR, "due", "busy", sources_due=2)
+    assert last_engine_run(db) is None
+
+
+@pytest.mark.parametrize("outcome", ["running", "ok", "offline", "failed"])
+def test_last_engine_run_skips_newer_ticks_and_returns_the_real_run(db, outcome):
+    run_id = start_engine_run(db, NOW, "due", 4)
+    if outcome != "running":
+        finish_engine_run(db, run_id, NOW + timedelta(minutes=3), outcome)
+    log_engine_tick(db, NOW + HALF_HOUR, "due", "nothing_due")
+    log_engine_tick(db, NOW + HOUR, "due", "busy", sources_due=1)
+    row = last_engine_run(db)
+    assert row is not None
+    assert row["engine_run_id"] == run_id and row["outcome"] == outcome and row["mode"] == "due"
+
+
+def test_last_engine_run_picks_the_latest_start_then_the_later_row(db):
+    newest_start = start_engine_run(db, NOW, "due", 1)
+    start_engine_run(db, NOW - HOUR, "all", 131)  # written later, but started earlier
+    assert last_engine_run(db)["engine_run_id"] == newest_start
+    same_instant = start_engine_run(db, NOW, "source", 1)
+    assert last_engine_run(db)["engine_run_id"] == same_instant  # tie: the later row
+
+
+# -- failing_sources
+
+
+def test_failing_sources_lists_active_sources_at_the_threshold_most_failures_first(db):
+    fail(db, "S112", 5, route_type="Manual")
+    fail(db, "S034", 3)
+    fail(db, "S011", 3)
+    fail(db, "S019", 2, route_type="Google News RSS")  # below the default threshold
+    fail(db, "S025", 6, route_type="Web page monitor")  # worst, but switched off
+    db.execute("UPDATE sources SET active = 0 WHERE source_id = 'S025'")
+    db.commit()
+    fail(db, "S001", 3)  # three failures, then it recovered: the count is back to 0
+    record_fetch(db, FetchOutcome("S001", NATIVE, "ok"), NOW)
+
+    rows = failing_sources(db)
+    assert [r["source_id"] for r in rows] == ["S112", "S011", "S034"]  # 5, then the 3s by source_id
+    assert [r["consecutive_failures"] for r in rows] == [5, 3, 3]
+    names = dict(db.execute("SELECT source_id, name FROM sources WHERE source_id IN ('S112', 'S011', 'S034')"))
+    assert {r["source_id"]: r["name"] for r in rows} == names
+    assert all(r["last_status"] == "error: HTTP 503" for r in rows)
+
+    assert [r["source_id"] for r in failing_sources(db, at_least=2)] == ["S112", "S011", "S034", "S019"]
+    assert [r["source_id"] for r in failing_sources(db, at_least=5)] == ["S112"]
+    assert failing_sources(db, at_least=6) == []  # S025 has 6, but it is inactive
+
+
+def test_failing_sources_is_empty_when_every_source_is_healthy(db):
+    assert failing_sources(db) == []
+    fail(db, "S011", 2)
+    assert failing_sources(db) == []
+
+
+# -- committed, and nothing else touched
+
+
+def test_diary_rows_are_committed_and_visible_to_another_connection(tmp_path):
+    path = tmp_path / "engine.db"
+    writer, reader = connect(path), connect(path)
+
+    run_id = start_engine_run(writer, NOW, "due", 4)
+    assert not writer.in_transaction
+    seen = reader.execute(
+        "SELECT outcome, finished_at, sources_due FROM engine_runs WHERE engine_run_id = ?", (run_id,)
+    )
+    assert tuple(seen.fetchone()) == ("running", None, 4)
+
+    finish_engine_run(writer, run_id, NOW + timedelta(minutes=5), "ok", sources_ok=4, items_new=9)
+    assert not writer.in_transaction
+    seen = reader.execute("SELECT outcome, sources_ok, items_new FROM engine_runs WHERE engine_run_id = ?", (run_id,))
+    assert tuple(seen.fetchone()) == ("ok", 4, 9)
+
+    tick_id = log_engine_tick(writer, NOW + HALF_HOUR, "due", "nothing_due")
+    assert not writer.in_transaction
+    seen = reader.execute("SELECT outcome FROM engine_runs WHERE engine_run_id = ?", (tick_id,)).fetchone()
+    assert seen["outcome"] == "nothing_due"
+    writer.close()
+    reader.close()
+
+
+def test_the_diary_functions_change_nothing_in_any_other_table(db):
+    fail(db, "S011", 3)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "ok"), NOW)
+    before = other_tables(db)
+    run_id = start_engine_run(db, NOW, "due", 2)
+    finish_engine_run(db, run_id, NOW + HOUR, "ok", sources_ok=2)
+    log_engine_tick(db, NOW + HALF_HOUR, "due", "busy")
+    engine_runs_since(db, NOW)
+    last_engine_run(db)
+    last_attempted(db)
+    failing_sources(db)
+    assert other_tables(db) == before
+
+
+# -- an existing database gains the diary without losing anything
+
+
+def test_an_existing_database_without_the_diary_gains_it_and_keeps_its_data(tmp_path, repo_root):
+    path = tmp_path / "data" / "engine.db"
+    conn = connect(path)
+    import_sources(conn, repo_root / "feeds.csv", now=NOW)
+    import_topics(conn, repo_root / "topics.csv", now=NOW)
+    ok = FetchOutcome(
+        "S011",
+        NATIVE,
+        "ok",
+        http_status=200,
+        entries=[Entry(title="a", link="https://a.in/1", published=NOW - HOUR, summary="s")],
+        validators=Validators('"e1"', ""),
+    )
+    record_fetch(conn, ok, NOW)
+    fail(conn, "S034", 2)
+    record_fetch(
+        conn, FetchOutcome("S025", "Web page monitor", "ok", snapshot=PageSnapshot("h0", "text", "BMRCL")), NOW
+    )
+    c = Clusterer()
+    stories = [item("BBMP floats tender for tunnel road", hours_ago=3), item("Metro fare hike from Monday")]
+    c.add_all(stories)
+    save_run(conn, stories, list(c.clusters.values()), NOW)
+    save_tags(conn, {cid: TagResult({"O06": ["tunnel road"]}, local=True) for cid in c.clusters}, NOW)
+    save_gnews_cache(conn, {"CBMi1": "https://a.in/1"}, NOW)
+    conn.execute(
+        "INSERT INTO ground_truth (logged_on, topic_id, what_happened, created_at) VALUES ('2026-10-04', 'O06', 'x', ?)",
+        (utc_iso(NOW),),
+    )
+    # make the file look like one written before this change: no diary table
+    conn.execute("DROP TABLE engine_runs")
+    conn.commit()
+    assert "engine_runs" not in {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    before = other_tables(conn)
+    assert before["sources"] and before["fetch_runs"] and before["items"] and before["story_clusters"]
+    assert before["item_topics"] and before["page_snapshots"] and before["gnews_cache"] and before["ground_truth"]
+    conn.close()
+
+    conn = connect(path)
+    assert "engine_runs" in {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert other_tables(conn) == before  # every existing row of every other table is untouched
+    assert tuple(conn.execute("SELECT id, version FROM schema_version").fetchall()[0]) == (1, 1)
+    assert conn.execute("SELECT COUNT(*) FROM schema_version").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM engine_runs").fetchone()[0] == 0
+    run_id = start_engine_run(conn, NOW, "due", 1)  # and the gained table works
+    conn.close()
+
+    conn = connect(path)  # connecting again neither fails nor empties the diary
+    assert [r["engine_run_id"] for r in engine_runs_since(conn, NOW)] == [run_id]
+    assert other_tables(conn) == before
+    assert conn.execute("SELECT version FROM schema_version").fetchone()[0] == 1
+    conn.close()
