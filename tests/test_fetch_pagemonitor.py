@@ -308,3 +308,71 @@ def test_a_blind_old_snapshot_is_replaced_without_an_updated_item():
     for blind in (policy_only, shell_only):
         out = visit(KA_TEMPLATE, previous=blind)
         assert out.status == "ok" and out.entries == [] and out.snapshot == real
+
+
+def test_a_blind_snapshot_asks_for_the_full_page_so_a_304_cannot_keep_it():
+    # S008/S009, 5 Oct: the server answered 304 to the conditional GET, so the stored JavaScript notice stayed
+    for blind in (
+        PageSnapshot("old", "You need to enable JavaScript to run this app.", "t"),
+        PageSnapshot("old", "ಈ ಜಾಲತಾಣವು ನಿಮ್ಮಿಂದ ಯಾವುದೇ ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ಸಂಗ್ರಹಿಸುವುದಿಲ್ಲ.\nಗೌಪ್ಯತೆ ನೀತಿಗಳು", "t"),
+    ):
+        seen = {}
+        out = visit(V1, previous=blind, validators=Validators(etag='"old"', last_modified="x"), seen=seen)
+        assert "if-none-match" not in seen and "if-modified-since" not in seen
+        assert out.status == "ok" and out.entries == [] and "Minimum fare is Rs 10." in out.snapshot.text
+    seen = {}
+    visit(V1, previous=visit(V1).snapshot, validators=Validators(etag='"old"'), seen=seen)
+    assert seen.get("if-none-match") == '"old"'  # a real snapshot still uses the conditional GET
+
+
+# --- the real karnataka.gov.in pages (saved 5 Oct 2026): the news lists are the page ---
+
+FIXTURES = Path(__file__).parent / "fixtures"
+DIPR = (FIXTURES / "karnataka_gov_real_S004_dipr.html").read_text(encoding="utf-8")
+BMTC = (FIXTURES / "karnataka_gov_real_S109_bmtc.html").read_text(encoding="utf-8")
+CM_EN = (FIXTURES / "karnataka_gov_real_S004_cm_en.html").read_text(encoding="utf-8")
+TEMPLATE_POLICY = ("ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ", "personal information", "ನಿಯಮ ಮತ್ತು ಶರತ್ತುಗಳು", "ಸ್ಕ್ರೀನ್ ರೀಡರ್", "Screen Reader")
+
+
+def assert_no_template_text(text):
+    for policy in TEMPLATE_POLICY:
+        assert policy not in text, policy
+    assert " ago" not in text  # the relative ages change by themselves
+
+
+def test_real_dipr_and_bmtc_pages_give_their_latest_news_not_the_hidden_policy_modals():
+    dipr = page_lines(DIPR)
+    assert "Land of sandalwood cinema invites global film makers" in dipr
+    assert_no_template_text("\n".join(dipr))
+    bmtc = page_lines(BMTC)
+    assert "Student Pass" in bmtc  # "1: Student Pass 4 months ago" without its number and age
+    assert "''ದಿವ್ಯ ದರ್ಶನʼʼ ಪ್ಯಾಕೇಜ್ ಪ್ರವಾಸದಡಿಯಲ್ಲಿ ಪರಿಚಯಿಸಲಾಗುತ್ತಿರುವ ನೂತನ ಮಾರ್ಗ" in bmtc  # Quick Announcements
+    assert_no_template_text("\n".join(bmtc))
+
+
+def test_real_cm_page_gives_its_visible_english_headlines_not_policy_or_gallery_captions():
+    lines = page_lines(CM_EN)
+    assert "No one can erase Gandhiji's name or ideology: Chief Minister D.K. Shivakumar" in lines
+    assert any(line.startswith("Bengaluru, October 02, 2026:") for line in lines)
+    text = "\n".join(lines)
+    assert_no_template_text(text)
+    assert "ಚಿತ್ರ ಸಂಪುಟ" not in text and "We collect no" not in text
+
+
+def test_on_the_real_template_an_older_age_is_not_a_change_and_a_new_headline_is():
+    first = visit(BMTC).snapshot
+    aged = BMTC.replace("4 months ago", "5 months ago").replace("1 year ago", "2 years ago")
+    assert aged != BMTC and visit(aged, previous=first).entries == []
+    new_item = BMTC.replace(
+        "Student Pass ",
+        "Student Pass </a></p><p><a href='/52/kn'>BMTC adds 500 electric buses on ORR</a> 1 day ago</p><p><a>",
+    )
+    (item,) = visit(new_item, previous=first).entries
+    assert "Added: BMTC adds 500 electric buses on ORR" in item.summary
+
+
+def test_the_stored_policy_snapshot_of_a_real_page_is_replaced_without_an_updated_item():
+    blind = PageSnapshot("eb00a106", "ಗೌಪ್ಯತೆ ನೀತಿಗಳು\nಈ ಜಾಲತಾಣವು ನಿಮ್ಮಿಂದ ಯಾವುದೇ ವೈಯಕ್ತಿಕ ಮಾಹಿತಿಯನ್ನು ಸಂಗ್ರಹಿಸುವುದಿಲ್ಲ.", "t")
+    for real in (DIPR, BMTC, CM_EN):
+        out = visit(real, previous=blind)
+        assert out.status == "ok" and out.entries == [] and out.snapshot == visit(real).snapshot
