@@ -102,9 +102,9 @@ Plain text, read-only:
 - **Sources failing 3+ runs in a row** (BRIEF: flagged for replacement), with id, name and last error.
 - An empty database or no runs yet: one line saying so, and how to start.
 
-## Log file - `logs/engine.log`
+## Log file - `engine.log` beside the database (`data/engine.log`)
 
-One line per tick, appended. The line holds the IST time, mode, outcome, due / ok / failed / skipped counts, new items, Google refusals and the duration. Tracebacks go below a failed line. `*.log` is already gitignored. Every fetch writes the line as well as printing as today. Under `pythonw` there is no console, so printing must not fail when stdout is missing.
+One line per tick, appended. The line holds the IST time, mode, outcome, due / ok / failed / skipped counts, new items, Google refusals and the duration. Tracebacks go below a failed line. It sits in the database's folder, like the run lock `fetch.lock`, so a test database in a temporary folder never writes into the real log. `data/` is gitignored. Every fetch writes the line as well as printing as today. Under `pythonw` there is no console, so printing must not fail when stdout is missing.
 
 ## The Windows timer - `scripts/schedule-windows.ps1`
 
