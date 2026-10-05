@@ -4,6 +4,18 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-008 · The engine runs on Windows' own timer; Google News every 2 h during the two-week test (5 Oct 2026, founder)
+
+The brief's step 7 names APScheduler (D-001 lists it too) and these speeds: every 30 min for Google News queries on High-priority topics, Telegram and the 5 priority X feeds; every 2 h for all other feeds; every 6 h for page monitors.
+
+Instead:
+- **Windows Task Scheduler** starts `python -m riffi_ingest fetch --due` every 30 minutes (`scripts/schedule-windows.ps1`; the server's own timer after the move, D-003). The engine fetches only the sources whose interval is up, counted from each source's last attempt, so a sleep, reboot or crash costs one catch-up run, never a pile-up. No long-running process and no new library.
+- **Speeds** live in `config/schedule.yaml` (team-editable: per route type, with per-source overrides). During the two-week test: Telegram every 30 min; Google News (including the X/Instagram backups), publisher feeds and YouTube every 2 h; page monitors every 6 h.
+- **A run diary** (`engine_runs`) records every run, every timer check that found nothing due or found a run still going, and every check that failed before a run could start. One line per check also goes into `data/engine.log`. A run where every source failed to reach its site, across two or more sites, is "offline" and counts against no source. `python -m riffi_ingest status` shows the last run, gaps, Google refusals and failing sources.
+- **The timer is installed on the laptop only after this change is merged, and only with the founder's separate yes.** It runs only while the laptop is on and the founder is logged in; if the laptop sleeps, the next check catches up and `status` shows the gap.
+
+Why: `feeds.csv` does not say which topics a Google News query covers (`topics_hint` is free text), so "Google News feeds tied to High-priority topics" could not be listed. 2 h already meets the 24 h recall target. Fewer requests to Google lower the risk of a block that would end the test (D-004). Before launch, feeds that broke news first during the test can be moved to 30 min in `config/schedule.yaml`. A timer owned by Windows survives reboots and crashes with no window left open.
+
 ## D-007 · Claude merges its own pull requests when they are safe to (4 Oct 2026, founder)
 
 A Claude session may merge its own pull request into `main` without waiting for the founder when **both** hold:
