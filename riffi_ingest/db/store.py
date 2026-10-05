@@ -344,3 +344,122 @@ def top_stories(conn: sqlite3.Connection, since: datetime, limit: int, label: st
         " ORDER BY c.relevance_score DESC, c.source_count DESC, c.started_at DESC LIMIT ?",
         (utc_iso(since), label, label, limit),
     ).fetchall()
+
+
+# ---- the run diary (step 7, D-008)
+
+DIARY_MODES = {"due", "all", "source"}  # the timer's `fetch --due`, or a person's `fetch --all` / `--source`
+FINISHED_OUTCOMES = {"ok", "offline", "failed"}  # how a started run ends
+TICK_OUTCOMES = {"nothing_due", "busy", "failed"}  # one-shot rows: fetched nothing, or failed before a run could start
+
+
+def _check(value: str, allowed: set[str], what: str) -> None:
+    # free text in the table, so a typo here would quietly mislead `status` and the day-14 report
+    if value not in allowed:
+        raise ValueError(f"unknown run {what}: {value!r} (expected one of {sorted(allowed)})")
+
+
+def last_attempted(conn: sqlite3.Connection) -> dict[str, datetime]:
+    """When each source was last tried, whatever the result: the scheduler counts intervals from here. One index
+    lookup per source, so it stays fast however long fetch_runs grows."""
+    rows = conn.execute(
+        "SELECT s.source_id, (SELECT MAX(f.started_at) FROM fetch_runs f WHERE f.source_id = s.source_id) AS last"
+        " FROM sources s"
+    )
+    return {r["source_id"]: from_iso(r["last"]) for r in rows if r["last"]}
+
+
+def start_engine_run(conn: sqlite3.Connection, started_at: datetime, mode: str, sources_due: int) -> int:
+    """A diary row marked 'running'; finish_engine_run closes it. A row left 'running' is a run that never
+    finished (killed or crashed)."""
+    _check(mode, DIARY_MODES, "mode")
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO engine_runs (started_at, mode, outcome, sources_due) VALUES (?, ?, 'running', ?)",
+            (utc_iso(started_at), mode, sources_due),
+        )
+    return cur.lastrowid
+
+
+def finish_engine_run(
+    conn: sqlite3.Connection,
+    engine_run_id: int,
+    finished_at: datetime,
+    outcome: str,
+    *,
+    sources_ok: int | None = None,
+    sources_failed: int | None = None,
+    sources_skipped: int | None = None,
+    items_new: int | None = None,
+    google_refusals: int | None = None,
+    error: str | None = None,
+) -> None:
+    """Close a 'running' row, once. Anything else (an unknown id, a finished run, a tick) is a bug and raises,
+    so the diary never says something that did not happen."""
+    _check(outcome, FINISHED_OUTCOMES, "outcome")
+    with conn:
+        updated = conn.execute(
+            "UPDATE engine_runs SET finished_at = ?, outcome = ?, sources_ok = ?, sources_failed = ?,"
+            " sources_skipped = ?, items_new = ?, google_refusals = ?, error = ?"
+            " WHERE engine_run_id = ? AND outcome = 'running'",
+            (
+                utc_iso(finished_at),
+                outcome,
+                sources_ok,
+                sources_failed,
+                sources_skipped,
+                items_new,
+                google_refusals,
+                error,
+                engine_run_id,
+            ),
+        ).rowcount
+    if updated != 1:
+        raise ValueError(f"no running diary row with id {engine_run_id}")
+
+
+def log_engine_tick(
+    conn: sqlite3.Connection, at: datetime, mode: str, outcome: str, sources_due: int = 0, error: str | None = None
+) -> int:
+    """A check that fetched nothing ('nothing_due', or 'busy' while another run held the lock), or that failed
+    before a run could start ('failed', with the error): one finished row, so the diary shows the engine was
+    awake at that time."""
+    _check(mode, DIARY_MODES, "mode")
+    _check(outcome, TICK_OUTCOMES, "outcome")
+    stamp = utc_iso(at)
+    with conn:
+        cur = conn.execute(
+            "INSERT INTO engine_runs (started_at, finished_at, mode, outcome, sources_due, error)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (stamp, stamp, mode, outcome, sources_due, error),
+        )
+    return cur.lastrowid
+
+
+def engine_runs_since(conn: sqlite3.Connection, since: datetime) -> list[sqlite3.Row]:
+    """Diary rows started at or after `since`, oldest first."""
+    return conn.execute(
+        "SELECT * FROM engine_runs WHERE started_at >= ? ORDER BY started_at, engine_run_id", (utc_iso(since),)
+    ).fetchall()
+
+
+def last_engine_run(conn: sqlite3.Connection) -> sqlite3.Row | None:
+    """The latest diary row that fetched, or tried to: checks with nothing due or a busy lock are skipped."""
+    return conn.execute(
+        "SELECT * FROM engine_runs WHERE outcome NOT IN ('nothing_due', 'busy')"
+        " ORDER BY started_at DESC, engine_run_id DESC LIMIT 1"
+    ).fetchone()
+
+
+def first_engine_run_at(conn: sqlite3.Connection) -> datetime | None:
+    """When the diary began, so `status` can tell an outage that started before its 24 h window."""
+    return from_iso(conn.execute("SELECT MIN(started_at) FROM engine_runs").fetchone()[0])
+
+
+def failing_sources(conn: sqlite3.Connection, at_least: int = 3) -> list[sqlite3.Row]:
+    """Active sources that failed `at_least` runs in a row (BRIEF.md: flagged for replacement after 3)."""
+    return conn.execute(
+        "SELECT source_id, name, consecutive_failures, last_status FROM sources"
+        " WHERE active = 1 AND consecutive_failures >= ? ORDER BY consecutive_failures DESC, source_id",
+        (at_least,),
+    ).fetchall()
