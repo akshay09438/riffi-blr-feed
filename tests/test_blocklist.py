@@ -69,3 +69,41 @@ def test_matching_never_raises_on_unreadable_links():
     for url in ("http://[::1/x", "https://a.in:99999/", "::::", "https://good.com@bengalurumetro.in/x"):
         bl.match(url)
     assert bl.match("https://good.com@bengalurumetro.in/x") == "bengalurumetro.in"
+
+
+# karnatakavarthe.org was DIPR's news site; by 5 Oct 2026 it was hijacked casino spam (D-014)
+def test_the_hijacked_karnatakavarthe_site_is_blocked_however_it_is_linked(repo_root):
+    bl = load_blocklist(repo_root / "blocklist.csv")
+    for url in (
+        "https://karnatakavarthe.org/",
+        "http://karnatakavarthe.org/some-post/",
+        "https://www.karnatakavarthe.org/2021/02/04/",
+        "https://news.karnatakavarthe.org/x",
+        "https://KarnatakaVarthe.org/",
+        "https://www.google.com/amp/s/karnatakavarthe.org/post",  # AMP copies are checked as the page they copy
+        "https://karnatakavarthe-org.cdn.ampproject.org/c/s/karnatakavarthe.org/post",
+    ):
+        assert bl.match(url) == "karnatakavarthe.org", url
+
+
+def test_dipr_real_channels_and_karnatakavarthe_lookalikes_are_not_blocked(repo_root):
+    bl = load_blocklist(repo_root / "blocklist.csv")
+    for url in (
+        "https://x.com/KarnatakaVarthe",  # DIPR's X account (S003)
+        "https://twitter.com/KarnatakaVarthe",
+        "https://x.com/KarnatakaVarthe/status/1",
+        "https://www.facebook.com/KarnatakaVarthe.Official/",
+        "https://dipr.karnataka.gov.in/",
+        "https://cm.karnataka.gov.in/en",
+        "https://notkarnatakavarthe.org/",
+        "https://karnatakavarthe.org.in/",
+        "https://karnatakavarthe.com/",
+    ):
+        assert bl.match(url) is None, url
+
+
+def test_the_karnatakavarthe_row_blocks_one_whole_domain_and_no_paths(repo_root):
+    bl = load_blocklist(repo_root / "blocklist.csv")
+    assert {d for d in bl.domains if "karnatakavarthe" in d} == {"karnatakavarthe.org"}
+    assert [(d, p) for d, p in bl.paths if "karnatakavarthe" in d] == []
+    assert bl.problems == []
