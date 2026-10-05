@@ -159,6 +159,9 @@ def test_health_checks_and_fixes():
     assert not empty_gn.passed and "Google News query finds nothing" in empty_gn.fix
     undated = health.check(outcome(entries=[Entry(title="a", link="https://a.in/1")]), now)
     assert not undated.passed and "missing date" in undated.problems
+    assert "dates them at fetch time" in undated.fix
+    untitled = health.check(outcome(entries=[Entry(link="https://a.in/1", published=now)]), now)
+    assert not untitled.passed and "missing title" in untitled.problems and "fetch time" not in untitled.fix
     assert "blocks automated requests" in health.check(outcome("error", reason="HTTP 403", http_status=403), now).fix
     assert "moved" in health.check(outcome("error", reason="HTTP 404", http_status=404), now).fix
     assert "RSS link" in health.check(outcome("error", reason="answered with an HTML page, not a feed"), now).fix
@@ -183,6 +186,19 @@ def test_health_checks_and_fixes():
     assert "public channel" in health.check(no_posts, now).fix
     backup = health.check(outcome("skipped", reason="backup is not a Google News feed: 'https://x.com/a'"), now)
     assert "news.google.com/rss/search" in backup.fix
+
+
+def test_a_telegram_posts_text_counts_as_its_title():
+    now = NOW
+    tg = {"route_type": "RSSHub Telegram", "url": "https://t.me/s/x"}
+    post = Entry(link="https://t.me/x/1", published=now - timedelta(hours=1), summary="Metro fares revised. More")
+    h = health.check(outcome(entries=[post], **tg), now)
+    assert h.passed and h.fields[:3] == ["title", "link", "date"]
+    blank = Entry(link="https://t.me/x/2", published=now - timedelta(hours=1), summary="  ")
+    h = health.check(outcome(entries=[blank], **tg), now)
+    assert not h.passed and "missing title" in h.problems
+    rss = health.check(outcome(entries=[post]), now)  # only a Telegram post gets a title from its text
+    assert not rss.passed and "missing title" in rss.problems
 
 
 # ---- the commands
@@ -223,6 +239,20 @@ def test_cli_test_feeds_writes_a_report(tmp_path, repo_root, monkeypatch):
     assert "S121" in r.output and "channel_id" in r.output
     reports = sorted(p.suffix for p in (tmp_path / "reports").iterdir())
     assert reports == [".csv", ".md"]
+    again = CliRunner().invoke(cli.app, ["test-feeds", "--feeds", str(feeds), "--out", str(tmp_path / "reports")])
+    assert again.exit_code == 0, again.output
+    assert len(list((tmp_path / "reports").iterdir())) == 4  # a second run keeps the first run's report
+
+
+def test_test_feeds_reports_in_the_same_second_get_their_own_names(tmp_path):
+    out = tmp_path / "reports"
+    stamp, csv_path, md_path = cli._report_paths(out, NOW)
+    assert stamp == NOW.astimezone(cli.IST).strftime("%Y-%m-%d-%H%M%S")
+    assert (csv_path.name, md_path.name) == (f"{stamp}.csv", f"{stamp}.md")
+    csv_path.write_text("x")
+    assert cli._report_paths(out, NOW)[0] == f"{stamp}-2"
+    (out / f"{stamp}-2.md").write_text("x")  # either file taken is enough to move on
+    assert cli._report_paths(out, NOW)[0] == f"{stamp}-3"
 
 
 def test_cli_fetch_needs_a_choice_and_imports_on_first_run(tmp_path, repo_root, monkeypatch):

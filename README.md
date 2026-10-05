@@ -21,7 +21,7 @@ Then every command below is run as `.venv\Scripts\python.exe -m riffi_ingest <co
 
 | Command | What it does |
 |---|---|
-| `test-feeds` | Fetches every source once and prints a pass / fail table (HTTP status, items, newest item, fields) with a suggested fix for each failure. Also writes it to `reports/test-feeds/<date-time>.csv` and `.md`. Stores nothing. Add `--source S004` (repeatable) to test a few. Takes about 3-4 minutes for all 131: each site gets at most one request every 2 seconds, and 84 sources are on Google News. A progress line shows each source as it finishes. |
+| `test-feeds` | Fetches every source once and prints a pass / fail table (HTTP status, items, newest item, fields) with a suggested fix for each failure. Also writes it to `reports/test-feeds/<date-time>.csv` and `.md` (the time is to the second, and a `-2`, `-3` ... is added if a report of that name exists, so no run overwrites another). Stores nothing. Add `--source S004` (repeatable) to test a few. Takes about 3-4 minutes for all 131: each site gets at most one request every 2 seconds, and 84 sources are on Google News. A progress line shows each source as it finishes. |
 | `import-sources` | Loads `feeds.csv` into the database. Safe to run again after editing the CSV: rows are updated, history is kept, and a removed source is marked inactive, never deleted. |
 | `import-topics` | Loads `topics.csv` into the database. Safe to run again. |
 | `fetch --all` | One full cycle for every active source: fetch, clean, group into stories, tag, store. `fetch --source S004 --source S011` does just those. `fetch --due` does only the sources whose time is up (speeds in `config/schedule.yaml`): this is what the Windows timer runs every 30 minutes. Say exactly one of `--all`, `--source`, `--due`. The first `fetch` imports the sources by itself. Takes up to about 12 minutes for everything (the source fetches plus up to 100 Google News link look-ups); please leave it running. Only one fetch can run at a time. Every run, by hand or by the timer, goes into the run diary and one line into `data/engine.log`. |
@@ -75,7 +75,7 @@ After the laptop has been asleep or off, the next check fetches everything that 
 
 **Checking on it.** Run `status`. Reading it:
 - *Last run* says when the engine last fetched, how long it took and how many sources worked. If it says **FAILED**, **"no internet"** or **"did not finish"**, or if *Last 24 hours* says there were **no checks at all**, do not try to fix it by hand: tell Zuko (or run `/zuko:fix`). "No internet" on its own usually clears itself at the next check; "did not finish" means the run was stopped or crashed; no checks at all means the timer is off or the laptop was off.
-- *Longest gap with no check* appears when the engine was silent for more than 45 minutes: the laptop was off or asleep, or the timer was not running. "No gaps" is the good answer.
+- *Longest gap with no check* appears when the engine was silent for more than 45 minutes: the laptop was off or asleep, or the timer was not running. "No gaps" is the good answer. With `timer: off` it says *Longest gap between fetches* (expected, no warning) or just "Fetching is by hand for now, D-009."
 - *Google refusals* should be 0. Any other number means Google has started refusing: stop and ask Zuko before fetching more. To stop the timer, Zuko runs `scripts\schedule-windows.ps1 -Remove`.
 - *Sources failing 3+ runs in a row* are the candidates for replacement. The engine never switches or deletes a source by itself; the day-14 report only recommends.
 

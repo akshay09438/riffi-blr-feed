@@ -137,6 +137,8 @@ def _last_day(
             f"Longest gap with no check: {_span(gap)}, {_when(gap_start)} to {_when(gap_end)}"
             " (the laptop was off or asleep, or the timer was not running)."
         )
+    elif not timer:  # no timer, so "no gaps" would claim checks the engine does not make
+        lines.append(f"{BY_HAND[0].upper()}{BY_HAND[1:]}.")
     else:
         lines.append("No gaps: the engine checked at least every 45 minutes.")
     future = sum(1 for r in rows if from_iso(r["started_at"]) > now + CLOCK_SLACK)

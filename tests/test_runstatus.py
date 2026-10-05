@@ -166,6 +166,14 @@ def test_fetching_by_hand_makes_gaps_expected_not_alarming(db):
     assert "Longest gap between fetches: 19.9 h" in out and "(fetching is by hand for now, D-009)." in out
 
 
+def test_fetching_by_hand_right_after_a_fetch_does_not_claim_timer_checks(db):
+    a_run(db, NOW - 20 * M)
+    out = "\n".join(runstatus.report(db, NOW, timer=False))
+    assert "Last 24 hours: 1 check - 1 ran." in out
+    assert "Fetching is by hand for now, D-009." in out
+    assert "No gaps" not in out and "45 minutes" not in out
+
+
 def test_a_diary_of_only_quiet_checks_is_not_called_empty(db):
     ticks(db, NOW - 2 * H, NOW - 30 * M)
     out = text(db)

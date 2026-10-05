@@ -182,9 +182,7 @@ def test_feeds(
                 "url": o.url,
             }
         )
-    out.mkdir(parents=True, exist_ok=True)
-    stamp = now.astimezone(IST).strftime("%Y-%m-%d-%H%M")
-    csv_path, md_path = out / f"{stamp}.csv", out / f"{stamp}.md"
+    stamp, csv_path, md_path = _report_paths(out, now)
     with open(csv_path, "w", encoding="utf-8", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]) if rows else ["source_id"])
         writer.writeheader()
@@ -208,6 +206,18 @@ def test_feeds(
     for r in failed:
         typer.echo(f"  {r['source_id']} {r['name']}: {r['problem']}\n      fix: {r['suggested_fix']}")
     typer.echo(f"\nReport: {csv_path} and {md_path}")
+
+
+def _report_paths(out: Path, now: datetime) -> tuple[str, Path, Path]:
+    """(stamp, csv path, md path) for a test-feeds report: the IST time to the second, plus -2, -3 ... if a
+    report of that name is already there, so two runs never overwrite each other."""
+    out.mkdir(parents=True, exist_ok=True)
+    base = now.astimezone(IST).strftime("%Y-%m-%d-%H%M%S")
+    stamp, n = base, 1
+    while (out / f"{stamp}.csv").exists() or (out / f"{stamp}.md").exists():
+        n += 1
+        stamp = f"{base}-{n}"
+    return stamp, out / f"{stamp}.csv", out / f"{stamp}.md"
 
 
 def _markdown(rows: list[dict], stamp: str) -> str:
