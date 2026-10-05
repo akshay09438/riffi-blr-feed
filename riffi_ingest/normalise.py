@@ -10,7 +10,9 @@ For every entry of every successful fetch:
 - a missing date, or one more than 6 h in the future, becomes the fetch time (a lesson from the panel);
 - language: "kn" when Kannada script dominates the title and summary, "en" otherwise ("other" when
   another script dominates);
-- drop: no link, blocklisted domain (safety/blocklist.py), older than 7 days.
+- drop: no link, blocklisted domain (safety/blocklist.py), older than 7 days, cricket match-record pages
+  (scorecard / squads / commentary / live-score pages and match-highlight videos - Google News re-dates old
+  ones, so they pass the age check, but they are never a new development).
 
 Every drop is counted with its reason, so health reports can show what was filtered and why.
 Excluded-topic filtering needs the topic tags (step 4) and is not done here. Copied in part from the
@@ -55,6 +57,32 @@ WS_RE = re.compile(r"\s+")
 KANNADA_RE = re.compile(r"[ಀ-೿]")
 LATIN_RE = re.compile(r"[A-Za-z]")
 OTHER_LETTER_RE = re.compile(r"[^\W\d_A-Za-zಀ-೿]")
+
+# Cricket match-record pages. 5 Oct 2026: Google News re-dated old Cricbuzz pages such as "RCB vs KKR, 1st
+# match, Indian Premier League 2008 - Scorecard" and they filled about half of the digest's top 30. Tune the
+# two tuples, not the regexes. A title is dropped only when it names a match ("A vs B") AND either ends in
+# one of the page names (optionally followed by one " - Publisher" segment), or is a highlights video titled
+# "Highlights: A vs B | <league> ...". A season year alone never drops a title ("Kohli on his 2016 season").
+MATCH_PAGE_NAMES = (
+    "Scorecard", "Full Scorecard", "Squads", "Commentary", "Live Commentary",
+    "Live Score", "Live Cricket Score", "Live Scorecard",
+)  # fmt: skip
+HIGHLIGHT_LEAGUES = ("TATA IPL", "IPL", "Indian Premier League", "TATA WPL", "WPL")
+MATCH_RECORD_REASON = "match record page (scorecard/commentary/squads/highlights)"
+
+
+def _alternatives(names: tuple[str, ...]) -> str:
+    return "|".join(re.escape(n).replace(r"\ ", r"\s+") for n in sorted(names, key=len, reverse=True))
+
+
+_MATCH_RE = re.compile(r"\bvs?\.?\s", re.IGNORECASE)
+_SEP = r"\s[-–|]\s"
+_PAGE_SUFFIX_RE = re.compile(
+    rf"{_SEP}(?:{_alternatives(MATCH_PAGE_NAMES)})(?:{_SEP}[^-–|]{{1,40}})?\s*$", re.IGNORECASE
+)
+_HIGHLIGHTS_RE = re.compile(
+    rf"^(?:match\s+)?highlights?\s*:.*\|\s*(?:{_alternatives(HIGHLIGHT_LEAGUES)})\b", re.IGNORECASE
+)
 
 
 def canonical_url(url: str) -> str:
@@ -103,6 +131,15 @@ def clean_title(title: str, publisher: str = "") -> str:
     if publisher and title.endswith(f" - {publisher}"):
         title = title[: -len(publisher) - 3].rstrip()
     return title
+
+
+def is_match_record_page(title: str) -> bool:
+    """A cricket scorecard / squads / commentary / live-score page or a match-highlights video: a record
+    of a match, never a new development (see MATCH_PAGE_NAMES)."""
+    title = WS_RE.sub(" ", title or "").strip()
+    if not _MATCH_RE.search(title):
+        return False
+    return bool(_PAGE_SUFFIX_RE.search(title) or _HIGHLIGHTS_RE.search(title))
 
 
 def norm_title(title: str) -> str:
@@ -262,7 +299,7 @@ async def clean(
     """Clean every entry of every successful fetch. `sources` is keyed by source_id. Never raises for
     an odd entry: it is dropped with the reason.
 
-    The cheap checks (link, age, blocklist on what is already known) run before Google News links are
+    The cheap checks (link, age, blocklist on what is already known, match-record pages) run before Google News links are
     resolved, so the per-run cap on online look-ups is never spent on items that would be dropped."""
     now = now or datetime.now(timezone.utc)
     result = CleanResult()
@@ -280,6 +317,8 @@ async def clean(
                     result.dropped["older than 7 days"] += 1
                 elif hit := _blocked_before_resolving(entry, blocklist):
                     result.dropped[f"blocklisted ({hit})"] += 1
+                elif is_match_record_page(clean_title(entry.title or "", entry.source_title or "")):
+                    result.dropped[MATCH_RECORD_REASON] += 1
                 else:
                     kept.append((outcome, entry))
             except Exception as exc:  # one odd entry must not stop the run
