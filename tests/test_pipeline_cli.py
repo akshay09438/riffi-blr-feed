@@ -284,3 +284,46 @@ def test_cli_stories_lists_the_best_first(tmp_path, repo_root, monkeypatch):
     r = runner.invoke(cli.app, ["stories", "--db", db_path])
     assert r.exit_code == 0, r.output
     assert "BBMP floats tender for tunnel road" in r.output and " 70 High" in r.output and "[awaiting AI]" in r.output
+
+
+# ---- no internet, and Google saying no
+
+
+def unreachable(request):
+    raise httpx.ConnectError("[Errno 11001] getaddrinfo failed", request=request)
+
+
+def test_no_internet_blames_no_source(db):
+    s = run(db, ["S011", gn_source_id(db), "S112"], unreachable)
+    assert s.offline and s.statuses == {"error": 2, "skipped": 1}
+    assert db.execute("SELECT COUNT(*) FROM fetch_runs").fetchone()[0] == 0  # so every source is still due next tick
+    assert db.execute("SELECT COUNT(*) FROM items").fetchone()[0] == 0
+    assert db.execute("SELECT MAX(consecutive_failures) FROM sources").fetchone()[0] == 0
+
+
+def test_one_unreachable_site_is_that_sites_problem(db):
+    s = run(db, ["S011"], unreachable)
+    assert not s.offline and s.statuses == {"error": 1}
+    assert db.execute("SELECT consecutive_failures FROM sources WHERE source_id = 'S011'").fetchone()[0] == 1
+
+
+def test_one_site_answering_means_the_internet_is_up(db):
+    handler, _ = network()
+
+    def google_down(request):
+        if request.url.host == "news.google.com":
+            raise httpx.ConnectError("connection refused", request=request)
+        return handler(request)
+
+    s = run(db, ["S011", gn_source_id(db)], google_down)
+    assert not s.offline and s.statuses == {"ok": 1, "error": 1}
+
+
+def test_google_refusals_are_counted(db):
+    handler, _ = network()
+
+    def refusing(request):
+        return httpx.Response(429) if request.url.host == "news.google.com" else handler(request)
+
+    s = run(db, ["S011", gn_source_id(db)], refusing)
+    assert s.google_refusals == 1 and not s.offline
