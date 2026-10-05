@@ -154,3 +154,19 @@ def test_the_status_command(tmp_path):
     assert busy.exit_code == 0 and "running now" in busy.output
     dead = CliRunner().invoke(cli.app, ["status", "--db", str(db_path)])
     assert "did not finish" in dead.output
+
+
+def test_fetching_by_hand_makes_gaps_expected_not_alarming(db):
+    a_run(db, NOW - 48 * H)
+    out = "\n".join(runstatus.report(db, NOW, timer=False))
+    assert "Last 24 hours: no fetches - fetching is by hand for now, D-009." in out and "laptop" not in out
+    a_run(db, NOW - 20 * H)
+    out = "\n".join(runstatus.report(db, NOW, timer=False))
+    assert "Last 24 hours: 1 check - 1 ran." in out
+    assert "Longest gap between fetches: 19.9 h" in out and "(fetching is by hand for now, D-009)." in out
+
+
+def test_a_diary_of_only_quiet_checks_is_not_called_empty(db):
+    ticks(db, NOW - 2 * H, NOW - 30 * M)
+    out = text(db)
+    assert "No fetch has run yet: every check so far found nothing due." in out and "diary yet" not in out

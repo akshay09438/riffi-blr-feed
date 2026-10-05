@@ -131,3 +131,15 @@ def test_a_last_attempt_dated_in_the_future_is_due():
     # the clock was wrong when it was stamped (then corrected): fetch now rather than wait out the error
     last = {"S002": NOW + timedelta(hours=24), "S001": NOW + timedelta(minutes=1)}
     assert due([TG, GN], last, SCHEDULE, NOW) == [TG, GN]
+
+
+def test_the_timer_setting_is_on_or_off(tmp_path, repo_root):
+    path = tmp_path / "s.yaml"
+    path.write_text("by_route: {}\n", encoding="utf-8")
+    assert Schedule.load(path).timer is True  # missing: the timer is assumed on, as before D-009
+    path.write_text("timer: off\nby_route: {}\n", encoding="utf-8")
+    assert Schedule.load(path).timer is False
+    path.write_text("timer: maybe\nby_route: {}\n", encoding="utf-8")
+    with pytest.raises(ScheduleError, match="timer must be on or off"):
+        Schedule.load(path)
+    assert Schedule.load(repo_root / "config" / "schedule.yaml").timer is False  # D-009

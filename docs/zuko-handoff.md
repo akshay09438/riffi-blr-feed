@@ -103,10 +103,10 @@ None beyond decisions A-C above. The timer is not to be installed (D-009).
 ## Known small follow-ups (recorded by the reviews, triaged "later")
 
 - `status`:
-  - A diary holding only quiet checks says "No runs yet".
+  - ~~A diary holding only quiet checks says "No runs yet".~~ Fixed 5 Oct 2026.
   - A failed start while a manual run is live marks the live run dead.
   - A future-dated row can show as "Last run".
-  - Plurals ("1 checks").
+  - ~~Plurals ("1 checks").~~ Fixed 5 Oct 2026 for checks.
 - Test gaps:
   - Offline detection with `domain_down` (add soon: 84 Google News feeds share one site).
   - `finish_engine_run` failing.

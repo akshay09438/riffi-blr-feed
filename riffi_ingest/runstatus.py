@@ -26,6 +26,10 @@ OUTCOMES = {
 }
 
 
+def _n(count: int, word: str) -> str:
+    return f"{count} {word}" + ("" if count == 1 else "s")
+
+
 def _when(at: datetime) -> str:
     return at.astimezone(IST).strftime("%Y-%m-%d %H:%M IST")
 
@@ -41,11 +45,16 @@ def _span(delta: timedelta) -> str:
     return f"{minutes / 1440:.1f} days"
 
 
-def report(conn: sqlite3.Connection, now: datetime, run_in_progress: bool = False) -> list[str]:
+def report(conn: sqlite3.Connection, now: datetime, run_in_progress: bool = False, timer: bool = True) -> list[str]:
     """`run_in_progress`: whether a fetch holds the run lock right now. Without one, every row still marked
-    'running' belongs to a run that was killed or crashed."""
+    'running' belongs to a run that was killed or crashed. `timer`: whether Windows' timer is meant to be on
+    (config/schedule.yaml); with it off (D-009), gaps between fetches are expected, not a fault."""
     last = store.last_engine_run(conn)
     if last is None:
+        if store.first_engine_run_at(conn) is not None:  # only timer checks that found nothing due
+            return [
+                "No fetch has run yet: every check so far found nothing due. Run one: python -m riffi_ingest fetch --all"
+            ]
         return [
             "No runs in the run diary yet (it begins with the first run after the 5 Oct 2026 update)."
             " Run one now with: python -m riffi_ingest fetch --all"
@@ -55,7 +64,7 @@ def report(conn: sqlite3.Connection, now: datetime, run_in_progress: bool = Fals
     start = max(since, store.first_engine_run_at(conn))
     return [
         _last_run(last, now, current),
-        *_last_day(store.engine_runs_since(conn, since), now, start, current),
+        *_last_day(store.engine_runs_since(conn, since), now, start, current, timer),
         *_failing(store.failing_sources(conn)),
     ]
 
@@ -104,15 +113,26 @@ def _longest_gap(
     return longest
 
 
-def _last_day(rows: list[sqlite3.Row], now: datetime, start: datetime, current: int | None) -> list[str]:
+BY_HAND = "fetching is by hand for now, D-009"
+
+
+def _last_day(
+    rows: list[sqlite3.Row], now: datetime, start: datetime, current: int | None, timer: bool = True
+) -> list[str]:
     if not rows:
+        if not timer:
+            return [f"Last 24 hours: no fetches - {BY_HAND}. Run one: python -m riffi_ingest fetch --all"]
         return ["Last 24 hours: no checks at all - the timer is not running, or the laptop was off or asleep."]
     counts = Counter("did not finish" if _dead(r, current) else OUTCOMES.get(r["outcome"], r["outcome"]) for r in rows)
     lines = [
-        f"Last 24 hours: {len(rows)} checks - " + ", ".join(f"{n} {what}" for what, n in counts.most_common()) + "."
+        f"Last 24 hours: {_n(len(rows), 'check')} - "
+        + ", ".join(f"{n} {what}" for what, n in counts.most_common())
+        + "."
     ]
     gap, gap_start, gap_end = _longest_gap(rows, now, start, current)
-    if gap > NORMAL_GAP:
+    if gap > NORMAL_GAP and not timer:
+        lines.append(f"Longest gap between fetches: {_span(gap)}, {_when(gap_start)} to {_when(gap_end)} ({BY_HAND}).")
+    elif gap > NORMAL_GAP:
         lines.append(
             f"Longest gap with no check: {_span(gap)}, {_when(gap_start)} to {_when(gap_end)}"
             " (the laptop was off or asleep, or the timer was not running)."

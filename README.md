@@ -56,6 +56,8 @@ After the laptop has been asleep or off, the next check fetches everything that 
 
 **Keep this folder on `main` while the timer is on.** Windows' timer runs whatever code is in this folder every 30 minutes, against the real database. Do not try out other branches or half-finished code here. To try something, turn the timer off first with `scripts\schedule-windows.ps1 -Remove` (Zuko does this) and switch it on again afterwards.
 
+**Timer on or off.** `config/schedule.yaml` says `timer: off` for now (D-009), so `status` treats gaps between hand-run fetches as expected and does not warn about them. Set it to `timer: on` only when the Windows timer is installed.
+
 **Changing the speeds.** Edit `config/schedule.yaml` (a speed per kind of source, written `30m`, `2h`, `6h` or `never`, plus per-source overrides under `sources:`). It is read at every run, so there is nothing to restart. Nothing can go faster than every 30 minutes. Ask before speeding up Google News: more requests to Google raise the risk of a block, and a block is not undone by reverting code (D-004).
 
 **Checking on it.** Run `status`. Reading it:

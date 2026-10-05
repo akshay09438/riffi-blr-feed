@@ -51,11 +51,18 @@ def parse_early_minutes(value: object) -> timedelta:
     return timedelta(minutes=value)
 
 
+def parse_timer(value: object) -> bool:
+    if not isinstance(value, bool):
+        raise ScheduleError(f"timer must be on or off, not {value!r}")
+    return value
+
+
 @dataclass
 class Schedule:
     by_route: dict[str, timedelta | None]
     overrides: dict[str, timedelta | None] = field(default_factory=dict)  # source_id (upper case) -> speed
     early: timedelta = timedelta(minutes=5)  # due this much before the interval is up, so timer jitter costs nothing
+    timer: bool = True  # whether Windows' timer is meant to be on; off means fetching is by hand (D-009)
 
     @classmethod
     def load(cls, path: str | Path) -> Schedule:
@@ -65,6 +72,7 @@ class Schedule:
                 by_route={str(k).strip(): parse_interval(v) for k, v in (raw.get("by_route") or {}).items()},
                 overrides={str(k).strip().upper(): parse_interval(v) for k, v in (raw.get("sources") or {}).items()},
                 early=parse_early_minutes(raw.get("early_minutes", 5)),
+                timer=parse_timer(raw.get("timer", True)),
             )
         except (ValueError, TypeError, AttributeError, yaml.YAMLError) as exc:
             raise ScheduleError(f"{path}: {exc}") from exc
