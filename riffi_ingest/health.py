@@ -7,7 +7,8 @@
 | Valid     | not RSS/Atom (feeds) or not HTML (page monitors)                           |
 | Alive     | 0 items, or newest item older than 7 days (feeds; page monitors: a page   |
 |           | always yields a snapshot, so only reachability and validity apply)        |
-| Fields    | entries missing title, link or date                                        |
+| Fields    | entries missing title, link or date (a Telegram post's text counts as its  |
+|           | title, as cleaning takes its first sentence: normalise.py)                 |
 
 "Useful" (topic-tagged items in 7 days) needs stored history; it is in the daily health report
 (outputs/health_report.py), which also judges page monitors stale only after 30 days.
@@ -37,9 +38,22 @@ class Health:
     fields: list[str] = field(default_factory=list)
 
 
+FIELD_FIXES = {
+    "title": "entries have no title, so they cannot be read or matched to topics: check the feed, or use another route",
+    "link": "entries have no link, so cleaning drops every one: check the feed, or use another route",
+    "date": "entries have no date, so cleaning dates them at fetch time: prefer a feed that dates its items",
+}
+
+
 def _fields(outcome: FetchOutcome) -> list[str]:
+    """The fields present on at least one entry, as cleaning will see them (normalise.py): a Telegram post
+    has no title of its own, and cleaning takes the first sentence of its text instead."""
     checks = {"title": "title", "link": "link", "date": "published", "summary": "summary", "image": "image_url"}
-    return [name for name, attr in checks.items() if any(getattr(e, attr) for e in outcome.entries)]
+    present = [name for name, attr in checks.items() if any(getattr(e, attr) for e in outcome.entries)]
+    telegram_text = outcome.route_type == TELEGRAM and any((e.summary or "").strip() for e in outcome.entries)
+    if telegram_text and "title" not in present:
+        present.insert(0, "title")
+    return present
 
 
 def _fix_for_error(outcome: FetchOutcome) -> str:
@@ -130,6 +144,6 @@ def check(outcome: FetchOutcome, now: datetime) -> Health:
     missing = [f for f in REQUIRED_FIELDS if f not in fields]
     if outcome.entries and missing:
         health.problems.append("missing " + ", ".join(missing))
-        health.fix = health.fix or "entries lack " + ", ".join(missing) + ": dates fall back to fetch time"
+        health.fix = health.fix or "; ".join(FIELD_FIXES[f] for f in missing)
     health.passed = not health.problems
     return health
