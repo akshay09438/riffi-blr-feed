@@ -4,6 +4,19 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-013 · Three unreachable sites are followed through Google News instead (5 Oct 2026, founder)
+
+On the laptop run on 5 Oct 2026, three page monitors could not be read: S007 Karnataka State Election Commission (`karsec.gov.in` does not resolve for anyone), S015 Cockroach Janta Party website and S041 BookMyShow Bengaluru (both answer 403 to the engine). The founder chose to follow each through a Google News search instead:
+- S007: `"State Election Commission" Karnataka`
+- S015: `"Cockroach Janta Party"`
+- S041: `BookMyShow Bengaluru`
+
+Each is checked every 2 h, like every Google News source (D-008). Their `link_or_handle` still names the real site. Route counts are now Google News 62, page monitors 19 (still 131). S015's notes say copycat sites exist, so its stories go through the same blocklist as every Google News item.
+
+The same day, the founder kept S102 (TV9 Kannada Telegram, quiet since Nov 2025) and S047 (DPAR holidays, quiet between festivals) as they are. Both count against the 90% health target while they stay quiet, and are judged on day 14.
+
+The new searches were written in the cloud. Their first proof is `test-feeds --source S007 --source S015 --source S041` on the laptop.
+
 ## D-012 · The digest covers the 24 hours before it is run; until the AI pass, the debate angle is the topic's (5 Oct 2026, founder)
 
 The brief asks for a digest of "the last 24 hours" at 07:00 IST every day. With no timer (D-009), the digest is made by hand after a fetch: `python -m riffi_ingest digest`.

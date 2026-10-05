@@ -60,15 +60,15 @@ The engine reads 131 active sources from `feeds.csv` (an export of Source List v
 
 | Route type | Sources | How the engine fetches it | Watch out for |
 |---|---|---|---|
-| Google News RSS | 59 | Plain RSS GET on `news.google.com/rss/search?q=…` | Links are Google redirects; titles end in " - Publisher"; resolve to the real URL |
+| Google News RSS | 62 | Plain RSS GET on `news.google.com/rss/search?q=…` | Links are Google redirects; titles end in " - Publisher"; resolve to the real URL |
 | X / Instagram via RSS.app | 25 | Skip in phase 1. Fetch the `backup_google_news_url` instead. Only the 5 rows marked `priority_x_feed` get a paid RSS.app feed later | X blocks scrapers; RSS.app is paid and breaks |
-| Web page monitor | 22 | Fetch the page, extract main text, hash it, and emit an item when the hash changes (or run changedetection.io and read its RSS) | Government sites are slow, use PDFs and may block bots |
+| Web page monitor | 19 | Fetch the page, extract main text, hash it, and emit an item when the hash changes (or run changedetection.io and read its RSS) | Government sites are slow, use PDFs and may block bots |
 | Native publisher RSS/Atom | 19 | Plain RSS or Atom GET | Some redirect (Inc42 /feed to /feed/); some need a browser user-agent |
 | RSSHub Telegram | 3 | GET `rsshub.app/telegram/channel/<name>`; self-host RSSHub if rate-limited | Post text sits in the description; no separate headline |
 | YouTube Atom | 2 | GET `youtube.com/feeds/videos.xml?channel_id=…` | Prajavani's channel ID was looked up on 5 Oct 2026 |
 | Manual | 1 | Not fetched (traffic police ASTraM app) | Listed for completeness |
 
-Counts as of 5 Oct 2026, after the first live test: TV9 Kannada (S045), Prajavani (S055) and BOOM (S073) moved from Google News to their publishers' own feeds; PIB national (S011), PIB Bengaluru (S107) and the DPAR holiday source (S047) moved to Google News searches, because PIB's own feeds need a browser session and DPAR's pages show the engine only their privacy policy; PRS (S021) became a page monitor on its Bill Track page.
+Counts as of 5 Oct 2026, after the first live test: TV9 Kannada (S045), Prajavani (S055) and BOOM (S073) moved from Google News to their publishers' own feeds; PIB national (S011), PIB Bengaluru (S107) and the DPAR holiday source (S047) moved to Google News searches, because PIB's own feeds need a browser session and DPAR's pages show the engine only their privacy policy; PRS (S021) became a page monitor on its Bill Track page. Later the same day (D-013) the State Election Commission (S007, whose site does not resolve), the Cockroach Janta Party website (S015) and BookMyShow (S041), both of which refuse the engine, moved to Google News searches.
 
 Only 2 feeds are confirmed working so far: RBI notifications and Inc42. Every other feed is untested, so the first run is also the first real test.
 
