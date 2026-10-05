@@ -81,6 +81,7 @@ def due(sources: list[Source], last_attempted: dict[str, datetime], schedule: Sc
         if every is None:
             continue
         last = last_attempted.get(source.source_id)
-        if last is None or now - last >= every - schedule.early:
+        # a last attempt dated in the future means the clock was wrong then: fetch now rather than wait it out
+        if last is None or last > now or now - last >= every - schedule.early:
             out.append(source)
     return out

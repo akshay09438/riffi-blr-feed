@@ -12,6 +12,7 @@ from riffi_ingest.db.importers import import_sources, import_topics
 from riffi_ingest.fetchers.outcome import FetchOutcome
 from riffi_ingest.fetchers.parse import Entry
 from riffi_ingest.pipeline import run_fetch
+from riffi_ingest.runlock import run_lock
 from tests.feedtools import fake_client, old_style, rfc822, rss
 
 NOW = datetime.now(timezone.utc).replace(microsecond=0)
@@ -225,7 +226,9 @@ def test_cli_rejects_unclear_requests(tmp_path, repo_root):
     db_path = str(tmp_path / "engine.db")
     feeds = str(repo_root / "feeds.csv")
     both = runner.invoke(cli.app, ["fetch", "--all", "--source", "S004", "--db", db_path, "--feeds", feeds])
-    assert both.exit_code == 1 and "not both" in both.output
+    assert both.exit_code == 1 and "exactly one of" in both.output
+    due_and_all = runner.invoke(cli.app, ["fetch", "--due", "--all", "--db", db_path, "--feeds", feeds])
+    assert due_and_all.exit_code == 1 and "exactly one of" in due_and_all.output
     unknown = runner.invoke(cli.app, ["fetch", "--source", "S999", "--db", db_path, "--feeds", feeds])
     assert unknown.exit_code == 1 and "no such source id: S999" in unknown.output
     missing = runner.invoke(cli.app, ["test-feeds", "--feeds", str(tmp_path / "nope.csv")])
@@ -327,3 +330,145 @@ def test_google_refusals_are_counted(db):
 
     s = run(db, ["S011", gn_source_id(db)], refusing)
     assert s.google_refusals == 1 and not s.offline
+
+
+# ---- fetch --due: what Windows' timer runs
+
+ROUTES = (
+    "Google News RSS",
+    "X/Instagram via RSS.app",
+    "Native publisher RSS/Atom",
+    "YouTube Atom",
+    "RSSHub Telegram",
+    "Web page monitor",
+    "Manual",
+)
+
+
+def schedule_file(tmp_path, speeds):
+    """Every route type 'never', plus per-source `speeds`, so a test fetches exactly the sources it names."""
+    lines = ["early_minutes: 5", "by_route:", *(f"  {r}: never" for r in ROUTES), "sources:"]
+    lines += [f"  {source_id}: {speed}" for source_id, speed in speeds.items()]
+    path = tmp_path / "schedule.yaml"
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return path
+
+
+def prepared_db(tmp_path, repo_root):
+    db_path = tmp_path / "engine.db"
+    conn = connect(db_path)
+    import_sources(conn, repo_root / "feeds.csv")
+    import_topics(conn, repo_root / "topics.csv")
+    conn.execute("UPDATE sources SET fetch_url = ? WHERE source_id = 'S011'", (DH_FEED,))
+    conn.commit()
+    return db_path, conn
+
+
+def fetch_due(db_path, schedule):
+    return CliRunner().invoke(cli.app, ["fetch", "--due", "--db", str(db_path), "--schedule", str(schedule)])
+
+
+def diary(conn):
+    return conn.execute("SELECT * FROM engine_runs ORDER BY engine_run_id").fetchall()
+
+
+def test_fetch_due_fetches_what_is_due_and_writes_the_diary(tmp_path, repo_root, monkeypatch):
+    handler, calls = network()
+    monkeypatch.setattr(pipeline, "PoliteClient", lambda: fake_client(handler))
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    schedule = schedule_file(tmp_path, {"S011": "2h"})
+    r = fetch_due(db_path, schedule)
+    assert r.exit_code == 0, r.output
+    assert calls == ["www.deccanherald.com"]  # only the one source that is due
+    row = diary(conn)[0]
+    assert (row["mode"], row["outcome"], row["sources_due"], row["sources_ok"], row["items_new"]) == (
+        "due",
+        "ok",
+        1,
+        1,
+        1,
+    )
+    assert row["finished_at"] is not None
+    assert conn.execute("SELECT started_at FROM fetch_runs").fetchone()[0] == row["started_at"]
+    log = (tmp_path / "engine.log").read_text(encoding="utf-8")
+    assert " due " in log and " ok " in log and "new items 1" in log
+    again = fetch_due(db_path, schedule)  # straight away: nothing is due for another 2 hours
+    assert again.exit_code == 0 and "Nothing is due" in again.output
+    assert [x["outcome"] for x in diary(conn)] == ["ok", "nothing_due"]
+    assert "nothing_due" in (tmp_path / "engine.log").read_text(encoding="utf-8")
+
+
+def test_a_check_while_a_run_is_going_is_skipped_and_noted(tmp_path, repo_root):
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    schedule = schedule_file(tmp_path, {"S011": "2h"})
+    with run_lock(tmp_path / "fetch.lock"):
+        r = fetch_due(db_path, schedule)
+        by_hand = CliRunner().invoke(cli.app, ["fetch", "--all", "--db", str(db_path)])
+    assert r.exit_code == 0 and "still running" in r.output
+    assert by_hand.exit_code == 1 and "already running" in by_hand.output
+    assert [(x["outcome"], x["sources_due"]) for x in diary(conn)] == [("busy", 1)]
+
+
+def test_a_crashed_run_is_marked_failed_with_its_reason(tmp_path, repo_root, monkeypatch):
+    async def disk_full(*args, **kwargs):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(cli, "run_fetch", disk_full)
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    r = fetch_due(db_path, schedule_file(tmp_path, {"S011": "2h"}))
+    assert r.exit_code == 1 and "disk full" in r.output
+    rows = diary(conn)
+    assert len(rows) == 1 and rows[0]["outcome"] == "failed" and rows[0]["finished_at"]
+    assert "RuntimeError: disk full" in rows[0]["error"]
+    assert "RuntimeError: disk full" in (tmp_path / "engine.log").read_text(encoding="utf-8")
+
+
+def test_an_interrupted_run_is_closed_as_failed(tmp_path, repo_root, monkeypatch):
+    async def interrupted(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "run_fetch", interrupted)
+    _, conn = prepared_db(tmp_path, repo_root)
+    with pytest.raises(KeyboardInterrupt):
+        cli._run_and_record(conn, store.load_sources(conn, ["S011"]), "all", NOW, tmp_path / "engine.log")
+    row = diary(conn)[0]
+    assert row["outcome"] == "failed" and row["error"].startswith("KeyboardInterrupt") and row["finished_at"]
+
+
+def test_no_internet_is_recorded_as_offline(tmp_path, repo_root, monkeypatch):
+    monkeypatch.setattr(pipeline, "PoliteClient", lambda: fake_client(unreachable))
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    r = fetch_due(db_path, schedule_file(tmp_path, {"S011": "2h", gn_source_id(conn): "2h"}))
+    assert r.exit_code == 0 and "No internet" in r.output
+    assert [(x["outcome"], x["sources_failed"]) for x in diary(conn)] == [("offline", 2)]
+    assert conn.execute("SELECT COUNT(*) FROM fetch_runs").fetchone()[0] == 0
+
+
+def test_runs_by_hand_are_in_the_diary_too(tmp_path, repo_root, monkeypatch):
+    handler, _ = network()
+    monkeypatch.setattr(pipeline, "PoliteClient", lambda: fake_client(handler))
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    r = CliRunner().invoke(cli.app, ["fetch", "--source", "S011", "--db", str(db_path)])
+    assert r.exit_code == 0, r.output
+    assert [(x["mode"], x["outcome"]) for x in diary(conn)] == [("source", "ok")]
+
+
+def test_a_broken_or_missing_schedule_leaves_a_failed_row(tmp_path, repo_root):
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    bad = tmp_path / "schedule.yaml"
+    bad.write_text("by_route:\n  Google News RSS: fortnightly\n", encoding="utf-8")
+    r = fetch_due(db_path, bad)
+    assert r.exit_code == 1 and "fortnightly" in r.output
+    missing = fetch_due(db_path, tmp_path / "nope.yaml")
+    assert missing.exit_code == 1 and "nope.yaml" in missing.output
+    rows = diary(conn)
+    assert [x["outcome"] for x in rows] == ["failed", "failed"]
+    assert "fortnightly" in rows[0]["error"] and "nope.yaml" in rows[1]["error"]
+    log = (tmp_path / "engine.log").read_text(encoding="utf-8")
+    assert "fortnightly" in log and "nope.yaml" in log
+
+
+def test_tests_never_use_the_real_database(tmp_path):
+    from riffi_ingest.db.connection import DEFAULT_DB_PATH, default_db_path
+
+    assert default_db_path() != DEFAULT_DB_PATH and default_db_path().is_relative_to(tmp_path)

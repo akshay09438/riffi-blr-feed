@@ -3,17 +3,22 @@
     import-sources    seed / refresh sources from feeds.csv (idempotent)
     import-topics     seed / refresh topics from topics.csv (idempotent)
     test-feeds        fetch every source once and report pass / fail with a suggested fix; stores nothing
-    fetch             one full cycle (fetch, clean, group, tag, score, store): --all, or --source S004 --source S011
+    fetch             one full cycle (fetch, clean, group, tag, score, store): --all, --source S004 --source S011,
+                      or --due (only the sources whose interval is up: what Windows' timer runs every 30 minutes)
     stories           the best stories of the last 24 hours with score, label, sources and topics
+    status            is the engine alive: the last run, the last 24 hours, sources failing 3+ runs in a row
 
-Coming with later steps: digest --date, report, and the scheduler.
+Coming with later steps: digest --date and report.
 """
 
 from __future__ import annotations
 
 import asyncio
 import csv
+import sqlite3
 import sys
+import textwrap
+import traceback
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -29,8 +34,9 @@ from .fetchers.feeds import fetch_sources, plan
 from .fetchers.gnews import ONLINE_CAP_PER_RUN
 from .fetchers.http import DOMAIN_INTERVAL, PoliteClient, domain_key
 from .fetchers.parse import IST
-from .pipeline import Paths, run_fetch
+from .pipeline import Paths, RunSummary, run_fetch
 from .runlock import AlreadyRunning, run_lock
+from .scheduler import Schedule, due
 from .sources import Source, load_sources
 
 app = typer.Typer(help="Riffi news ingestion engine.", no_args_is_help=True, add_completion=False)
@@ -48,6 +54,12 @@ AllOption = typer.Option(False, "--all", help="Fetch every active source.")
 TopOption = typer.Option(30, "--top", help="How many stories to show.")
 HoursOption = typer.Option(24, "--hours", help="Stories updated in this many past hours.")
 LabelOption = typer.Option(None, "--label", help="Only High, Medium, Low or Drop.")
+DueOption = typer.Option(
+    False, "--due", help="Only the sources whose interval is up (config/schedule.yaml): what Windows' timer runs."
+)
+ScheduleOption = typer.Option(
+    PROJECT_ROOT / "config" / "schedule.yaml", "--schedule", help="How often each source is fetched."
+)
 
 
 @app.command("import-sources")
@@ -205,18 +217,11 @@ def _markdown(rows: list[dict], stamp: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-@app.command("fetch")
-def fetch(
-    all_sources: bool = AllOption,
-    source: list[str] = SourceOption,
-    db: Path = DbOption,
-    feeds: Path = FeedsOption,
-    topics: Path = TopicsOption,
-) -> None:
-    """One full cycle: fetch, clean, group into stories, tag by keyword, score, store."""
-    if all_sources == bool(source):
-        _fail("say either --all, or --source S004 (repeatable), not both")
-    conn = connect(db)
+class RunFailed(Exception):
+    """A run that started and failed; it is already in the diary and in engine.log."""
+
+
+def _first_run_imports(conn, feeds: Path, topics: Path) -> None:
     if conn.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == 0:
         _read_feeds(feeds)  # a clear message if feeds.csv is missing
         r = import_sources(conn, feeds)
@@ -225,25 +230,153 @@ def fetch(
         # scoring needs each topic's priority and geography; without them every story would score Drop
         r = import_topics(conn, topics)
         typer.echo(f"First run: imported {r.added} topics from {topics}.")
-    if source:  # by id, inactive sources included, so a person can still try one by hand
-        ids = [w.strip().upper() for w in source]
+
+
+def _log(path: Path, when: datetime, mode: str, outcome: str, detail: str = "") -> None:
+    """One line per run in engine.log beside the database. Windows' timer runs the engine with no window, so
+    this file and `status` are how anyone sees what happened."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    line = f"{when.astimezone(IST):%Y-%m-%d %H:%M} IST  {mode:<6} {outcome:<11} {detail}".rstrip()
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(line + "\n")
+
+
+def _trace() -> str:
+    return textwrap.indent(traceback.format_exc().rstrip(), "    ")
+
+
+def _note_failure(conn, log: Path, now: datetime, mode: str, exc: Exception, sources_due: int = 0) -> None:
+    """A run that could not start still leaves a trace: a line in engine.log and, if the database answers, a
+    'failed' row in the diary, so `status` does not mistake it for the laptop being off."""
+    reason = f"{type(exc).__name__}: {exc}"[:500]
+    _log(log, now, mode, "failed", f"{reason}\n{_trace()}")
+    if conn is not None:
+        try:
+            store.log_engine_tick(conn, now, mode, "failed", sources_due, error=reason)
+        except sqlite3.Error:
+            pass  # the database itself is the problem (still locked, say): the log line above is the trace
+
+
+def _pick_for_run(conn, mode: str, wanted: list[str], schedule: Path, now: datetime, log: Path) -> list[Source]:
+    if mode == "source":  # by id, inactive sources included, so a person can still try one by hand
+        ids = [w.strip().upper() for w in wanted]
         sources = store.load_sources(conn, ids)
         unknown = sorted(set(ids) - {s.source_id for s in sources})
         if unknown:
             _fail(f"no such source id: {', '.join(unknown)} (see source_id in feeds.csv)")
-    else:
-        sources = store.load_sources(conn)
+        return sources
+    active = store.load_sources(conn)
+    if mode == "all":
+        return active
+    speeds = Schedule.load(schedule)
+    for problem in speeds.problems(active):
+        typer.echo(f"Warning: {problem} in {schedule}; those sources are never fetched.")
+        _log(log, now, mode, "warning", problem)
+    return due(active, store.last_attempted(conn), speeds, now)
+
+
+def _run_and_record(conn, sources: list[Source], mode: str, now: datetime, log: Path) -> RunSummary:
+    """One run between a 'running' diary row and its end. The row is always closed, Ctrl+C included; only a hard
+    kill leaves it 'running', which `status` then reports as 'did not finish'."""
+    run_id = store.start_engine_run(conn, now, mode, len(sources))
+    try:
+        s = asyncio.run(run_fetch(conn, sources, paths=Paths(), now=now, on_progress=_progress(len(sources))))
+    except BaseException as exc:
+        reason = f"{type(exc).__name__}: {exc}"[:500]
+        store.finish_engine_run(conn, run_id, datetime.now(timezone.utc), "failed", error=reason)
+        _log(log, now, mode, "failed", f"due {len(sources)}\n{_trace()}")
+        if isinstance(exc, Exception):
+            raise RunFailed(reason) from exc
+        raise
+    ok = s.statuses["ok"] + s.statuses["not_modified"]
+    failed, skipped = s.statuses["error"], s.statuses["skipped"]
+    finished = datetime.now(timezone.utc)
+    outcome = "offline" if s.offline else "ok"
+    store.finish_engine_run(
+        conn,
+        run_id,
+        finished,
+        outcome,
+        sources_ok=ok,
+        sources_failed=failed,
+        sources_skipped=skipped,
+        items_new=s.items_new,
+        google_refusals=s.google_refusals,
+    )
+    _log(
+        log,
+        now,
+        mode,
+        outcome,
+        f"due {len(sources)}, ok {ok}, failed {failed}, skipped {skipped}, new items {s.items_new},"
+        f" google refusals {s.google_refusals}, {(finished - now).total_seconds() / 60:.1f} min",
+    )
+    return s
+
+
+@app.command("fetch")
+def fetch(
+    all_sources: bool = AllOption,
+    source: list[str] = SourceOption,
+    due_only: bool = DueOption,
+    db: Path = DbOption,
+    feeds: Path = FeedsOption,
+    topics: Path = TopicsOption,
+    schedule: Path = ScheduleOption,
+) -> None:
+    """One full cycle: fetch, clean, group into stories, tag by keyword, score, store. --due fetches only the
+    sources whose interval is up (what Windows' timer runs every 30 minutes). Every run goes into the run diary
+    (see `status`) and one line into engine.log beside the database."""
+    if [all_sources, bool(source), due_only].count(True) != 1:
+        _fail("say exactly one of --all, --source S004 (repeatable) or --due")
+    db_path = Path(db) if db else default_db_path()
+    log = db_path.parent / "engine.log"
+    mode = "due" if due_only else "all" if all_sources else "source"
+    now = datetime.now(timezone.utc)
+    conn = None
+    try:
+        conn = connect(db_path)
+        _first_run_imports(conn, feeds, topics)
+        sources = _pick_for_run(conn, mode, source, schedule, now, log)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # the timer runs with no window: a run that cannot start must still leave a trace
+        _note_failure(conn, log, now, mode, exc)
+        _fail(f"could not start: {exc} (details in {log})")
+    if not sources:
+        store.log_engine_tick(conn, now, mode, "nothing_due")
+        _log(log, now, mode, "nothing_due")
+        typer.echo("Nothing is due yet.")
+        return
     typer.echo(
         f"Fetching {len(sources)} sources; expect up to about {_estimate_minutes(sources, with_lookups=True)} minutes"
         " (sites are asked politely, one request every 2 s each). Please leave it running. Progress:"
     )
     try:
-        with run_lock((Path(db) if db else default_db_path()).parent / "fetch.lock"):
-            s = asyncio.run(run_fetch(conn, sources, paths=Paths(), on_progress=_progress(len(sources))))
+        with run_lock(db_path.parent / "fetch.lock"):
+            s = _run_and_record(conn, sources, mode, now, log)
     except AlreadyRunning as exc:
-        _fail(str(exc))
+        if mode != "due":
+            _fail(str(exc))
+        store.log_engine_tick(conn, now, mode, "busy", len(sources))
+        _log(log, now, mode, "busy", f"due {len(sources)}")
+        typer.echo("Another fetch is still running; this check is skipped.")
+        return
+    except RunFailed as exc:
+        _fail(f"the run failed: {exc} (details in {log})")
+    except Exception as exc:  # e.g. the database stayed locked for 30 s before the run could start
+        _note_failure(conn, log, now, mode, exc, len(sources))
+        _fail(f"could not start: {exc} (details in {log})")
     statuses = ", ".join(f"{n} {k}" for k, n in sorted(s.statuses.items()))
     typer.echo(f"Sources: {statuses}.")
+    if s.offline:
+        typer.echo(
+            "No internet: none of the sites could be reached. Nothing is counted against the sources;"
+            " they are tried again next time."
+        )
+        return
+    if s.google_refusals:
+        typer.echo(f"Warning: Google News refused {s.google_refusals} requests (403 / 429). Check `status`.")
     typer.echo(f"Entries read: {s.entries}; new items stored: {s.items_new}.")
     if s.dropped:
         typer.echo("Dropped: " + ", ".join(f"{n} {reason}" for reason, n in s.dropped.most_common()) + ".")

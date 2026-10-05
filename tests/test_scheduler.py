@@ -102,3 +102,9 @@ def test_the_real_schedule_covers_every_real_source(repo_root):
         "Manual": None,
     }
     assert schedule.early == timedelta(minutes=5)
+
+
+def test_a_last_attempt_dated_in_the_future_is_due():
+    # the clock was wrong when it was stamped (then corrected): fetch now rather than wait out the error
+    last = {"S002": NOW + timedelta(hours=24), "S001": NOW + timedelta(minutes=1)}
+    assert due([TG, GN], last, SCHEDULE, NOW) == [TG, GN]
