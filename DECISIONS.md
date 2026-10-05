@@ -4,6 +4,15 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-012 · The digest covers the 24 hours before it is run; until the AI pass, the debate angle is the topic's (5 Oct 2026, founder)
+
+The brief asks for a digest of "the last 24 hours" at 07:00 IST every day. With no timer (D-009), the digest is made by hand after a fetch: `python -m riffi_ingest digest`.
+
+- **Window.** The 24 hours before the command is run (now - 24 h to now). A story is in it when at least one of its reports was fetched in it. The files go in `reports/<today's IST date>/`: `digest.md`, `digest.csv`, `health.md` and `sources_health.csv`. `digest --date YYYY-MM-DD` regenerates a past day: the 24 hours ending 07:00 IST on that date, in that date's folder. A rerun overwrites the files. Source health has no history, so `health.md` is always as of the moment it is made, and says so for a past date.
+- **Before the AI pass exists (D-005).** Stories carry keyword topics and keyword-only scores (up to 25 points lower), and "what's new" reads "awaiting AI pass". The debate angle shown is the topic's general `debate_angles` from `topics.csv` (the topic the story scores by), always marked "topic angle, not this story", so nobody posts it as a take on the story itself.
+
+Why: the founder fetches by hand, so "the last 24 hours" is most useful counted back from when the digest is made; and a general angle, clearly marked, is more help to the content team than an empty column.
+
 ## D-011 · Telegram channels are read from their public t.me page (5 Oct 2026, founder)
 
 The brief reads Telegram through RSSHub (`rsshub.app`). On the first live run, rsshub.app answered 403 for all three channels (S016, S101, S102). The founder chose the channels' own public web page instead: `https://t.me/s/<channel>`, which shows the latest posts (about 20) to anyone, with no login. `fetchers/telegram.py` reads the posts from it: text, link and time. The quoted post in a reply is ignored, and posts with no text are skipped. The channel name comes from the row's `fetch_url` (its last path part), so `feeds.csv` and the route type `RSSHub Telegram` stay as they are. Setting `RSSHUB_BASE_URL` (a self-hosted RSSHub) switches back to RSSHub. Telegram is not X, Instagram or WhatsApp, so the never-scrape rule does not apply. The fetch goes through the same polite HTTP client, with the same identity and limits.

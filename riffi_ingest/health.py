@@ -1,5 +1,5 @@
 """Health checks on one fetch (BRIEF.md "Health checks", step 9) and a suggested fix for each failure
-(BRIEF.md "FIRST RUN", point 2). Used by `test-feeds` and, later, the daily health report.
+(BRIEF.md "FIRST RUN", point 2). Used by `test-feeds`; the daily health report reuses its limits.
 
 | Check     | Fails when                                                                 |
 |-----------|----------------------------------------------------------------------------|
@@ -9,7 +9,8 @@
 |           | always yields a snapshot, so only reachability and validity apply)        |
 | Fields    | entries missing title, link or date                                        |
 
-"Useful" (topic-tagged items in 7 days) needs stored history; it belongs to the daily report.
+"Useful" (topic-tagged items in 7 days) needs stored history; it is in the daily health report
+(outputs/health_report.py), which also judges page monitors stale only after 30 days.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from .fetchers.http import domain_key
 from .fetchers.outcome import FetchOutcome
 
 STALE_AFTER = timedelta(days=7)
+PAGE_STALE_AFTER = timedelta(days=30)  # BRIEF.md "Alive": a monitored page may rightly not change for weeks
 REQUIRED_FIELDS = ("title", "link", "date")
 PAGE_MONITOR = "Web page monitor"
 TELEGRAM = "RSSHub Telegram"

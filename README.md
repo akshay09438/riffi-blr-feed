@@ -2,7 +2,7 @@
 
 Collects new developments on Riffi's 151 tracked topics from 131 sources, cleans them, groups them into stories and tags them by topic. It only collects, ranks and reports: it never posts anything. What it does and why: `BRIEF.md`; where the team decided differently: `DECISIONS.md`; how it is built: `docs/technical-spec.md`; how far along it is: `docs/implementation-plan.md`.
 
-**Built so far:** fetching every route, cleaning, Google News link resolution, the blocklist, grouping into stories, keyword tagging, scoring and labels, the database, the scheduler (`fetch --due`, which fetches each source at its own speed, the run diary and the `status` check are tested; the Windows timer that runs it every 30 minutes is written and checked but has never been registered, and is only switched on after the founder says yes, see "Running on its own"), and the commands below. **Not yet:** the AI tagging pass, the 07:00 digest, the dashboard and `/api/stories`, and the two-week recall test.
+**Built so far:** fetching every route, cleaning, Google News link resolution, the blocklist, grouping into stories, keyword tagging, scoring and labels, the database, the scheduler (`fetch --due`, which fetches each source at its own speed, the run diary and the `status` check are tested; the Windows timer that runs it every 30 minutes is written and checked but has never been registered, and is only switched on after the founder says yes, see "Running on its own"), the daily digest and health report (`digest`, `report`), and the commands below. **Not yet:** the AI tagging pass, the dashboard and `/api/stories`, and the two-week recall test.
 
 ## Setup (Windows laptop, once)
 
@@ -27,6 +27,8 @@ Then every command below is run as `.venv\Scripts\python.exe -m riffi_ingest <co
 | `fetch --all` | One full cycle for every active source: fetch, clean, group into stories, tag, store. `fetch --source S004 --source S011` does just those. `fetch --due` does only the sources whose time is up (speeds in `config/schedule.yaml`): this is what the Windows timer runs every 30 minutes. Say exactly one of `--all`, `--source`, `--due`. The first `fetch` imports the sources by itself. Takes up to about 12 minutes for everything (the source fetches plus up to 100 Google News link look-ups); please leave it running. Only one fetch can run at a time. Every run, by hand or by the timer, goes into the run diary and one line into `data/engine.log`. |
 | `stories` | The best stories of the last 24 hours, highest score first: score, label (High / Medium / Low / Drop), number of sources, topics and headline. `--top 50`, `--hours 48`, `--label High`. Until the AI pass exists, scores leave out its 25 points and stories show `[awaiting AI]`. |
 | `status` | Is the engine alive? Prints the last run, what happened in the last 24 hours (checks by outcome, the longest gap with no check, Google refusals) and the sources failing 3 or more runs in a row. Changes nothing, and is safe to run at any time, even while a fetch is running. |
+| `digest` | Makes the day's files in `reports/<date>/`: `digest.md` and `digest.csv` (the stories of the 24 hours before you run it, best first; the topics that moved; the High-priority topics with nothing for 7+ days) plus the two health files below. `--top 50` shows more stories in `digest.md` (the CSV has every listed story). `--date 2026-10-06` remakes a past day: the 24 hours ending 07:00 IST that day. Running it again replaces the files. Reads the database, never changes it. |
+| `report` | Makes only the health files in `reports/<date>/`: `health.md` (is the engine alive; sources working, failing, stale, not useful, skipped; blocklist problems) and `sources_health.csv` (the four health columns to paste into the source sheet). Health is always as of now. |
 | `log-template` | Creates the editor's empty daily log, `data/ground_truth.csv`, and `data/ground_truth_topics.csv`, the list of the High-priority topics to log from (rewritten each time, so it follows `topics.csv`). It never overwrites a log that already exists. |
 | `check-log` | Checks the editor's log row by row: dates, times, topic ids, empty cells and repeats. Each problem names its row. Changes nothing. |
 
@@ -37,6 +39,17 @@ Every command has `--help`.
 1. `test-feeds` and read the failures and their suggested fixes. Known ones before any run: S047 and S107 have an instruction where the URL should be, S108 has no backup Google News URL, S121 needs a YouTube channel ID.
 2. Fix what you can in `feeds.csv`, then `import-sources`.
 3. `fetch --all`, then `stories` to see the top 30 with their scores and topics (a dashboard comes in step 8).
+
+## The daily report
+
+After a `fetch --all`, run `digest`. It writes four files into `reports/<today's date>/` (D-012):
+
+- `digest.md` - the stories of the last 24 hours, best first, with score, label, topics, sources and a link; then which topics moved and which High-priority topics went quiet. Drop stories (excluded topics, or too far from our audience) are counted at the top, never listed. Stories marked **sensitive** need a person to check the framing before anything is posted.
+- `digest.csv` - the same stories in a spreadsheet (opens in Excel with Kannada intact).
+- `health.md` - is the engine alive, and which sources are broken (3+ failures in a row), quiet (nothing new for 7 days; 30 for page monitors), not useful (no tagged story in 7 days) or skipped because `feeds.csv` needs a fix.
+- `sources_health.csv` - `last_status`, `last_ok_at`, `newest_item_at` and `fields_present` per source, in source order, ready to paste into the source sheet.
+
+Until the AI pass exists, every story says **awaiting AI**: its score leaves out up to 25 points, "what's new" reads "awaiting AI pass", and the debate angle is the topic's general one from `topics.csv`, marked "topic angle, not this story". Never post it as a take on the story itself.
 
 ## Running on its own (the two-week test)
 
