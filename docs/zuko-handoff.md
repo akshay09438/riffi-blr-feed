@@ -19,6 +19,8 @@
 
 **Cloud:**
 1. Open the PR for `docs/handoff-2026-10-05-evening` (title "Handoff: laptop run of the cloud fixes, 5 Oct evening; S004 to the CM's news page"). Bind it and merge when CI is green. It changes docs, three fixtures and one founder-approved `feeds.csv` row, and no dangerous-list file, so D-007 allows Claude to merge.
+
+   Then open the PR for `safety/blocklist-karnatakavarthe` (title "Blocklist: karnatakavarthe.org, the hijacked former DIPR news site"; body = its commit message). It touches a **dangerous file** (`blocklist.csv`, one row) plus `tests/test_blocklist.py`. The founder's explicit OK was given on 5 Oct ("add karnatakavarthe.org to the blocklist", then "yes, go ahead") and is quoted in the commit. Under D-007 it may merge once CI is green and the PR body says so. Merge it after, or together with, the docs PR, because its reason column cites D-014.
 2. **Fix the blind page monitors, test first (`/zuko:fix`).** Two separate faults:
    1. **304 hides a blind snapshot (S008 ECI, S009 GBA).** Tonight both answered 304 Not Modified to the conditional GET. S008 has done so since 18:43 IST; S009 was 200 then and 304 tonight. So the new rules never saw their pages, and the stored text is still "You need to enable JavaScript to run this app.". `monitor_page` already skips validators when there is no snapshot (`fetchers/pagemonitor.py`, around line 279). It should also skip them when the stored snapshot is blind (`was_blind`-style: only JavaScript notices, or policy text). This can be fixed in the cloud without the real page.
    2. **Pruning misses the real karnataka.gov.in markup (S004 DIPR, S048 Kannada & Culture, S109 BMTC, S110 BWSSB).** All four answered 200 tonight with the new code and still stored the same 3,588-character Kannada privacy policy (hash `eb00a106...`). **The real pages are now saved** (founder's yes, one request each, 5 Oct ~20:45 IST): `tests/fixtures/karnataka_gov_real_S004_dipr.html` and `tests/fixtures/karnataka_gov_real_S109_bmtc.html`. Both give exactly that hash through today's `page_lines`, so they reproduce the bug offline. What they show (diagnosed offline; no engine code changed):
@@ -54,6 +56,7 @@
 ## In flight
 
 - `docs/handoff-2026-10-05-evening`: committed and pushed, PR not opened (no `gh` on the laptop). Docs, D-014 with its one `feeds.csv` row, and three HTML fixtures (no test uses them yet). Suite green (below).
+- `safety/blocklist-karnatakavarthe`: committed and pushed, PR not opened. It adds one row to `blocklist.csv` (dangerous; founder's OK given 5 Oct) plus 3 tests written first by an independent test author. Two adversarial reviews: correctness/reach "safe"; evasion/over-blocking found no realistic bypass and no over-block. Checks on that branch: `pytest` 413 passed, 2 xfailed; ruff clean. The approval was recorded with `.zuko/approve.js` and cleared after.
 - Timer: **not installed and not to be offered** (D-009). The install steps are in `README.md` and D-008 for when the founder changes D-009.
 
 ## How to work here
@@ -91,8 +94,7 @@
 
 ## Open escalations
 
-Nothing dangerous is waiting. Founder decisions still open:
-- Optional: add `karnatakavarthe.org` to `blocklist.csv` (dangerous file). The domain is no longer DIPR's and now serves casino-spam links (D-014). No feed links to it today, so it is not urgent.
+One dangerous-file change is waiting to merge, with the founder's OK already given: `safety/blocklist-karnatakavarthe`. That is a claim, so re-verify it on the PR: the diff should be exactly one new `blocklist.csv` row (`karnatakavarthe.org`) plus the 3 tests, and CI should be green. Founder decisions still open:
 - Open question 2: when the AI pass runs.
 - The exclusions word lists.
 - `import-sources` keeps the old ETag when a source's address changes (S011 kept PIB's; harmless so far). The fix is in `db/importers.py`, which is dangerous.
@@ -100,6 +102,14 @@ Nothing dangerous is waiting. Founder decisions still open:
 - The timer stays off (D-009) until the founder says otherwise.
 
 ## Known small follow-ups (recorded by reviews, triaged "later")
+
+- **Gaps in the blocklist filter that already exist** (found 5 Oct by the evasion review of the karnatakavarthe row; none is caused by that row). `riffi_ingest/safety/**` is dangerous, so each needs the founder:
+  - a host whose dot is written `%2E` gets through;
+  - proxies and redirectors get through: `<site>.translate.goog`, `google.com/url?q=`, `web.archive.org`, `t.co`, `bit.ly`;
+  - an unresolved Google News link with a spoofed source URL is kept until it resolves;
+  - items stored before a row is added are never re-checked.
+
+  The last one matters only when a site turns bad after its articles were already collected. At the time of the review, 0 stored items were on any blocked site.
 
 - **An unidentified flaky test.** After the D-014 edits (around 21:20 IST, 5 Oct), one full run gave `1 failed, 409 passed, 2 xfailed` in 40.3 s (slower than usual). The next five runs, with no change in between, were all `410 passed, 2 xfailed`. Its name was not captured, and the passing runs cleared `.pytest_cache/.../lastfailed`. The edits touched only `feeds.csv` (one row), docs and an unused fixture, and that row reads back correctly through `load_sources`. A timing-sensitive test is the likely suspect. Run the suite with `-rf` and record the name if it fails again.
 - `status`: a failed start while a manual run is live marks the live run dead; a future-dated row can show as "Last run".
