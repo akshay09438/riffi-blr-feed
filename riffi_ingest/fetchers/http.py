@@ -13,7 +13,9 @@ Rules enforced here, so no caller can forget them (BRIEF.md step 1, D-004):
 - a domain that fails 3 times in a row at network level is skipped for the rest of the run, so a dead
   host (say news.google.com, with 84 queued feeds) cannot stretch one run into hours
 - conditional GET: send the last ETag / Last-Modified, and report a 304 as "not modified"
-- TLS certificates are always verified; a certificate problem is a finding, never something to switch off
+- TLS certificates are always verified; a certificate problem is a finding, never something to switch off.
+  They are checked against the operating system's own trust store (truststore, D-010): on Windows that is
+  the store the browser uses, which also fetches an intermediate certificate a site forgot to send
 
 Adapted from the panel project's feedkit/net.py at commit 0a07e29 (copied, not imported - D-006).
 """
@@ -23,11 +25,13 @@ from __future__ import annotations
 import asyncio
 import math
 import random
+import ssl
 import time
 from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlsplit
 
 import httpx
+import truststore
 
 BROWSER_UA = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
@@ -50,6 +54,18 @@ NETWORK_KINDS = {"timeout", "dns", "connect"}  # failures that say the host itse
 
 # BRIEF.md: never scrape X, Instagram or WhatsApp directly.
 BLOCKED_DOMAINS = ("x.com", "twitter.com", "instagram.com", "whatsapp.com", "whatsapp.net", "wa.me")
+
+
+def tls_context() -> ssl.SSLContext:
+    """Verify certificates with the operating system's trust store, as the browser does (D-010). Verification
+    stays fully on: a certificate is required and must match the host name.
+
+    Build a new context for every client and never share one between clients or threads: truststore briefly
+    loosens a context during each handshake, and two threads doing that at once could leave it loose."""
+    ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ctx.verify_mode = ssl.CERT_REQUIRED
+    ctx.check_hostname = True
+    return ctx
 
 
 def domain_key(url: str) -> str:
@@ -127,6 +143,18 @@ class _Gate:
         self.lock.release()
 
 
+def _is_tls_error(exc: BaseException) -> bool:
+    """A certificate or TLS failure anywhere in the chain of causes. Checked by type, not by message, because
+    Windows writes its certificate errors in the system's language."""
+    seen = set()
+    while exc is not None and id(exc) not in seen:
+        if isinstance(exc, ssl.SSLError):
+            return True
+        seen.add(id(exc))
+        exc = exc.__cause__ or exc.__context__
+    return False
+
+
 def _classify_error(exc: Exception) -> str:
     msg = f"{type(exc).__name__}: {exc}".lower()
     if isinstance(exc, httpx.TimeoutException):
@@ -135,7 +163,7 @@ def _classify_error(exc: Exception) -> str:
         return "bad_url"
     if any(s in msg for s in ("getaddrinfo", "name or service not known", "nodename nor servname", "no address")):
         return "dns"
-    if "ssl" in msg or "certificate" in msg or "tls" in msg:
+    if _is_tls_error(exc) or "ssl" in msg or "certificate" in msg or "tls" in msg:
         return "tls"
     if isinstance(exc, (httpx.ConnectError, httpx.RemoteProtocolError, httpx.ReadError)):
         return "connect"
@@ -174,7 +202,9 @@ class PoliteClient:
         self.interval = interval
         self._gates: dict[str, _Gate] = {}
         # redirects are followed by hand in _attempt, so each hop goes through its own domain's gate
-        self._client = httpx.AsyncClient(follow_redirects=False, timeout=httpx.Timeout(timeout), transport=transport)
+        self._client = httpx.AsyncClient(
+            follow_redirects=False, timeout=httpx.Timeout(timeout), transport=transport, verify=tls_context()
+        )
 
     async def __aenter__(self):
         return self
