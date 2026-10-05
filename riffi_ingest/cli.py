@@ -7,6 +7,8 @@
                       or --due (only the sources whose interval is up: what Windows' timer runs every 30 minutes)
     stories           the best stories of the last 24 hours with score, label, sources and topics
     status            is the engine alive: the last run, the last 24 hours, sources failing 3+ runs in a row
+    log-template      the editor's empty ground-truth log and the High-priority topics to log from
+    check-log         check the editor's ground-truth log for mistakes, row by row
 
 Coming with later steps: digest --date and report.
 """
@@ -25,7 +27,7 @@ from pathlib import Path
 
 import typer
 
-from . import health, runstatus
+from . import groundtruth, health, runstatus
 from .config import rsshub_base
 from .db import connect, store
 from .db.connection import PROJECT_ROOT, default_db_path
@@ -59,6 +61,10 @@ DueOption = typer.Option(
 )
 ScheduleOption = typer.Option(
     PROJECT_ROOT / "config" / "schedule.yaml", "--schedule", help="How often each source is fetched."
+)
+LogOption = typer.Option(PROJECT_ROOT / "data" / "ground_truth.csv", "--log", help="The editor's ground-truth log.")
+LogTopicsOption = typer.Option(
+    PROJECT_ROOT / "data" / "ground_truth_topics.csv", "--topic-list", help="Where to write the topics to log from."
 )
 
 
@@ -457,6 +463,37 @@ def status(db: Path = DbOption, schedule: Path = ScheduleOption) -> None:
             typer.echo(f"Warning: {problem} in {schedule}; those sources are never fetched.")
     except (OSError, ScheduleError) as exc:
         typer.echo(f"Warning: cannot read the speeds ({exc}); timed runs fail until it is fixed.")
+
+
+@app.command("log-template")
+def log_template(log: Path = LogOption, topic_list: Path = LogTopicsOption, topics: Path = TopicsOption) -> None:
+    """Create the editor's empty ground-truth log (never overwrites one that exists) and the list of
+    High-priority topics to log from (BRIEF.md "Two-week test")."""
+    known = groundtruth.load_topics(topics)
+    created = groundtruth.write_template(log, topic_list, known)
+    high = sum(t.priority == "High" for t in known.values())
+    typer.echo(f"Log: {'created' if created else 'already there, left as it is:'} {log}")
+    typer.echo(f"Topics to log from: {high} High-priority topics in {topic_list}")
+    typer.echo("Each day: one row per real development. Then run: python -m riffi_ingest check-log")
+
+
+@app.command("check-log")
+def check_log(log: Path = LogOption, topics: Path = TopicsOption) -> None:
+    """Check the editor's ground-truth log row by row: dates, times, topic ids, empty cells, repeats.
+    Changes nothing. Exits 1 when a row must be fixed before the recall test can score it."""
+    if not log.exists():
+        _fail(f"cannot find {log}. Create it with: python -m riffi_ingest log-template")
+    check = groundtruth.read_log(log, groundtruth.load_topics(topics), datetime.now(timezone.utc))
+    for line in check.errors:
+        typer.echo(f"Fix: {line}")
+    for line in check.warnings:
+        typer.echo(f"Note: {line}")
+    days = len({e.seen_at.date() for e in check.entries})
+    typer.echo(
+        f"{len(check.entries)} developments over {days} days are ready to score; {len(check.errors)} problem(s) to fix."
+    )
+    if check.errors:
+        raise typer.Exit(code=1)
 
 
 def main() -> None:

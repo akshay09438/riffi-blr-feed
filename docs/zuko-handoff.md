@@ -4,23 +4,24 @@
 
 ## Last updated
 
-5 Oct 2026 - laptop session (Claude Desktop, Code tab): built step 7, the scheduler, on branch `feat/scheduler` through `/zuko:build` (heavy path). Written as part of that branch's PR.
+5 Oct 2026 - cloud session: PR #15 (the scheduler) passed all CI checks and was merged with the founder's OK. Then the editor's ground-truth log (`log-template`, `check-log`) was built on `feat/scheduler-to20xo`. Earlier the same day, a laptop session built step 7, the scheduler, through `/zuko:build` (heavy path).
 
 ## Where things stand
 
 - **Built and merged before this session:** fetchers for every route, cleaning + Google News resolution + blocklist, grouping into stories, keyword tagging, scoring, the database, pipeline / health / CLI / README (PRs #1-#13), and the 5 Oct handoff (#14).
-- **Built in this session, on `feat/scheduler` (PR open, not merged yet):** the engine runs on its own (D-008).
+- **Merged 5 Oct 2026 (PR #15):** the engine runs on its own (D-008). The timer is not installed yet (In flight 2).
   - Windows Task Scheduler starts `pythonw -m riffi_ingest fetch --due` every 30 minutes. Speeds per route are in `config/schedule.yaml`: Telegram 30 min; Google News, X/Instagram backups, publisher feeds and YouTube 2 h; page monitors 6 h.
   - A run diary (`engine_runs` table) and `data/engine.log` record every run, every check that fetched nothing, and every failure.
   - An offline run blames no source, and Google 403/429 refusals are counted.
   - `python -m riffi_ingest status` answers "is it alive?".
-- **Not built yet:** AI tagging pass, 07:00 digest + health report, dashboard and `/api/stories`, exclusions filter, ground truth + recall test.
+- **The editor's log is ready (cloud session, 5 Oct 2026):** `log-template` creates `data/ground_truth.csv` and the list of High-priority topics, and `check-log` checks each row. Run `log-template` on the laptop before day 1 of the test.
+- **Not built yet:** AI tagging pass, 07:00 digest + health report, dashboard and `/api/stories`, exclusions filter, matching the log to stories + the recall report.
 - **Deadline:** collecting daily by about 10-12 Oct 2026 so the two-week test finishes before launch.
 - **Merge rule (D-007):** Claude may merge its own PR when every CI check is green AND no dangerous-list file changed. This PR changes dangerous files, and the founder approved each change in the session (see the PR), so it merges with the founder's OK once CI is green.
 
 ## In flight
 
-1. **PR for `feat/scheduler`.** Merge once CI is green and the founder says so.
+1. ~~**PR for `feat/scheduler`.**~~ Merged 5 Oct 2026 with the founder's OK.
 2. **Install the Windows timer: only after the merge, and only with the founder's explicit yes.** It is a lasting setting on the laptop.
    - `git checkout main && git pull` first. The timer runs whatever code is in this folder.
    - Then `powershell -ExecutionPolicy Bypass -File scripts\schedule-windows.ps1`.
@@ -52,7 +53,7 @@
 5. Fix and re-test `feeds.csv` URLs:
    - S057 (VK, 404), S007 (KSEC, DNS), S055 / S045 / S058 (native Kannada feeds), S073, S021, S011.
    - The founder must supply S047, S107, S108 and S121.
-6. Next build steps: 07:00 digest + health report (step 8), dashboard + `/api/stories` (dangerous), AI pass (open questions 1-2), exclusions filter (dangerous; needs the founder's word lists), ground truth + recall test (the editor can start a CSV log on day 1 of the test).
+6. Next build steps: 07:00 digest + health report (step 8), dashboard + `/api/stories` (dangerous), AI pass (open questions 1-2), exclusions filter (dangerous; needs the founder's word lists), matching the ground-truth log to stories + the recall test (the log itself is built: run `log-template` on the laptop before day 1).
 
 ## How to work here
 

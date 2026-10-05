@@ -25,6 +25,8 @@ Then every command below is run as `.venv\Scripts\python.exe -m riffi_ingest <co
 | `fetch --all` | One full cycle for every active source: fetch, clean, group into stories, tag, store. `fetch --source S004 --source S011` does just those. `fetch --due` does only the sources whose time is up (speeds in `config/schedule.yaml`): this is what the Windows timer runs every 30 minutes. Say exactly one of `--all`, `--source`, `--due`. The first `fetch` imports the sources by itself. Takes up to about 12 minutes for everything (the source fetches plus up to 100 Google News link look-ups); please leave it running. Only one fetch can run at a time. Every run, by hand or by the timer, goes into the run diary and one line into `data/engine.log`. |
 | `stories` | The best stories of the last 24 hours, highest score first: score, label (High / Medium / Low / Drop), number of sources, topics and headline. `--top 50`, `--hours 48`, `--label High`. Until the AI pass exists, scores leave out its 25 points and stories show `[awaiting AI]`. |
 | `status` | Is the engine alive? Prints the last run, what happened in the last 24 hours (checks by outcome, the longest gap with no check, Google refusals) and the sources failing 3 or more runs in a row. Changes nothing, and is safe to run at any time, even while a fetch is running. |
+| `log-template` | Creates the editor's empty daily log, `data/ground_truth.csv`, and `data/ground_truth_topics.csv`, the list of the High-priority topics to log from (rewritten each time, so it follows `topics.csv`). It never overwrites a log that already exists. |
+| `check-log` | Checks the editor's log row by row: dates, times, topic ids, empty cells and repeats. Each problem names its row. Changes nothing. |
 
 Every command has `--help`.
 
@@ -61,6 +63,22 @@ After the laptop has been asleep or off, the next check fetches everything that 
 `data/engine.log` has one line for every check (and a detail under a failure). It sits beside the database.
 
 **The laptop.** For the two weeks, keep it plugged in and set to not sleep while on mains power (a Windows setting only its owner changes: Settings, System, Power & battery). Closing the lid usually puts the laptop to sleep, so leave it open (or change what the lid does in the same Windows settings). If it does sleep, the engine catches up at the next check after it wakes and `status` shows the gap, so the day-14 results can be read knowing when the engine was not watching.
+
+## The editor's daily log (the two-week test)
+
+The day-14 keep / fix / drop verdicts are scored against this log, so it is set up before day 1.
+
+1. Run `log-template` once. It creates `data/ground_truth.csv` and the topic list `data/ground_truth_topics.csv`. Both open in Excel. The `data/` folder stays on this laptop and never goes to GitHub.
+2. Each day, the editor spends about 10 minutes adding one row for each real development on a High-priority topic, wherever they saw it (X, WhatsApp, TV, friends):
+
+   | date | topic_id | what_happened | where_seen | time_seen |
+   |---|---|---|---|---|
+   | 2026-10-12 | P01 | BBMP floats the tunnel road tender | X | 09:15 |
+
+   `time_seen` is IST on the 24-hour clock. Excel's own date style (12-10-2026) and "9:15 AM" also work. Save as **CSV UTF-8** so Kannada text survives. A Google Sheet works too: download it as CSV into the same place.
+3. Run `check-log` after saving. "Fix" lines must be corrected, because a wrong topic id or time would count against a source. "Note" lines are fine: a repeat is counted once, and a topic that is not High priority is kept but the test scores High ones.
+
+Matching the log to stories and the recall report come with step 10. They read this same file.
 
 ## Settings (environment variables)
 
