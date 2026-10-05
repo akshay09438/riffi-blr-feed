@@ -13,7 +13,7 @@
 - **Not working on real data: the page-monitor fix (PR #31).** Six government pages are still blind. Details are in "Do first", item 2.
 - **Leftovers in the database (not new bugs):** the 13 old scorecards, highlight videos and the Polish story in tonight's top 30 were all stored by the two earlier runs on 5 Oct (14:14 and 18:43 IST), before the fixes landed. The same goes for the three Namma Metro copies and the three rain copies. Nothing re-cleans stored items. They leave the 24-hour window after about 18:43 IST on 6 Oct, so a digest run on the morning of 6 Oct will still show them. Removing them by hand would mean editing `data/engine.db` (dangerous), so the founder was told they will age out.
 - **Not built yet:** AI tagging pass, dashboard and `/api/stories`, exclusions filter, matching the log to stories, and the recall report.
-- **Deadline:** collecting daily by about 10-12 Oct 2026.
+- **Founder's plan (5 Oct, late evening; D-009 addendum):** build the whole engine first. Then, whenever the founder asks for "the news of the last 24 hours", fetch and show it, and refine the output by hand over many rounds. The timer and the two-week source test come after that, so the earlier "collecting daily by 10-12 Oct" target no longer applies. **Build priority:** what makes that output good, meaning the AI pass (what's new, debate angle, better ranking), the page-monitor fix and the exclusions filter. Then the dashboard / `/api/stories`, then the recall matching.
 
 ## Do first next session
 
@@ -57,7 +57,7 @@
 
 - `docs/handoff-2026-10-05-evening`: committed and pushed, PR not opened (no `gh` on the laptop). Docs, D-014 with its one `feeds.csv` row, and three HTML fixtures (no test uses them yet). Suite green (below).
 - `safety/blocklist-karnatakavarthe`: committed and pushed, PR not opened. It adds one row to `blocklist.csv` (dangerous; founder's OK given 5 Oct) plus 3 tests written first by an independent test author. Two adversarial reviews: correctness/reach "safe"; evasion/over-blocking found no realistic bypass and no over-block. Checks on that branch: `pytest` 413 passed, 2 xfailed; ruff clean. The approval was recorded with `.zuko/approve.js` and cleared after.
-- Timer: **not installed and not to be offered** (D-009). The install steps are in `README.md` and D-008 for when the founder changes D-009.
+- Timer: **not installed and not to be offered until the whole engine is built** (D-009, confirmed by the founder 5 Oct). The install steps are in `README.md` and D-008 for when the founder changes D-009.
 
 ## How to work here
 
@@ -66,7 +66,7 @@
 - Commands: `node .claude/hooks/py.js -m ruff check .`, `-m ruff format --check .`, `-m pytest -q tests`. `py` = `.venv\Scripts\python.exe -m riffi_ingest`. On Windows, set `PYTHONIOENCODING=utf-8` when printing Kannada.
 - Reading the real database for evidence: open it read-only (`sqlite3.connect('file:data/engine.db?mode=ro', uri=True)`) from a script file in the scratchpad. Inline Python through the shell loses backslashes.
 - Tests can never touch `data/engine.db` (`tests/conftest.py`). `test-feeds --feeds <copy>` tests a draft copy of `feeds.csv` without touching the real one.
-- The founder is non-technical: use plain language, and end confirmations with "An easy way to understand this". Ask before every fetch and before changing `feeds.csv`.
+- The founder is non-technical: use plain language, and end confirmations with "An easy way to understand this". Ask before every fetch and before changing `feeds.csv`. The one exception: "give me the news of the last 24 hours" is itself the go-ahead. Back up the database, run `fetch --all` and `digest`, and show the top stories (D-009 addendum).
 
 ## Verification evidence (laptop, 5 Oct 2026, 19:55-20:30 IST)
 

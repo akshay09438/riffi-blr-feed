@@ -64,6 +64,8 @@ What this means: `status` will show long gaps and "no checks at all" between the
 
 Why: the founder wants to control when the engine reaches out to the sites.
 
+**Confirmed 5 Oct 2026, late evening (founder):** the timer stays off until the whole engine is built. The founder will first look at what the engine produces, by hand and over many iterations, before any automatic timing is set up. The working pattern: when the founder asks for "the news of the last 24 hours", a laptop session backs up the database, runs `fetch --all` and `digest`, and shows the top stories. That request is itself the go-ahead for that fetch, so do not ask again. The two-week source test therefore starts after the build and these iterations, not on 10-12 Oct as first planned.
+
 ## D-008 · The engine runs on Windows' own timer; Google News every 2 h during the two-week test (5 Oct 2026, founder)
 
 The brief names APScheduler (in its STEP 0, the standalone path; D-001 lists it too) and these speeds ("What the engine must do" step 2 and STEP 7): every 30 min for Google News queries on High-priority topics, Telegram and (in step 2) the priority X feeds; every 2 h for all other feeds; every 6 h for page monitors. STEP 7 also asks for a 07:00 IST digest job; that comes with step 8 (outputs), not here. D-008 narrows the "every 30 min (High-priority) to 2 h" Google News range in D-004 to 2 h for the two-week test.
