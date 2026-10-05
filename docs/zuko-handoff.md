@@ -4,142 +4,76 @@
 
 ## Last updated
 
-5 Oct 2026 - cloud session: PR #15 (the scheduler) passed all CI checks and was merged with the founder's OK. Then the editor's ground-truth log (`log-template`, `check-log`) was built on `feat/scheduler-to20xo`. Earlier the same day, a laptop session built step 7, the scheduler, through `/zuko:build` (heavy path).
+5 Oct 2026, evening - laptop session (Claude Desktop, Code tab): ran "Next laptop session: the checklist" steps 1-9 with the founder. The founder chose to do every code fix in the **next cloud session**. Ended early: the plan's usage limit was reached.
 
 ## Where things stand
 
-- **Built and merged before this session:** fetchers for every route, cleaning + Google News resolution + blocklist, grouping into stories, keyword tagging, scoring, the database, pipeline / health / CLI / README (PRs #1-#13), and the 5 Oct handoff (#14).
-- **Merged 5 Oct 2026 (PR #15):** the engine can run on its own (D-008), **but the founder decided not to use the timer for now (D-009): fetch only when the founder asks.** Never install the timer or offer to until the founder changes D-009.
-  - Windows Task Scheduler starts `pythonw -m riffi_ingest fetch --due` every 30 minutes. Speeds per route are in `config/schedule.yaml`: Telegram 30 min; Google News, X/Instagram backups, publisher feeds and YouTube 2 h; page monitors 6 h.
-  - A run diary (`engine_runs` table) and `data/engine.log` record every run, every check that fetched nothing, and every failure.
-  - An offline run blames no source, and Google 403/429 refusals are counted.
-  - `python -m riffi_ingest status` answers "is it alive?".
-- **The editor's log is ready (cloud session, 5 Oct 2026):** `log-template` creates `data/ground_truth.csv` and the list of High-priority topics, and `check-log` checks each row. Run `log-template` on the laptop before day 1 of the test.
-- **The digest and health report are built (cloud session, 5 Oct 2026, D-012; not merged yet):** `digest` writes `reports/<IST date>/digest.md`, `digest.csv`, `health.md` and `sources_health.csv` for the 24 hours before it is run (`--date` regenerates a past day, 24 h ending 07:00 IST); `report` writes the two health files only. Read-only on the database. Run it on the laptop after a `fetch --all` to see it on real data.
+- **Merged on `main`:** everything up to PR #25 (digest + health report, D-012), plus the scheduler (D-008, timer NOT installed: D-009), truststore (D-010), Telegram via `t.me/s/` (D-011), and the ground-truth log.
+- **On branch `fix/source-addresses` (pushed, commit `58e96b8`; PR NOT opened yet: the laptop has no `gh`, and the in-app browser is not signed in to GitHub):** 11 source addresses fixed, founder-approved. Details are in the commit message (use it as the PR body). The real `data/engine.db` already holds the new addresses (`import-sources`: 0 added, 131 updated). No dangerous-list file changed, so D-007 lets Claude merge once CI is green.
 - **Not built yet:** AI tagging pass, dashboard and `/api/stories`, exclusions filter, matching the log to stories + the recall report.
-- **Deadline:** collecting daily by about 10-12 Oct 2026 so the two-week test finishes before launch.
-- **Merge rule (D-007):** Claude may merge its own PR when every CI check is green AND no dangerous-list file changed. This PR changes dangerous files, and the founder approved each change in the session (see the PR), so it merges with the founder's OK once CI is green.
+- **Deadline:** collecting daily by about 10-12 Oct 2026.
+
+## Do first next session (cloud)
+
+1. Open the PR for `fix/source-addresses` (title "Sources: fix 11 wrong or missing addresses"; body = the commit message), bind it, and merge when CI is green (D-007: no dangerous file changed).
+2. Then fix each item below **in its own PR**, test first (`/zuko:fix`). Every example here was found in the real data on 5 Oct 2026:
+   1. **The Polish RCB story still tags as RCB.** The real headline is `Poland cancels RCB alert over air attack on Ukraine — Interia` (S035 backup). The current excludes (`Alert RCB`, `Rządowe Centrum Bezpieczeństwa`, `Government Security Centre`) miss it: `KeywordTagger.load('config/topic_keywords.yaml').tag(...)` still gives B39, D27 and O24. Add this exact headline to `tests/test_keywords.py`, then fix it without breaking "RCB fans throng Chinnaswamy...".
+   2. **Old scorecards look recent.** These are not ESPNcricinfo: they are **Cricbuzz** scorecard pages that Google News re-dates, picked up by S035's backup query `q=RCB`. Real titles: `RCB vs PWI, 31st Match, Indian Premier League 2013 - Scorecard`, `KKR vs RCB, 27th Match, Indian Premier League, 2017 - Scorecard`, `RCB vs KKR, 1st match, Indian Premier League 2008 - Scorecard`, `RCB vs PBKS, Final, Indian Premier League 2025 - Scorecard`. Also `Highlights: X vs RCB | TATA IPL 2026` videos and `... - Squads` / `- Commentary` pages. About half of today's digest top 30 is this S035 noise. Options: drop old-season scorecard/commentary titles in cleaning, and/or narrow the S035 query (needs the founder for `feeds.csv`).
+   3. **The Namma Metro story split into 3.** Add these as same-story pairs in `tests/test_dedupe.py` before changing anything: `Namma Metro services to run beyond midnight on October 3` (S024+S065) / `Namma Metro Timings Extended on October 3 in Bengaluru` (S024) / `Namma Metro extends last-train timings on 3 October` (S024). A 4th copy (S061 Reddit, 5 Oct, more than 48 h later) is separate by design.
+   4. **Blind page monitors.** The stored snapshots of S004 DIPR, S109 BMTC, S110 BWSSB and S048 Kannada & Culture are the same 3,588-character Kannada privacy-policy text (the karnataka.gov.in template), so they can never see a real change. S009 GBA and S008 ECI store "You need to enable JavaScript to run this app." DPAR's pages behave the same way (that is why S047 moved to Google News). Fix `fetchers/pagemonitor.py` (drop the privacy-policy block / pick the real content), or find a different URL per source.
+   5. Small items:
+      - `test-feeds` marks every Telegram source "missing title": `fetchers/telegram.py` leaves the title empty on purpose, but `health.REQUIRED_FIELDS` still requires one, and its fix text ("dates fall back to fetch time") is wrong. The daily health report is not affected.
+      - `status` says "No gaps: the engine checked at least every 45 minutes" right after a manual fetch while `timer: off`. It should say fetching is by hand.
+      - Two `test-feeds` runs in the same minute overwrite each other's report (same `%Y-%m-%d-%H%M` stamp).
+      - `import-sources` keeps the old ETag when a source's address changes (S011 kept `XXXXXXXX` from PIB; harmless). `db/importers.py` is dangerous, so it needs the founder.
+3. Founder decisions still open:
+   - S007 KSEC: `karsec.gov.in` does not resolve at all (SERVFAIL from 8.8.8.8 and 1.1.1.1). Re-check later, or switch to a Google News search.
+   - S102 TV9 Kannada Telegram: the official channel, quiet since 25 Nov 2025. Kept for the two-week evidence; decide on day 14.
+   - S047 DPAR holidays (Google News search): quiet until festivals (newest story 24 Aug), so it counts against the 90% health target.
+   - S015 (Cockroach Janta Party website) and S041 (BookMyShow) answer 403 to the engine.
+4. The editor's log is ready: `data/ground_truth.csv` (empty, header only) and `data/ground_truth_topics.csv` (59 High-priority topics). Give both to the editor before day 1 of the test.
+5. Next build steps: AI pass (open questions 1-2), dashboard + `/api/stories` (dangerous), exclusions filter (dangerous; needs the founder's word lists), matching the log to stories + the recall report.
 
 ## In flight
 
-1. ~~**PR for `feat/scheduler`.**~~ Merged 5 Oct 2026 with the founder's OK.
-2. **~~Install the Windows timer.~~ Not now (D-009): the founder fetches by hand.** The steps below stay for when the founder changes D-009.
-   - `git checkout main && git pull` first. The timer runs whatever code is in this folder.
-   - Then `powershell -ExecutionPolicy Bypass -File scripts\schedule-windows.ps1`.
-   - Verify:
-     - `Get-ScheduledTask -TaskName 'Riffi ingestion engine - fetch'`: the trigger repeats every 30 min with no end; `DisallowStartIfOnBatteries` is False and `StartWhenAvailable` is True.
-     - `Start-ScheduledTask` once, then `python -m riffi_ingest status` and `data\engine.log`. The first run is a catch-up of every active source, about 12 minutes.
-     - Over the next ticks: Telegram every tick, feeds every 4th, page monitors every 12th.
-   - The first run on the new code adds the `engine_runs` table to `data/engine.db` (additive; backup below).
-   - If registration is refused, add `-RepetitionDuration (New-TimeSpan -Days 3650)` to the trigger.
-3. **While the timer is on:** keep this folder on `main`, and never try other branches here. Remove the timer first with `scripts\schedule-windows.ps1 -Remove`. That is also the emergency stop: it stops a run in progress too.
-   - **Google refusals above 0 in `status`: stop the timer and ask the founder.** A Google block cannot be undone by reverting code (D-004).
-
-## Next laptop session: the checklist (written 5 Oct 2026, cloud)
-
-Everything below needs the laptop: the cloud cannot reach the news sites or the real database. Say at the start that the session uses the founder's plan, not cloud credits, and keep it short. The founder only says yes or no; Zuko runs every command. `py` below means `.venv\Scripts\python.exe -m riffi_ingest`.
-
-1. **Get the newest code.** `git checkout main` then `git pull`. Do **not** install the timer (D-009).
-2. **Install the one new library** (truststore, D-010): `.venv\Scripts\python.exe -m pip install -r requirements.txt`. Then run `node .claude/hooks/py.js -m pytest -q tests`; everything must pass.
-3. **Back up the database before any fetch:** copy it with SQLite's backup API to `data\engine-backup-<date>.db`, and check every table count and `integrity_check`, as on 5 Oct.
-4. **Prove today's cloud fixes against the real sites** (stores nothing):
-   - certificates (D-010): `py test-feeds --source S004 --source S009 --source S109 --source S110`;
-   - Telegram (D-011): `py test-feeds --source S016 --source S101 --source S102`.
-
-   If one still fails, read its suggested fix and stop to tell the founder. Never switch certificate checking off.
-5. **Fix the source addresses** (decision D: Zuko finds them, the founder approves).
-   - Wrong or missing: S057 (Vijaya Karnataka, 404), S007 (KSEC, DNS), S073, S021, S011.
-   - Kannada Google News queries that come back empty: S045 TV9 and S058 Udayavani. The publishers' own feeds work: `tv9kannada.com/feed` (S045) and `prajavani.net/feed/` (S055).
-   - Missing an address: S047 (the DPAR holiday notification page), S107 (the PIB Bengaluru RSS link on `pib.gov.in/ViewRss.aspx?reg=1&lang=1`), S108 (a Google News backup query for the 4 city corporations) and S121 (the Prajavani YouTube channel ID, giving `youtube.com/feeds/videos.xml?channel_id=...`).
-
-   For each one: find a candidate, test it with `py test-feeds --source <id>`, and show the founder a table of old URL, new URL and result. Only after the founder's yes, edit `feeds.csv` and run `py import-sources`. Changing a route type changes the counts in `tests/test_inputs.py` and the brief's numbers, so update them together.
-6. **One full fetch, with the founder's yes:** `py fetch --all` (about 12 minutes). Then check:
-   - the "Entries read" line adds up, with "already stored" and "repeated" (PR #17);
-   - the Polish "Alert RCB" story is no longer tagged RCB (PR #18);
-   - `py status` reads "fetching is by hand" with no gap warnings (PR #23).
-7. **Look at the two ranking problems in the real data**, then fix each in its own PR:
-   - old ESPNcricinfo scorecards showing as recent: find the items and see what dates their feed gives;
-   - the Namma Metro timing story split into 3: take the three headlines and add them as labelled pairs in `tests/test_dedupe.py` before changing anything.
-8. **The editor's log:** `py log-template`, then give the founder `data\ground_truth.csv` and `data\ground_truth_topics.csv` for the editor.
-9. **The morning report** (built 5 Oct 2026): `py digest`, then open `reports\<today>\digest.md` with the founder.
-10. Update this file, then stop.
-
-## Do first next session
-
-1. Read this file, then `BRIEF.md`, `DECISIONS.md` (wins over the brief, now up to D-012), `docs/implementation-plan.md` (open questions 1-11, drift log) and `docs/technical-spec.md` (as-built, including "Scheduler (as built)" and "Outputs (as built)").
-2. The timer is not installed (D-009). Run `status` first anyway and act on it.
-   - `FAILED`, `did not finish` or `no checks at all`: run `/zuko:fix`.
-   - Google refusals: stop the timer, then ask the founder.
-3. Founder decisions A-C (open questions 8-10 in the plan), all decided 5 Oct 2026:
-   - ~~**A. Certificates.**~~ Decided 5 Oct 2026: the founder approved the `truststore` fix (D-010). Built in the cloud and reviewed adversarially; prove it on the laptop with `test-feeds --source S004 --source S009 --source S109 --source S110`. Windows only: see open question 11.
-   - ~~**B. Telegram.**~~ Decided 5 Oct 2026: read each channel's public `t.me/s/<channel>` page (D-011). Built in the cloud; prove it on the laptop with `test-feeds --source S016 --source S101 --source S102`.
-   - ~~**C. README note.**~~ Done 5 Oct 2026: the founder said yes, and the note is in the README's Setup section.
-4. Ranking fixes seen in the first `stories` output, one PR each:
-   - Old ESPNcricinfo scorecards appear as recent.
-   - `stories --hours` filters on `updated_at` (`db/store.py` is dangerous).
-   - ~~Count within-run duplicates in `RunSummary`.~~ Done 5 Oct 2026 (cloud): `fetch` now prints "already stored" and "repeated within this run", so the numbers add up. Check on the next laptop run that the gap is gone.
-   - ~~Tighten the "RCB" keyword.~~ Done 5 Oct 2026 (cloud): O24, D27 and B39 now exclude Poland's "Alert RCB" (Rządowe Centrum Bezpieczeństwa). Check on the next laptop run that the Polish story is gone.
-   - The Namma Metro timing story was split into 3 (check against `tests/test_dedupe.py` pairs).
-5. Fix and re-test `feeds.csv` URLs:
-   - S057 (VK, 404), S007 (KSEC, DNS), S055 / S045 / S058 (native Kannada feeds), S073, S021, S011.
-   - The founder must supply S047, S107, S108 and S121.
-6. Next build steps: ~~digest + health report (step 8)~~ built 5 Oct 2026 (D-012), dashboard + `/api/stories` (dangerous), AI pass (open questions 1-2), exclusions filter (dangerous; needs the founder's word lists), matching the ground-truth log to stories + the recall test (the log itself is built: run `log-template` on the laptop before day 1).
+- `fix/source-addresses`: pushed, PR not opened, suite green (below).
+- Timer: **not installed and not to be offered** (D-009). The install steps are in `README.md` and D-008 for when the founder changes D-009.
 
 ## How to work here
 
-- Live runs (`test-feeds`, `fetch`, `stories`, `status`) happen on the laptop. Cloud sessions cannot reach news sites and do not run the Zuko guard; in the cloud, check every file against the dangerous list in `CLAUDE.md` Part B yourself.
-- Commands: `node .claude/hooks/py.js -m ruff check .`, `-m ruff format --check .` (it also formats Python code blocks inside Markdown), `-m pytest -q tests`.
-- Tests can never touch `data/engine.db`: `tests/conftest.py` points `RIFFI_DB_PATH` at a temp file for every test.
-- The founder is non-technical: use plain language, and end confirmations with "An easy way to understand this".
+- Live runs (`test-feeds`, `fetch`, `stories`, `status`, `digest`) happen on the laptop. Cloud sessions cannot reach news sites and do not run the Zuko guard; in the cloud, check every file against the dangerous list in `CLAUDE.md` Part B yourself.
+- The laptop has no `gh`: open PRs from a cloud session.
+- Commands: `node .claude/hooks/py.js -m ruff check .`, `-m ruff format --check .`, `-m pytest -q tests`. `py` = `.venv\Scripts\python.exe -m riffi_ingest`. On Windows, set `PYTHONIOENCODING=utf-8` when printing Kannada.
+- Tests can never touch `data/engine.db` (`tests/conftest.py`). `test-feeds --feeds <copy>` tests a draft copy of `feeds.csv` without touching the real one.
+- The founder is non-technical: use plain language, and end confirmations with "An easy way to understand this". Ask before every fetch and before changing `feeds.csv`.
 
-## Verification evidence (which checks ran, what they returned)
+## Verification evidence (laptop, 5 Oct 2026, evening)
 
-- Laptop, 5 Oct 2026, on `feat/scheduler`:
-  - `ruff check` was clean and `ruff format --check` gave 57 files formatted.
-  - `pytest -q tests` gave **345 passed** (181 before the branch).
-- Database change (founder-approved):
-  - Before it, a backup `data/engine-backup-2026-10-05.db` was taken with SQLite's backup API: every table count matched and `integrity_check` was ok.
-  - On a backup-API copy of the real file, the new code added `engine_runs`. Every existing count was unchanged (131 / 131 / 2,177 / 2,065 / 1,368 / 14 / 100), schema_version stayed 1, and `last_attempted` returned 131 sources.
-- Reviews:
-  - Product check by the product-manager agent.
-  - Database tests written independently by the test-author agent; the stricter rules were checked against 12 deliberately wrong versions.
-  - Adversarial safety quorum: correctness safe, data safety safe, holds-up not proven safe. Its caller findings were folded into the plan and fixed.
-  - A task review after every task, then a final whole-branch review: "with fixes". Those fixes were made and re-reviewed (Approved).
-- Timer script:
-  - It parses, and its settings were built and read back in memory.
-  - `pythonw -m riffi_ingest fetch --due` ran with no window on a copy and wrote its log line and diary row.
-  - **It has never been registered.** Registering is its real test (In flight 2).
-- First live run, 5 Oct 2026 (before this branch):
-  - `test-feeds`: 96 passed, 35 failed.
-  - `fetch --all`: 115 ok, 11 errors, 5 skipped; 2,177 new items; 2,065 stories (3 High, 610 Medium, 348 Low, 1,104 Drop).
+- `git checkout main && git pull`: fast-forwarded 43 commits to `c3f560c`.
+- `pip install -r requirements.txt`: installed truststore 0.10.4.
+- `pytest -q tests` on `main`: **389 passed**. On `fix/source-addresses`: first 9 failed (tests used S011 / S108 / S121 as samples); after re-pointing them (S011 → S049, same route and Official tier; explicit unfetchable rows) **389 passed**. `ruff check`: all passed. `ruff format --check`: 65 files already formatted.
+- Backup: `data/engine-backup-2026-10-05-1821.db` (SQLite backup API). All 11 table counts matched (items 2,177; story_clusters 2,065; sources 131; topics 151 ...), and `integrity_check` was ok on both copies. The earlier `engine-backup-2026-10-05.db` is kept.
+- `test-feeds`, certificates (D-010): S004, S009, S109, S110 all 200, **4 passed**.
+- `test-feeds`, Telegram (D-011): S016 (14 posts), S101 (20), S102 (20) all 200; all marked FAIL for "missing title" (a false alarm, item 5 above); S016 is quiet since 27 Sep and S102 since 25 Nov 2025.
+- `test-feeds --feeds <draft>` on the 11 new addresses: **10 passed, 1 failed** (S047 quiet).
+- `fetch --all`: 126 ok, 1 not modified, 3 errors (S007 DNS, S015 403, S041 403), 1 skipped (manual). Entries 8,544 = 661 new + 2,005 already stored + 32 repeated + 5,846 older than 7 days (adds up: PR #17 confirmed). 631 new stories, 100 Google News look-ups. Took 15 min.
+- `status`: 127 worked, **Google refusals: 0**, no source failing 3+ in a row. The `engine_runs` table now exists in the real database (additive, approved 5 Oct).
+- `log-template`: created both files. `digest`: 2,838 items, 2,696 stories (3 High, 714 Medium, 399 Low, 1,580 Drop). Health: 110 working, 17 stale, 88 of 105 non-X sources passing (84%, target 90%). Reports are in `reports/2026-10-05/`.
 
 ## Dangerous-surface status (claims to re-verify)
 
-- Changed on this branch with the founder's explicit OK on 5 Oct 2026:
-  - `riffi_ingest/db/schema.py` and `db/store.py`: the run diary; additive. Also a follow-up so `last_attempted` ignores future-dated stamps, and frozen value sets.
-  - `tests/conftest.py`: test DB guard.
-  - `CLAUDE.md` and `.zuko/config.json`: the scheduling line is now Windows Task Scheduler. The two copies are identical.
-  - Approvals were recorded with `.zuko/approve.js` and cleared after each change.
-- Changed in the cloud on 5 Oct 2026 with the founder's explicit yes (decision A, D-010): `fetchers/http.py` (certificates checked against the OS trust store through truststore; errors classed as TLS by type) and `requirements.txt` (truststore==0.10.4 added; its header comment still mentions APScheduler). An adversarial review said "safe with fixes"; the fixes are in the same PR.
-- Untouched: `fetchers/gnews.py`.
-- TLS verification is always on.
+- This session changed no dangerous-list file. `data/engine.db` was written only by the engine's own commands (`import-sources`, `fetch --all`), with the founder's yes, after the backup.
+- TLS verification is always on (truststore, D-010).
 - `config/exclusions.yaml`, `api/stories.py`, `tagging/llm*.py` and `config/prompts/**` do not exist yet.
-- Still pending from the founder: the Slack channel and member ID for `ZUKO_SLACK_WEBHOOK_INGEST` (an environment variable, never a file). `.env.example` is not written (it matches a dangerous glob).
+- Still pending from the founder: the Slack channel and member ID for `ZUKO_SLACK_WEBHOOK_INGEST`; `.env.example` is not written.
 
 ## Open escalations
 
-None beyond decisions A-C above. The timer is not to be installed (D-009).
+The founder decisions in "Do first" step 3. Nothing dangerous is waiting.
 
-## Known small follow-ups (recorded by the reviews, triaged "later")
+## Known small follow-ups (recorded by reviews, triaged "later")
 
-- `status`:
-  - ~~A diary holding only quiet checks says "No runs yet".~~ Fixed 5 Oct 2026.
-  - A failed start while a manual run is live marks the live run dead.
-  - A future-dated row can show as "Last run".
-  - ~~Plurals ("1 checks").~~ Fixed 5 Oct 2026 for checks.
-- Test gaps:
-  - Offline detection with `domain_down` (add soon: 84 Google News feeds share one site).
-  - `finish_engine_run` failing.
-  - The schedule-warning lines in `status`.
-- The offline rule cannot see an outage on Telegram-only ticks (3 of 4 ticks); it is documented.
+- `status`: a failed start while a manual run is live marks the live run dead; a future-dated row can show as "Last run".
+- Test gaps: offline detection with `domain_down`, `finish_engine_run` failing, the schedule-warning lines in `status`.
 - `sources_due` is not validated in `store.py` (protected).
+- The digest's keyword tags misfire on some names (e.g. "Raghuvanshi ... long layoff" → layoffs topics, "Yash Rathod" → D14), which is open question 7; the AI pass is meant to absorb it.
