@@ -4,6 +4,16 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-014 · S004 follows the Chief Minister's English news page, not DIPR's homepage (5 Oct 2026, founder)
+
+On the laptop on the evening of 5 Oct 2026, the real DIPR homepage (`dipr.karnataka.gov.in`, S004) turned out to hold no current press releases: its "latest news" list is in a hidden pop-up, and its newest entry is two years old. The founder chose to point S004 at the Chief Minister's English news page, `https://cm.karnataka.gov.in/en`, still as a page monitor. That page lists the government's press notes in English, written by DIPR, visible on the page, with a dateline on each (12 between 19 Sep and 2 Oct 2026). S004 is renamed "CM's office press releases (DIPR)". Route counts do not change: still 19 page monitors.
+
+Ruled out the same evening: DIPR's "News and Press branch" page (forms and award lists); the CM site's "ವಿವಿಧ ಇಲಾಖೆಯ ಪ್ರಕಟಣೆಗಳು" archive (daily press-release PDFs, last dated 20 Jul 2024); `karnatakavarthe.org` (no longer DIPR's: one post from 2021 and a page of hidden casino-spam links, so never use it); `karnatakainformation.gov.in` (does not resolve); and DIPR's Google Group `varthasoudhabengaluru` (a real daily "DIPR NEWS" bulletin, but its posts appear only with JavaScript and Google no longer offers group feeds). DIPR's X account is already S003 (RSS.app later).
+
+Two limits. The page uses the same karnataka.gov.in template as the other blind monitors, so until the page-monitor fix lands it stores only the template's English privacy policy. And it carries what the CM announces, not every department: cabinet decisions announced by other ministers may be missing, which S003's backup search ("Karnataka cabinet decision") covers. A copy of the page is in `tests/fixtures/karnataka_gov_real_S004_cm_en.html`.
+
+---
+
 ## D-013 · Three unreachable sites are followed through Google News instead (5 Oct 2026, founder)
 
 On the laptop run on 5 Oct 2026, three page monitors could not be read: S007 Karnataka State Election Commission (`karsec.gov.in` does not resolve for anyone), S015 Cockroach Janta Party website and S041 BookMyShow Bengaluru (both answer 403 to the engine). The founder chose to follow each through a Google News search instead:

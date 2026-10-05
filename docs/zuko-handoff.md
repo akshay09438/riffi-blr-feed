@@ -4,7 +4,7 @@
 
 ## Last updated
 
-5 Oct 2026, late evening - laptop session (Claude Desktop, Code tab). The founder asked for: pull `main`, install, test, back up the database, `import-sources`, `test-feeds` on S007/S015/S041, `fetch --all`, `digest`, and the top stories of the last 24 hours. No timer. All done. Then, with the founder's yes, saved the real S004 and S109 pages as test fixtures and diagnosed the page-monitor bug offline. No engine code changed. This branch (`docs/handoff-2026-10-05-evening`) changes only this file, `docs/implementation-plan.md`, `docs/technical-spec.md` and two new files in `tests/fixtures/`.
+5 Oct 2026, late evening - laptop session (Claude Desktop, Code tab). The founder asked for: pull `main`, install, test, back up the database, `import-sources`, `test-feeds` on S007/S015/S041, `fetch --all`, `digest`, and the top stories of the last 24 hours. No timer. All done. Then, with the founder's yes, saved the real S004 and S109 pages as test fixtures and diagnosed the page-monitor bug offline. Then, also with the founder's yes, found a better page for DIPR press releases and re-pointed S004 to the CM's English news page (D-014). No engine code changed. This branch (`docs/handoff-2026-10-05-evening`) changes this file, `docs/implementation-plan.md`, `docs/technical-spec.md`, `DECISIONS.md` (D-014), the S004 row of `feeds.csv`, and three new files in `tests/fixtures/`.
 
 ## Where things stand
 
@@ -18,7 +18,7 @@
 ## Do first next session
 
 **Cloud:**
-1. Open the PR for `docs/handoff-2026-10-05-evening` (title "Handoff: laptop run of the cloud fixes, 5 Oct evening"). Bind it and merge when CI is green. It changes docs only, so D-007 allows Claude to merge.
+1. Open the PR for `docs/handoff-2026-10-05-evening` (title "Handoff: laptop run of the cloud fixes, 5 Oct evening; S004 to the CM's news page"). Bind it and merge when CI is green. It changes docs, three fixtures and one founder-approved `feeds.csv` row, and no dangerous-list file, so D-007 allows Claude to merge.
 2. **Fix the blind page monitors, test first (`/zuko:fix`).** Two separate faults:
    1. **304 hides a blind snapshot (S008 ECI, S009 GBA).** Tonight both answered 304 Not Modified to the conditional GET. S008 has done so since 18:43 IST; S009 was 200 then and 304 tonight. So the new rules never saw their pages, and the stored text is still "You need to enable JavaScript to run this app.". `monitor_page` already skips validators when there is no snapshot (`fetchers/pagemonitor.py`, around line 279). It should also skip them when the stored snapshot is blind (`was_blind`-style: only JavaScript notices, or policy text). This can be fixed in the cloud without the real page.
    2. **Pruning misses the real karnataka.gov.in markup (S004 DIPR, S048 Kannada & Culture, S109 BMTC, S110 BWSSB).** All four answered 200 tonight with the new code and still stored the same 3,588-character Kannada privacy policy (hash `eb00a106...`). **The real pages are now saved** (founder's yes, one request each, 5 Oct ~20:45 IST): `tests/fixtures/karnataka_gov_real_S004_dipr.html` and `tests/fixtures/karnataka_gov_real_S109_bmtc.html`. Both give exactly that hash through today's `page_lines`, so they reproduce the bug offline. What they show (diagnosed offline; no engine code changed):
@@ -35,17 +35,25 @@
       - Accepting only the plural (tried by patching the regex in a scratch script) removes the privacy modal, but trafilatura then takes the terms modal (`#fmyModal6`) instead. Fixing one heading at a time just moves the problem.
       - **The only content that changes is also in a hidden modal:** `#newsModal` "ಇತ್ತೀಚಿನ ಸುದ್ದಿಗಳು" (latest news). DIPR has 9 entries, and BMTC has 84 plus `#exampleModal` "Quick Announcements". There is no visible copy outside the modals. Dropping every modal leaves only the menu and the minister's intro (788 / 1,134 chars), which never change. So "drop all hidden modals" is wrong. The likely shape of the fix is to watch `#newsModal` (plus `#exampleModal`) on this template and drop the rest; the design is the cloud's call.
       - Each news line ends in a relative age ("Student Pass 4 months ago", "... 2 years ago"). Those tails change by themselves, so strip a trailing "N minutes/hours/days/months/years ago" (and the Kannada form, if any) or every page fires a false "updated" item each month.
-      - **S004's homepage is not where DIPR's press releases go:** the newest entry in its news box says "2 years ago". Even fixed, S004 will not catch cabinet decisions. It needs a different URL (a founder decision on `feeds.csv`; look for DIPR's press-release listing). BMTC's newest entry is "4 months ago", so it is slow but alive.
+      - **DIPR's homepage was not where its press releases go** (its newest news entry says "2 years ago"), so **S004 now watches `https://cm.karnataka.gov.in/en`** (D-014, founder's yes). BMTC's newest entry is "4 months ago", so it is slow but alive.
+      - **The third fixture, `tests/fixtures/karnataka_gov_real_S004_cm_en.html`** (the CM's English page, saved 5 Oct ~21:15 IST), is the same template with a different layout, so the fix must handle both:
+        - Its news list (152 English headlines, each with a dateline such as "Bengaluru, October 02, 2026") is **visible, not in a modal**.
+        - Its policy modals have other ids and English headings: `#myModalf3` Copyright Policy, `#myModalf4` Hyperlinking Policy, `#myModalf5` Security Policy, `#myModalf6` Terms & Conditions, `#myModalf7` Privacy Policies, `#myModalf8` Help, `#myModalf9` Screen Reader Access. `is_policy_title` accepts only the first, second and fourth.
+        - Today's `page_lines` gives the English privacy policy (hash `07ab1574...`, "We collect no personal information...").
+        - With every modal dropped, trafilatura picks a block of Kannada photo-gallery captions (11,207 chars) instead of the English headlines.
+
+        So "trafilatura's main text" is the wrong tool for this template. Pick the news list itself: `#newsModal` on DIPR/BMTC-style pages, and the visible headline list on the CM page.
 3. Then the build: the AI pass (open question 2 needs the founder), dashboard and `/api/stories` (dangerous), exclusions filter (dangerous; needs the founder's word lists), and matching the log to stories plus the recall report.
 
 **Laptop (ask the founder before every fetch):**
-1. Done 5 Oct: S004's and S109's real pages are saved in `tests/fixtures/` on this branch.
-2. After the page-monitor fix merges: `git pull`, run the suite, back up the database, `test-feeds --source S004 --source S048 --source S109 --source S110 --source S008 --source S009`, then check `page_snapshots` holds real page text, not the policy or the JavaScript notice.
-3. Give the editor `data/ground_truth.csv` and `data/ground_truth_topics.csv` before day 1 of the test.
+1. Done 5 Oct: the real DIPR (old S004), BMTC (S109) and CM English (new S004) pages are saved in `tests/fixtures/` on this branch.
+2. After this branch merges: `git pull`, then `import-sources` (with the founder's yes, after a backup), so the database takes S004's new address. **Until then `data/engine.db` still holds the old DIPR address.** Note the known `import-sources` bug: it keeps the old ETag when an address changes. The CM server should simply ignore an ETag it didn't issue, but check that S004's first fetch answers 200.
+3. After the page-monitor fix merges: `git pull`, run the suite, back up the database, `test-feeds --source S004 --source S048 --source S109 --source S110 --source S008 --source S009`, then check `page_snapshots` holds real page text, not the policy or the JavaScript notice.
+4. Give the editor `data/ground_truth.csv` and `data/ground_truth_topics.csv` before day 1 of the test.
 
 ## In flight
 
-- `docs/handoff-2026-10-05-evening`: committed and pushed, PR not opened (no `gh` on the laptop). Docs and two HTML fixtures only (no test uses them yet). Suite green (below).
+- `docs/handoff-2026-10-05-evening`: committed and pushed, PR not opened (no `gh` on the laptop). Docs, D-014 with its one `feeds.csv` row, and three HTML fixtures (no test uses them yet). Suite green (below).
 - Timer: **not installed and not to be offered** (D-009). The install steps are in `README.md` and D-008 for when the founder changes D-009.
 
 ## How to work here
@@ -84,6 +92,7 @@
 ## Open escalations
 
 Nothing dangerous is waiting. Founder decisions still open:
+- Optional: add `karnatakavarthe.org` to `blocklist.csv` (dangerous file). The domain is no longer DIPR's and now serves casino-spam links (D-014). No feed links to it today, so it is not urgent.
 - Open question 2: when the AI pass runs.
 - The exclusions word lists.
 - `import-sources` keeps the old ETag when a source's address changes (S011 kept PIB's; harmless so far). The fix is in `db/importers.py`, which is dangerous.
@@ -92,6 +101,7 @@ Nothing dangerous is waiting. Founder decisions still open:
 
 ## Known small follow-ups (recorded by reviews, triaged "later")
 
+- **An unidentified flaky test.** After the D-014 edits (around 21:20 IST, 5 Oct), one full run gave `1 failed, 409 passed, 2 xfailed` in 40.3 s (slower than usual). The next five runs, with no change in between, were all `410 passed, 2 xfailed`. Its name was not captured, and the passing runs cleared `.pytest_cache/.../lastfailed`. The edits touched only `feeds.csv` (one row), docs and an unused fixture, and that row reads back correctly through `load_sources`. A timing-sensitive test is the likely suspect. Run the suite with `-rf` and record the name if it fails again.
 - `status`: a failed start while a manual run is live marks the live run dead; a future-dated row can show as "Last run".
 - Test gaps: offline detection with `domain_down`, `finish_engine_run` failing, the schedule-warning lines in `status`.
 - `sources_due` is not validated in `store.py` (protected).
