@@ -1,9 +1,10 @@
-"""The database schema. BRIEF.md "Data model" and step 6 name seven tables; three helpers are added:
+"""The database schema. BRIEF.md "Data model" and step 6 name seven tables; four helpers are added:
 topics (from topics.csv), gnews_cache (Google News link -> publisher URL, kept so a link is resolved
-once ever, not once per run) and schema_version.
+once ever, not once per run), schema_version, and engine_runs (the run diary, step 7).
 
 Changing a table that already holds data needs a migration step here, never a drop: the two-week
-test's history cannot be recreated.
+test's history cannot be recreated. A new table is added with CREATE TABLE IF NOT EXISTS, which an existing
+file picks up on its next connect without touching its data, so SCHEMA_VERSION stays as it is.
 """
 
 SCHEMA_VERSION = 1
@@ -134,4 +135,22 @@ CREATE TABLE IF NOT EXISTS gnews_cache (
     url TEXT NOT NULL,
     resolved_at TEXT NOT NULL
 );
+
+-- The run diary (step 7, D-008): one row per fetch run and per timer check that fetched nothing, so every gap
+-- in the fetch history has a known cause (laptop off or asleep, no internet, a crash). Kept forever.
+CREATE TABLE IF NOT EXISTS engine_runs (
+    engine_run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at TEXT NOT NULL,          -- the run's clock: equal to its fetch_runs.started_at
+    finished_at TEXT,                  -- NULL while running, or if it never finished (killed, crashed)
+    mode TEXT NOT NULL,                -- due (the timer) | all | source
+    outcome TEXT NOT NULL,             -- running | ok | offline | failed | nothing_due | busy
+    sources_due INTEGER NOT NULL DEFAULT 0,
+    sources_ok INTEGER,
+    sources_failed INTEGER,
+    sources_skipped INTEGER,
+    items_new INTEGER,
+    google_refusals INTEGER,
+    error TEXT
+);
+CREATE INDEX IF NOT EXISTS engine_runs_started ON engine_runs (started_at);
 """

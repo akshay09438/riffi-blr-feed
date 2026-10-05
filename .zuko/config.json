@@ -53,7 +53,7 @@
     },
     {
       "surface": "scheduling / CLI / dashboard",
-      "service": "APScheduler / Typer / FastAPI on 127.0.0.1"
+      "service": "Windows Task Scheduler (the server's timer later, D-008) / Typer / FastAPI on 127.0.0.1"
     },
     {
       "surface": "data store",

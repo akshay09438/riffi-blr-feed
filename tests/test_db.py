@@ -7,15 +7,26 @@ from riffi_ingest.db import connect
 from riffi_ingest.db.connection import from_iso, utc_iso
 from riffi_ingest.db.importers import import_sources, import_topics
 from riffi_ingest.db.store import (
+    DIARY_MODES,
+    FINISHED_OUTCOMES,
+    TICK_OUTCOMES,
+    engine_runs_since,
+    failing_sources,
+    finish_engine_run,
+    first_engine_run_at,
+    last_attempted,
+    last_engine_run,
     load_gnews_cache,
     load_recent_clusters,
     load_snapshots,
     load_validators,
+    log_engine_tick,
     prune,
     record_fetch,
     save_gnews_cache,
     save_run,
     save_tags,
+    start_engine_run,
     story_texts,
 )
 from riffi_ingest.dedupe import Clusterer
@@ -298,3 +309,793 @@ def test_schema_version_has_exactly_one_row(tmp_path):
     for _ in range(3):
         connect(path).close()
     assert connect(path).execute("SELECT COUNT(*) FROM schema_version").fetchone()[0] == 1
+
+
+# ---- the run diary (engine_runs), 5 Oct 2026: evidence for every 30 minutes of the two-week test
+
+HOUR = timedelta(hours=1)
+HALF_HOUR = timedelta(minutes=30)
+NATIVE = "Native publisher RSS/Atom"
+DIARY_COUNTS = ("sources_ok", "sources_failed", "sources_skipped", "items_new", "google_refusals")
+
+
+def fail(conn, source_id, times, route_type=NATIVE, at=NOW):
+    for _ in range(times):
+        record_fetch(conn, FetchOutcome(source_id, route_type, "error", reason="HTTP 503"), at)
+
+
+def run_row(conn, engine_run_id):
+    return conn.execute("SELECT * FROM engine_runs WHERE engine_run_id = ?", (engine_run_id,)).fetchone()
+
+
+def other_tables(conn):
+    """Every row of every table except the diary (and SQLite's own counter table), for before/after checks."""
+    names = [
+        r[0]
+        for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+        if r[0] not in ("engine_runs", "sqlite_sequence")
+    ]
+    return {n: [tuple(r) for r in conn.execute(f'SELECT * FROM "{n}" ORDER BY rowid')] for n in names}
+
+
+def test_the_diary_table_has_the_agreed_columns_and_an_index_on_start_time(tmp_path):
+    conn = connect(tmp_path / "engine.db")
+    info = {r["name"]: r for r in conn.execute("PRAGMA table_info(engine_runs)")}
+    assert set(info) == {
+        "engine_run_id",
+        "started_at",
+        "finished_at",
+        "mode",
+        "outcome",
+        "sources_due",
+        "sources_ok",
+        "sources_failed",
+        "sources_skipped",
+        "items_new",
+        "google_refusals",
+        "error",
+    }
+    assert info["engine_run_id"]["pk"] == 1 and info["engine_run_id"]["type"] == "INTEGER"
+    required = {"started_at", "mode", "outcome", "sources_due"}  # NOT NULL; everything else may be empty
+    assert {name for name, col in info.items() if col["notnull"] and name != "engine_run_id"} == required
+    assert info["sources_due"]["dflt_value"] == "0"
+    assert all(info[c]["type"] == "TEXT" for c in ("started_at", "finished_at", "mode", "outcome", "error"))
+    assert all(info[c]["type"] == "INTEGER" for c in ("sources_due", *DIARY_COUNTS))
+    indexed = [
+        conn.execute(f'PRAGMA index_info("{ix["name"]}")').fetchall()[0]["name"]
+        for ix in conn.execute("PRAGMA index_list(engine_runs)")
+        if ix["origin"] == "c"
+    ]
+    assert "started_at" in indexed  # the diary is read by time
+
+
+def test_diary_ids_are_never_reused(db):
+    first = start_engine_run(db, NOW, "due", 1)
+    db.execute("DELETE FROM engine_runs WHERE engine_run_id = ?", (first,))
+    db.commit()
+    assert start_engine_run(db, NOW + HOUR, "due", 1) > first  # AUTOINCREMENT, not rowid reuse
+
+
+# -- last_attempted
+
+
+def test_last_attempted_is_the_latest_fetch_whatever_its_status(db):
+    assert last_attempted(db) == {}  # nothing fetched yet
+    # S011: the latest start wins even when an older fetch is written afterwards
+    record_fetch(db, FetchOutcome("S011", NATIVE, "error", reason="HTTP 503"), NOW + 3 * HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + HOUR)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "skipped", reason="over the cap"), NOW)
+    record_fetch(db, FetchOutcome("S112", "Manual", "not_modified"), NOW + 2 * HOUR)
+    result = last_attempted(db)
+    assert isinstance(result, dict)
+    assert result == {"S011": NOW + 3 * HOUR, "S034": NOW, "S112": NOW + 2 * HOUR}
+    assert "S019" not in result and "S025" not in result  # never fetched: absent, not "epoch" or None
+    assert all(when.tzinfo is not None for when in result.values())
+
+
+def test_last_attempted_counts_a_source_whose_only_fetches_failed(db):
+    fail(db, "S011", 2, at=NOW - HOUR)
+    assert last_attempted(db) == {"S011": NOW - HOUR}
+
+
+# -- the diary row lifecycle
+
+
+def test_a_diary_row_starts_running_and_is_finished_with_its_counts(db):
+    run_id = start_engine_run(db, NOW, "due", 12)
+    assert isinstance(run_id, int)
+    row = run_row(db, run_id)
+    assert row["started_at"] == utc_iso(NOW)
+    assert row["finished_at"] is None
+    assert (row["mode"], row["outcome"], row["sources_due"]) == ("due", "running", 12)
+    assert row["error"] is None and all(row[c] is None for c in DIARY_COUNTS)
+
+    finish_engine_run(
+        db,
+        run_id,
+        NOW + timedelta(minutes=7),
+        "ok",
+        sources_ok=10,
+        sources_failed=1,
+        sources_skipped=1,
+        items_new=42,
+        google_refusals=3,
+    )
+    row = run_row(db, run_id)
+    assert from_iso(row["finished_at"]) == NOW + timedelta(minutes=7)
+    assert row["outcome"] == "ok"
+    assert (row["sources_ok"], row["sources_failed"], row["sources_skipped"]) == (10, 1, 1)
+    assert (row["items_new"], row["google_refusals"]) == (42, 3)
+    assert row["error"] is None
+    # the start facts are not rewritten
+    assert (row["started_at"], row["mode"], row["sources_due"]) == (utc_iso(NOW), "due", 12)
+    assert db.execute("SELECT COUNT(*) FROM engine_runs").fetchone()[0] == 1
+
+
+def test_finishing_a_run_touches_that_row_only_and_zero_counts_stay_zero(db):
+    earlier = start_engine_run(db, NOW - HOUR, "all", 131)
+    run_id = start_engine_run(db, NOW, "source", 1)
+    finish_engine_run(
+        db,
+        run_id,
+        NOW + timedelta(minutes=2),
+        "failed",
+        sources_ok=0,
+        sources_failed=0,
+        sources_skipped=0,
+        items_new=0,
+        google_refusals=0,
+        error="database is locked",
+    )
+    row = run_row(db, run_id)
+    assert row["outcome"] == "failed" and row["error"] == "database is locked"
+    assert all(row[c] == 0 and row[c] is not None for c in DIARY_COUNTS)  # 0 is a count, not "unknown"
+    left_alone = run_row(db, earlier)
+    assert left_alone["outcome"] == "running" and left_alone["finished_at"] is None
+    assert left_alone["error"] is None and all(left_alone[c] is None for c in DIARY_COUNTS)
+    assert left_alone["mode"] == "all" and left_alone["sources_due"] == 131
+
+
+def test_an_offline_run_records_why_and_leaves_unknown_counts_empty(db):
+    run_id = start_engine_run(db, NOW, "due", 9)
+    finish_engine_run(db, run_id, NOW + timedelta(seconds=20), "offline", error="no internet")
+    row = run_row(db, run_id)
+    assert (row["outcome"], row["error"]) == ("offline", "no internet")
+    assert from_iso(row["finished_at"]) == NOW + timedelta(seconds=20)
+    assert all(row[c] is None for c in DIARY_COUNTS)
+
+
+def test_a_run_started_in_another_time_zone_is_stored_as_utc(db):
+    ist = timezone(timedelta(hours=5, minutes=30))
+    run_id = start_engine_run(db, datetime(2026, 10, 4, 11, 30, tzinfo=ist), "all", 3)
+    assert run_row(db, run_id)["started_at"] == "2026-10-04T06:00:00+00:00"
+
+
+# -- ticks: a timer check that fetched nothing
+
+
+def test_a_tick_is_a_one_shot_row_that_starts_and_ends_at_the_same_moment(db):
+    nothing = log_engine_tick(db, NOW, "due", "nothing_due")
+    busy = log_engine_tick(db, NOW + HALF_HOUR, "due", "busy", sources_due=5)
+    assert isinstance(nothing, int) and isinstance(busy, int) and busy > nothing
+    row = run_row(db, nothing)
+    assert row["started_at"] == row["finished_at"] == utc_iso(NOW)
+    assert (row["mode"], row["outcome"], row["sources_due"]) == ("due", "nothing_due", 0)
+    row = run_row(db, busy)
+    assert row["started_at"] == row["finished_at"] == utc_iso(NOW + HALF_HOUR)
+    assert (row["mode"], row["outcome"], row["sources_due"]) == ("due", "busy", 5)
+    assert db.execute("SELECT COUNT(*) FROM engine_runs").fetchone()[0] == 2
+
+
+# -- engine_runs_since
+
+
+def test_engine_runs_since_lists_oldest_first_from_the_cutoff_ties_by_id(db):
+    too_old = log_engine_tick(db, NOW - HALF_HOUR, "due", "nothing_due")
+    late = start_engine_run(db, NOW + 2 * HOUR, "due", 3)  # written first, started last
+    on_cutoff = start_engine_run(db, NOW, "due", 1)
+    middle = log_engine_tick(db, NOW + HOUR, "due", "busy")
+    on_cutoff_too = log_engine_tick(db, NOW, "due", "nothing_due")  # same instant, higher id
+
+    rows = engine_runs_since(db, NOW)
+    assert isinstance(rows, list)
+    assert [r["engine_run_id"] for r in rows] == [on_cutoff, on_cutoff_too, middle, late]
+    assert [r["outcome"] for r in rows] == ["running", "nothing_due", "busy", "running"]  # ticks are included
+    assert from_iso(rows[0]["started_at"]) == NOW and rows[0]["mode"] == "due" and rows[0]["sources_due"] == 1
+
+    ist = timezone(timedelta(hours=5, minutes=30))
+    assert [r["engine_run_id"] for r in engine_runs_since(db, NOW.astimezone(ist))] == [
+        r["engine_run_id"] for r in rows
+    ]  # the cutoff is an instant, whatever zone it is written in
+    everything = engine_runs_since(db, NOW - timedelta(days=1))
+    assert [r["engine_run_id"] for r in everything] == [too_old, on_cutoff, on_cutoff_too, middle, late]
+    assert engine_runs_since(db, NOW + 3 * HOUR) == []
+
+
+# -- last_engine_run
+
+
+def test_last_engine_run_is_none_when_nothing_has_run(db):
+    assert last_engine_run(db) is None
+
+
+def test_last_engine_run_is_none_when_there_were_only_ticks(db):
+    log_engine_tick(db, NOW, "due", "nothing_due")
+    log_engine_tick(db, NOW + HALF_HOUR, "due", "busy", sources_due=2)
+    assert last_engine_run(db) is None
+
+
+@pytest.mark.parametrize("outcome", ["running", "ok", "offline", "failed"])
+def test_last_engine_run_skips_newer_ticks_and_returns_the_real_run(db, outcome):
+    run_id = start_engine_run(db, NOW, "due", 4)
+    if outcome != "running":
+        finish_engine_run(db, run_id, NOW + timedelta(minutes=3), outcome)
+    log_engine_tick(db, NOW + HALF_HOUR, "due", "nothing_due")
+    log_engine_tick(db, NOW + HOUR, "due", "busy", sources_due=1)
+    row = last_engine_run(db)
+    assert row is not None
+    assert row["engine_run_id"] == run_id and row["outcome"] == outcome and row["mode"] == "due"
+
+
+def test_last_engine_run_picks_the_latest_start_then_the_later_row(db):
+    newest_start = start_engine_run(db, NOW, "due", 1)
+    start_engine_run(db, NOW - HOUR, "all", 131)  # written later, but started earlier
+    assert last_engine_run(db)["engine_run_id"] == newest_start
+    same_instant = start_engine_run(db, NOW, "source", 1)
+    assert last_engine_run(db)["engine_run_id"] == same_instant  # tie: the later row
+
+
+# -- failing_sources
+
+
+def test_failing_sources_lists_active_sources_at_the_threshold_most_failures_first(db):
+    fail(db, "S112", 5, route_type="Manual")
+    fail(db, "S034", 3)
+    fail(db, "S011", 3)
+    fail(db, "S019", 2, route_type="Google News RSS")  # below the default threshold
+    fail(db, "S025", 6, route_type="Web page monitor")  # worst, but switched off
+    db.execute("UPDATE sources SET active = 0 WHERE source_id = 'S025'")
+    db.commit()
+    fail(db, "S001", 3)  # three failures, then it recovered: the count is back to 0
+    record_fetch(db, FetchOutcome("S001", NATIVE, "ok"), NOW)
+
+    rows = failing_sources(db)
+    assert [r["source_id"] for r in rows] == ["S112", "S011", "S034"]  # 5, then the 3s by source_id
+    assert [r["consecutive_failures"] for r in rows] == [5, 3, 3]
+    names = dict(db.execute("SELECT source_id, name FROM sources WHERE source_id IN ('S112', 'S011', 'S034')"))
+    assert {r["source_id"]: r["name"] for r in rows} == names
+    assert all(r["last_status"] == "error: HTTP 503" for r in rows)
+
+    assert [r["source_id"] for r in failing_sources(db, at_least=2)] == ["S112", "S011", "S034", "S019"]
+    assert [r["source_id"] for r in failing_sources(db, at_least=5)] == ["S112"]
+    assert failing_sources(db, at_least=6) == []  # S025 has 6, but it is inactive
+
+
+def test_failing_sources_is_empty_when_every_source_is_healthy(db):
+    assert failing_sources(db) == []
+    fail(db, "S011", 2)
+    assert failing_sources(db) == []
+
+
+# -- committed, and nothing else touched
+
+
+def test_diary_rows_are_committed_and_visible_to_another_connection(tmp_path):
+    path = tmp_path / "engine.db"
+    writer, reader = connect(path), connect(path)
+
+    run_id = start_engine_run(writer, NOW, "due", 4)
+    assert not writer.in_transaction
+    seen = reader.execute(
+        "SELECT outcome, finished_at, sources_due FROM engine_runs WHERE engine_run_id = ?", (run_id,)
+    )
+    assert tuple(seen.fetchone()) == ("running", None, 4)
+
+    finish_engine_run(writer, run_id, NOW + timedelta(minutes=5), "ok", sources_ok=4, items_new=9)
+    assert not writer.in_transaction
+    seen = reader.execute("SELECT outcome, sources_ok, items_new FROM engine_runs WHERE engine_run_id = ?", (run_id,))
+    assert tuple(seen.fetchone()) == ("ok", 4, 9)
+
+    tick_id = log_engine_tick(writer, NOW + HALF_HOUR, "due", "nothing_due")
+    assert not writer.in_transaction
+    seen = reader.execute("SELECT outcome FROM engine_runs WHERE engine_run_id = ?", (tick_id,)).fetchone()
+    assert seen["outcome"] == "nothing_due"
+    writer.close()
+    reader.close()
+
+
+def test_the_diary_functions_change_nothing_in_any_other_table(db):
+    fail(db, "S011", 3)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "ok"), NOW)
+    before = other_tables(db)
+    run_id = start_engine_run(db, NOW, "due", 2)
+    finish_engine_run(db, run_id, NOW + HOUR, "ok", sources_ok=2)
+    log_engine_tick(db, NOW + HALF_HOUR, "due", "busy")
+    engine_runs_since(db, NOW)
+    last_engine_run(db)
+    last_attempted(db)
+    failing_sources(db)
+    assert other_tables(db) == before
+
+
+# -- an existing database gains the diary without losing anything
+
+
+def test_an_existing_database_without_the_diary_gains_it_and_keeps_its_data(tmp_path, repo_root):
+    path = tmp_path / "data" / "engine.db"
+    conn = connect(path)
+    import_sources(conn, repo_root / "feeds.csv", now=NOW)
+    import_topics(conn, repo_root / "topics.csv", now=NOW)
+    ok = FetchOutcome(
+        "S011",
+        NATIVE,
+        "ok",
+        http_status=200,
+        entries=[Entry(title="a", link="https://a.in/1", published=NOW - HOUR, summary="s")],
+        validators=Validators('"e1"', ""),
+    )
+    record_fetch(conn, ok, NOW)
+    fail(conn, "S034", 2)
+    record_fetch(
+        conn, FetchOutcome("S025", "Web page monitor", "ok", snapshot=PageSnapshot("h0", "text", "BMRCL")), NOW
+    )
+    c = Clusterer()
+    stories = [item("BBMP floats tender for tunnel road", hours_ago=3), item("Metro fare hike from Monday")]
+    c.add_all(stories)
+    save_run(conn, stories, list(c.clusters.values()), NOW)
+    save_tags(conn, {cid: TagResult({"O06": ["tunnel road"]}, local=True) for cid in c.clusters}, NOW)
+    save_gnews_cache(conn, {"CBMi1": "https://a.in/1"}, NOW)
+    conn.execute(
+        "INSERT INTO ground_truth (logged_on, topic_id, what_happened, created_at) VALUES ('2026-10-04', 'O06', 'x', ?)",
+        (utc_iso(NOW),),
+    )
+    # make the file look like one written before this change: no diary table
+    conn.execute("DROP TABLE engine_runs")
+    conn.commit()
+    assert "engine_runs" not in {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    before = other_tables(conn)
+    assert before["sources"] and before["fetch_runs"] and before["items"] and before["story_clusters"]
+    assert before["item_topics"] and before["page_snapshots"] and before["gnews_cache"] and before["ground_truth"]
+    conn.close()
+
+    conn = connect(path)
+    assert "engine_runs" in {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    assert other_tables(conn) == before  # every existing row of every other table is untouched
+    assert tuple(conn.execute("SELECT id, version FROM schema_version").fetchall()[0]) == (1, 1)
+    assert conn.execute("SELECT COUNT(*) FROM schema_version").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM engine_runs").fetchone()[0] == 0
+    run_id = start_engine_run(conn, NOW, "due", 1)  # and the gained table works
+    conn.close()
+
+    conn = connect(path)  # connecting again neither fails nor empties the diary
+    assert [r["engine_run_id"] for r in engine_runs_since(conn, NOW)] == [run_id]
+    assert other_tables(conn) == before
+    assert conn.execute("SELECT version FROM schema_version").fetchone()[0] == 1
+    conn.close()
+
+
+# ---- the diary's stricter rules, added after the safety review (5 Oct 2026)
+
+BAD_MODES = ["", "DUE", "due ", "hourly", "nothing_due", "running", None]
+
+
+def diary(conn):
+    """The whole diary, row by row, for before/after checks."""
+    return [tuple(r) for r in conn.execute("SELECT * FROM engine_runs ORDER BY engine_run_id")]
+
+
+# -- only the three agreed modes are accepted, and a rejected call writes nothing
+
+
+@pytest.mark.parametrize("mode", ["due", "all", "source"])
+def test_every_agreed_mode_is_accepted_by_a_run_and_by_a_tick(db, mode):
+    run_id = start_engine_run(db, NOW, mode, 1)
+    tick_id = log_engine_tick(db, NOW + HALF_HOUR, mode, "nothing_due")
+    assert run_row(db, run_id)["mode"] == mode
+    assert run_row(db, tick_id)["mode"] == mode
+
+
+@pytest.mark.parametrize("mode", BAD_MODES)
+def test_a_run_with_an_unknown_mode_is_refused_and_nothing_is_written(db, mode):
+    assert diary(db) == []
+    with pytest.raises(ValueError):
+        start_engine_run(db, NOW, mode, 3)
+    assert diary(db) == []
+    assert not db.in_transaction  # a refused call leaves no half-open write behind
+
+    kept = start_engine_run(db, NOW, "due", 3)  # and the diary still works afterwards
+    before = diary(db)
+    with pytest.raises(ValueError):
+        start_engine_run(db, NOW + HOUR, mode, 3)
+    assert diary(db) == before and run_row(db, kept)["outcome"] == "running"
+
+
+@pytest.mark.parametrize("mode", BAD_MODES)
+@pytest.mark.parametrize("outcome", ["nothing_due", "busy", "failed"])
+def test_a_tick_with_an_unknown_mode_is_refused_and_nothing_is_written(db, mode, outcome):
+    with pytest.raises(ValueError):
+        log_engine_tick(db, NOW, mode, outcome)
+    assert diary(db) == []
+    assert not db.in_transaction
+
+
+# -- a tick may only be nothing_due, busy or failed, and a refused tick writes nothing
+
+
+@pytest.mark.parametrize("outcome", ["running", "ok", "offline", "", "NOTHING_DUE", "idle", None])
+def test_a_tick_with_an_outcome_it_may_not_have_is_refused_and_nothing_is_written(db, outcome):
+    with pytest.raises(ValueError):
+        log_engine_tick(db, NOW, "due", outcome)
+    assert diary(db) == []
+    assert not db.in_transaction
+
+    log_engine_tick(db, NOW, "due", "busy")
+    before = diary(db)
+    with pytest.raises(ValueError):
+        log_engine_tick(db, NOW + HOUR, "due", outcome, sources_due=2, error="x")
+    assert diary(db) == before
+
+
+@pytest.mark.parametrize("outcome", ["nothing_due", "busy", "failed"])
+def test_every_allowed_tick_outcome_is_stored_as_given(db, outcome):
+    tick_id = log_engine_tick(db, NOW, "due", outcome, sources_due=2)
+    row = run_row(db, tick_id)
+    assert row["outcome"] == outcome and row["sources_due"] == 2
+    assert row["started_at"] == row["finished_at"] == utc_iso(NOW)
+
+
+# -- finish_engine_run takes only ok, offline or failed, and a refused finish changes nothing
+
+
+@pytest.mark.parametrize("outcome", ["running", "nothing_due", "busy", "", "done", "OK", None])
+def test_finishing_with_an_outcome_it_may_not_have_is_refused_and_the_row_stays_running(db, outcome):
+    run_id = start_engine_run(db, NOW, "due", 4)
+    other = start_engine_run(db, NOW + HOUR, "all", 9)
+    before = diary(db)
+    with pytest.raises(ValueError):
+        finish_engine_run(db, run_id, NOW + timedelta(minutes=5), outcome, sources_ok=4, items_new=7, error="x")
+    assert diary(db) == before
+    row = run_row(db, run_id)
+    assert row["outcome"] == "running" and row["finished_at"] is None and row["error"] is None
+    assert all(row[c] is None for c in DIARY_COUNTS)
+
+    finish_engine_run(db, run_id, NOW + timedelta(minutes=5), "ok", sources_ok=4)  # still closable, once
+    assert run_row(db, run_id)["outcome"] == "ok" and run_row(db, other)["outcome"] == "running"
+
+
+@pytest.mark.parametrize("outcome", ["ok", "offline", "failed"])
+def test_every_allowed_finish_outcome_is_stored_as_given(db, outcome):
+    run_id = start_engine_run(db, NOW, "all", 5)
+    finish_engine_run(db, run_id, NOW + timedelta(minutes=9), outcome)
+    row = run_row(db, run_id)
+    assert row["outcome"] == outcome and from_iso(row["finished_at"]) == NOW + timedelta(minutes=9)
+
+
+# -- finish_engine_run closes a row that is still running, exactly once
+
+
+def test_finishing_an_unknown_run_is_refused_and_changes_no_row(db):
+    running = start_engine_run(db, NOW, "due", 2)
+    done = start_engine_run(db, NOW + HOUR, "due", 2)
+    finish_engine_run(db, done, NOW + HOUR + HALF_HOUR, "ok", sources_ok=2)
+    log_engine_tick(db, NOW + 2 * HOUR, "due", "busy")
+    before = diary(db)
+    unknown = running + done + 100
+    with pytest.raises(ValueError):
+        finish_engine_run(db, unknown, NOW + 3 * HOUR, "ok", sources_ok=1, items_new=1)
+    with pytest.raises(ValueError):
+        finish_engine_run(db, 0, NOW + 3 * HOUR, "failed", error="x")
+    assert diary(db) == before
+    assert db.execute("SELECT COUNT(*) FROM engine_runs WHERE engine_run_id = ?", (unknown,)).fetchone()[0] == 0
+
+
+def test_finishing_in_an_empty_diary_is_refused(db):
+    with pytest.raises(ValueError):
+        finish_engine_run(db, 1, NOW, "ok")
+    assert diary(db) == []
+
+
+@pytest.mark.parametrize("first", ["ok", "offline", "failed"])
+def test_a_run_that_is_already_finished_cannot_be_finished_again(db, first):
+    run_id = start_engine_run(db, NOW, "due", 6)
+    bystander = start_engine_run(db, NOW + HOUR, "due", 1)
+    finish_engine_run(
+        db,
+        run_id,
+        NOW + timedelta(minutes=4),
+        first,
+        sources_ok=5,
+        sources_failed=1,
+        sources_skipped=0,
+        items_new=11,
+        google_refusals=2,
+        error="first word" if first != "ok" else None,
+    )
+    before = diary(db)
+    for second in ("ok", "offline", "failed"):
+        with pytest.raises(ValueError):
+            finish_engine_run(
+                db, run_id, NOW + HOUR, second, sources_ok=0, sources_failed=9, items_new=0, error="second word"
+            )
+    assert diary(db) == before  # the first answer stands: nothing was overwritten
+    row = run_row(db, run_id)
+    assert row["outcome"] == first and (row["sources_ok"], row["items_new"], row["google_refusals"]) == (5, 11, 2)
+    assert from_iso(row["finished_at"]) == NOW + timedelta(minutes=4)
+    assert run_row(db, bystander)["outcome"] == "running"
+
+
+@pytest.mark.parametrize("tick_outcome", ["nothing_due", "busy", "failed"])
+def test_a_tick_row_can_never_be_finished_as_a_run(db, tick_outcome):
+    tick_id = log_engine_tick(
+        db,
+        NOW,
+        "due",
+        tick_outcome,
+        sources_due=3,
+        error="schedule file is broken" if tick_outcome == "failed" else None,
+    )
+    running = start_engine_run(db, NOW + HOUR, "due", 1)
+    before = diary(db)
+    for outcome in ("ok", "offline", "failed"):
+        with pytest.raises(ValueError):
+            finish_engine_run(db, tick_id, NOW + 2 * HOUR, outcome, sources_ok=3, items_new=5, error="late")
+    assert diary(db) == before
+    row = run_row(db, tick_id)
+    assert row["outcome"] == tick_outcome and row["started_at"] == row["finished_at"] == utc_iso(NOW)
+    assert run_row(db, running)["outcome"] == "running"
+
+
+def test_a_refused_finish_leaves_other_tables_alone_too(db):
+    fail(db, "S011", 3)
+    run_id = start_engine_run(db, NOW, "due", 1)
+    finish_engine_run(db, run_id, NOW + HALF_HOUR, "ok")
+    before = other_tables(db)
+    for bad_id in (run_id, run_id + 50):
+        with pytest.raises(ValueError):
+            finish_engine_run(db, bad_id, NOW + HOUR, "failed", error="x")
+    assert other_tables(db) == before
+
+
+# -- log_engine_tick keeps an error, and a failed tick is a real run
+
+CHECK_FAILED = "feeds.csv could not be read: line 12 has too many columns"
+
+
+def test_a_failed_tick_stores_its_error_and_the_moment_it_happened(db):
+    tick_id = log_engine_tick(db, NOW, "due", "failed", error=CHECK_FAILED)
+    row = run_row(db, tick_id)
+    assert (row["mode"], row["outcome"], row["error"]) == ("due", "failed", CHECK_FAILED)
+    assert row["started_at"] == row["finished_at"] == utc_iso(NOW)
+    assert row["sources_due"] == 0 and all(row[c] is None for c in DIARY_COUNTS)
+
+    positional = log_engine_tick(db, NOW + HALF_HOUR, "all", "failed", 4, "second failure")  # the signature order
+    row = run_row(db, positional)
+    assert (row["mode"], row["sources_due"], row["error"]) == ("all", 4, "second failure")
+
+
+def test_a_tick_without_an_error_has_no_error(db):
+    for outcome in ("nothing_due", "busy", "failed"):
+        assert run_row(db, log_engine_tick(db, NOW, "due", outcome))["error"] is None
+
+
+def test_a_failed_tick_is_listed_in_the_diary_with_its_error(db):
+    log_engine_tick(db, NOW, "due", "nothing_due")
+    failed = log_engine_tick(db, NOW + HALF_HOUR, "due", "failed", error=CHECK_FAILED)
+    rows = engine_runs_since(db, NOW)
+    assert [r["outcome"] for r in rows] == ["nothing_due", "failed"]
+    assert rows[1]["engine_run_id"] == failed and rows[1]["error"] == CHECK_FAILED
+
+
+def test_a_failed_tick_counts_as_the_last_run_but_nothing_due_and_busy_do_not(db):
+    log_engine_tick(db, NOW, "due", "nothing_due")
+    failed = log_engine_tick(db, NOW + HALF_HOUR, "due", "failed", error=CHECK_FAILED)
+    log_engine_tick(db, NOW + HOUR, "due", "busy", sources_due=2)
+    log_engine_tick(db, NOW + HOUR + HALF_HOUR, "due", "nothing_due")
+    row = last_engine_run(db)
+    assert row is not None
+    assert row["engine_run_id"] == failed and row["outcome"] == "failed" and row["error"] == CHECK_FAILED
+
+
+def test_a_failed_tick_only_diary_still_has_a_last_run(db):
+    failed = log_engine_tick(db, NOW, "due", "failed", error=CHECK_FAILED)
+    assert last_engine_run(db)["engine_run_id"] == failed
+
+
+def test_the_last_run_is_whichever_of_a_real_run_and_a_failed_tick_came_later(db):
+    run_id = start_engine_run(db, NOW, "due", 4)
+    finish_engine_run(db, run_id, NOW + timedelta(minutes=3), "ok", sources_ok=4)
+    log_engine_tick(db, NOW - HOUR, "due", "failed", error="old")
+    assert last_engine_run(db)["engine_run_id"] == run_id  # the failed tick is older than the run
+    newer_failed_tick = log_engine_tick(db, NOW + HOUR, "due", "failed", error="new")
+    assert last_engine_run(db)["engine_run_id"] == newer_failed_tick
+    same_instant_run = start_engine_run(db, NOW + HOUR, "due", 1)
+    assert last_engine_run(db)["engine_run_id"] == same_instant_run  # tie: the later row
+
+
+# -- first_engine_run_at
+
+
+def test_first_engine_run_at_is_none_when_the_diary_is_empty(db):
+    assert first_engine_run_at(db) is None
+
+
+def test_first_engine_run_at_is_the_earliest_start_in_the_diary(db):
+    start_engine_run(db, NOW, "due", 1)
+    assert first_engine_run_at(db) == NOW
+    start_engine_run(db, NOW + HOUR, "due", 1)
+    assert first_engine_run_at(db) == NOW  # a later start changes nothing
+    start_engine_run(db, NOW - HOUR, "all", 131)  # written last, started first: the time decides, not the row order
+    assert first_engine_run_at(db) == NOW - HOUR
+
+
+def test_first_engine_run_at_counts_ticks_of_every_kind(db):
+    run_id = start_engine_run(db, NOW, "due", 1)
+    finish_engine_run(db, run_id, NOW + HOUR, "ok")
+    log_engine_tick(db, NOW - HALF_HOUR, "due", "nothing_due")
+    assert first_engine_run_at(db) == NOW - HALF_HOUR
+    log_engine_tick(db, NOW - HOUR, "due", "busy", sources_due=1)
+    assert first_engine_run_at(db) == NOW - HOUR
+    log_engine_tick(db, NOW - 2 * HOUR, "due", "failed", error=CHECK_FAILED)
+    assert first_engine_run_at(db) == NOW - 2 * HOUR
+
+
+def test_first_engine_run_at_is_the_start_not_the_finish_and_only_ticks_are_enough(db):
+    log_engine_tick(db, NOW + HOUR, "due", "busy")
+    assert first_engine_run_at(db) == NOW + HOUR
+    run_id = start_engine_run(db, NOW + 2 * HOUR, "due", 1)
+    finish_engine_run(db, run_id, NOW - 5 * HOUR, "ok")  # an absurd finish time must not be mistaken for a start
+    assert first_engine_run_at(db) == NOW + HOUR
+
+
+def test_first_engine_run_at_is_an_aware_utc_datetime(db):
+    ist = timezone(timedelta(hours=5, minutes=30))
+    start_engine_run(db, datetime(2026, 10, 4, 11, 30, tzinfo=ist), "all", 3)  # 06:00 UTC
+    first = first_engine_run_at(db)
+    assert isinstance(first, datetime)
+    assert first.tzinfo is not None and first.utcoffset() == timedelta(0)
+    assert first == NOW
+    assert first == from_iso("2026-10-04T06:00:00+00:00")
+
+
+def test_first_engine_run_at_ignores_fetch_history_and_other_tables(db):
+    fail(db, "S011", 3, at=NOW - 10 * HOUR)  # fetches long before the diary began are not engine runs
+    assert first_engine_run_at(db) is None
+    before = other_tables(db)
+    start_engine_run(db, NOW, "due", 1)
+    assert first_engine_run_at(db) == NOW
+    assert other_tables(db) == before
+
+
+# -- last_attempted: only sources that have fetch rows, and an inactive source that was tried counts
+
+
+def test_last_attempted_includes_an_inactive_source_that_was_tried(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW)
+    fail(db, "S025", 2, route_type="Web page monitor", at=NOW - HOUR)
+    db.execute("UPDATE sources SET active = 0 WHERE source_id IN ('S025', 'S019')")  # S019 was never fetched
+    db.commit()
+    assert last_attempted(db) == {"S011": NOW, "S025": NOW - HOUR}  # the tried inactive one is in, the untried is not
+    assert "S019" not in last_attempted(db)
+
+
+def test_last_attempted_takes_the_latest_try_of_an_inactive_source(db):
+    record_fetch(db, FetchOutcome("S025", "Web page monitor", "ok"), NOW - 5 * HOUR)
+    record_fetch(db, FetchOutcome("S025", "Web page monitor", "error", reason="HTTP 404"), NOW - HOUR)
+    db.execute("UPDATE sources SET active = 0 WHERE source_id = 'S025'")
+    db.commit()
+    assert last_attempted(db) == {"S025": NOW - HOUR}
+
+
+# ---- after the Task 4 review (5 Oct 2026): fetch stamps from a wrong laptop clock, and frozen diary values
+
+IST = timezone(timedelta(hours=5, minutes=30))
+WEST = timezone(timedelta(hours=-8))  # the other side of UTC, so a sign slip cannot pass
+
+
+# -- last_attempted(conn, now): rows stamped after `now` are ignored
+
+
+def test_last_attempted_with_now_ignores_rows_stamped_after_now(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - 3 * HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 3 * HOUR)  # written by a clock that ran ahead
+    assert last_attempted(db, NOW) == {"S011": NOW - HOUR}  # the latest row at or before now, not the future one
+    assert last_attempted(db, NOW - 2 * HOUR) == {"S011": NOW - 3 * HOUR}  # `now` really is the cut-off
+
+
+def test_last_attempted_with_now_applies_to_each_source_on_its_own_and_to_every_status(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - 3 * HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "error", reason="HTTP 503"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 5 * HOUR)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "ok"), NOW + HOUR)  # only future rows
+    record_fetch(db, FetchOutcome("S034", NATIVE, "error", reason="HTTP 500"), NOW + 2 * HOUR)
+    record_fetch(db, FetchOutcome("S112", "Manual", "skipped", reason="over the cap"), NOW - 2 * HOUR)
+    record_fetch(db, FetchOutcome("S112", "Manual", "not_modified"), NOW + 30 * HOUR)
+    result = last_attempted(db, NOW)
+    assert result == {"S011": NOW - HOUR, "S112": NOW - 2 * HOUR}
+    assert all(when.tzinfo is not None for when in result.values())
+
+
+def test_a_source_whose_only_rows_are_after_now_is_absent_not_none_or_epoch(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + HOUR)
+    fail(db, "S034", 2, at=NOW + 2 * HOUR)
+    result = last_attempted(db, NOW)
+    assert result == {}
+    assert "S011" not in result and "S034" not in result
+    assert last_attempted(db, NOW + HOUR) == {"S011": NOW + HOUR}  # reachable once real time catches up
+    assert last_attempted(db, NOW - 10 * HOUR) == {}  # a `now` before every row leaves nothing
+
+
+def test_a_row_exactly_at_now_counts_and_one_second_later_does_not(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "ok"), NOW + timedelta(seconds=1))
+    record_fetch(db, FetchOutcome("S112", "Manual", "ok"), NOW - timedelta(seconds=1))
+    assert last_attempted(db, NOW) == {"S011": NOW, "S112": NOW - timedelta(seconds=1)}
+
+
+@pytest.mark.parametrize("zone", [IST, WEST, timezone.utc], ids=["ist", "utc-8", "utc"])
+def test_now_in_any_time_zone_is_the_same_instant(db, zone):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW)  # exactly now: counts
+    # four hours after now, though its UTC text ("...T10:00...") sorts before the IST clock text "...T11:30...":
+    # comparing text instead of instants would wrongly count it
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 4 * HOUR)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "ok"), NOW + timedelta(seconds=1))  # one second after: ignored
+    record_fetch(db, FetchOutcome("S112", "Manual", "ok"), NOW - HOUR)
+    now_there = NOW.astimezone(zone)
+    assert now_there == NOW and now_there.utcoffset() == zone.utcoffset(None)  # same instant, different clock face
+    assert last_attempted(db, now_there) == {"S011": NOW, "S112": NOW - HOUR}
+    assert last_attempted(db, now_there) == last_attempted(db, NOW)
+
+
+def test_now_can_be_given_by_name(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + HOUR)
+    assert last_attempted(db, now=NOW) == {"S011": NOW - HOUR}
+
+
+def test_last_attempted_without_now_still_counts_every_row_including_future_ones(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 3 * HOUR)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "error", reason="HTTP 503"), NOW + HOUR)  # only after NOW
+    everything = {"S011": NOW + 3 * HOUR, "S034": NOW + HOUR}
+    assert last_attempted(db) == everything  # the one-argument call is unchanged
+    assert last_attempted(db, None) == everything  # and so is an explicit "no cut-off"
+    assert last_attempted(db, now=None) == everything
+
+
+def test_last_attempted_with_now_only_reads_and_the_ignored_rows_stay_stored(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 3 * HOUR)
+    before = other_tables(db)
+    last_attempted(db, NOW)
+    assert other_tables(db) == before  # nothing deleted, rewritten or added
+    assert db.execute("SELECT COUNT(*) FROM fetch_runs").fetchone()[0] == 2
+    assert last_attempted(db) == {"S011": NOW + 3 * HOUR}  # the future row is still there for the one-argument call
+
+
+# -- the allowed-value sets are frozen: no other code can quietly widen what the diary accepts
+
+AGREED_VALUES = [
+    (DIARY_MODES, {"due", "all", "source"}),
+    (FINISHED_OUTCOMES, {"ok", "offline", "failed"}),
+    (TICK_OUTCOMES, {"nothing_due", "busy", "failed"}),
+]
+AGREED_IDS = ["modes", "finished-outcomes", "tick-outcomes"]
+
+
+@pytest.mark.parametrize(("values", "agreed"), AGREED_VALUES, ids=AGREED_IDS)
+def test_the_allowed_value_sets_hold_exactly_the_agreed_values(values, agreed):
+    assert set(values) == agreed
+
+
+@pytest.mark.parametrize(("values", "agreed"), AGREED_VALUES, ids=AGREED_IDS)
+def test_the_allowed_value_sets_cannot_be_added_to(values, agreed):
+    sentinel = "widened-by-test"
+    try:
+        with pytest.raises(AttributeError):
+            values.add(sentinel)
+    finally:
+        if isinstance(values, set):  # a mutable set would otherwise keep the sentinel for every later test
+            values.discard(sentinel)
+    assert set(values) == agreed and sentinel not in values
+    assert isinstance(values, frozenset)

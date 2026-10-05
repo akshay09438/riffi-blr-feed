@@ -181,7 +181,7 @@ The machine-readable form below is the single source of truth the hooks and the 
     },
     {
       "surface": "scheduling / CLI / dashboard",
-      "service": "APScheduler / Typer / FastAPI on 127.0.0.1"
+      "service": "Windows Task Scheduler (the server's timer later, D-008) / Typer / FastAPI on 127.0.0.1"
     },
     {
       "surface": "data store",
@@ -391,7 +391,7 @@ Missing or unknown values are scored to the **maximum** (most cautious), so an u
 - **AI tagging** (topics, is-new, what's new, debate angle, excluded verdict) - Claude Code on the founder's plan, run as a session or scheduled task through files, 20 clusters per batch. No API key, no paid AI service (D-005). Never add one without the founder.
 - **X / Instagram** - RSS.app (paid, later, only the 5 `priority_x_feed` rows); phase 1 fetches each row's backup Google News query. Never scrape X, Instagram or WhatsApp.
 - **Telegram** - RSSHub (`rsshub.app`; base URL is config so it can be self-hosted).
-- **Feed parsing** - feedparser. **Page text** - trafilatura. **Title matching** - RapidFuzz. **Scheduling** - APScheduler. **CLI** - Typer. **Dashboard/API** - FastAPI on 127.0.0.1. Never hand-roll these.
+- **Feed parsing** - feedparser. **Page text** - trafilatura. **Title matching** - RapidFuzz. **Scheduling** - Windows Task Scheduler (`scripts/schedule-windows.ps1`; the server's own timer later), D-008. **CLI** - Typer. **Dashboard/API** - FastAPI on 127.0.0.1. Never hand-roll these.
 - **Data store** - one SQLite file, `data/engine.db`; no database server in phase 1.
 - **Hosting** - this laptop for the two-week test (D-003); a small server before launch, which brings a login.
 - **Secrets** - environment variables / `.env` only, never committed.

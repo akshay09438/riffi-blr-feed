@@ -3,6 +3,9 @@
 
 The AI pass (step 4, part 2) is not wired in yet: stories are tagged by keyword and scored without the AI
 points, marked "awaiting AI pass".
+
+A run where no site could be reached at all (this machine's internet was down) stores nothing per source, so no
+source takes a strike for it and every one of them is still due at the next tick (D-008).
 """
 
 from __future__ import annotations
@@ -19,12 +22,17 @@ from .db.connection import PROJECT_ROOT
 from .dedupe import WINDOW, Clusterer
 from .fetchers.feeds import fetch_sources
 from .fetchers.gnews import Resolver
-from .fetchers.http import PoliteClient
+from .fetchers.http import NETWORK_KINDS, PoliteClient, domain_key
+from .fetchers.outcome import FetchOutcome
 from .normalise import clean
 from .safety.blocklist import load_blocklist
 from .scoring import Scorer
 from .sources import Source
 from .tagging.keywords import KeywordTagger
+
+# A host that cannot be reached at all; domain_down = the client gave up on a site after 3 such failures.
+UNREACHABLE_KINDS = NETWORK_KINDS | {"domain_down"}
+GOOGLE_NEWS = "news.google.com"
 
 
 @dataclass
@@ -49,6 +57,22 @@ class RunSummary:
     gnews_cached_new: int = 0
     labels: Counter = field(default_factory=Counter)  # High / Medium / Low / Drop -> stories scored this run
     pruned_payloads: int = 0
+    offline: bool = False  # no site could be reached: nothing was stored or counted against any source
+    google_refusals: int = 0  # Google News feeds that answered 403 / 429 (D-004: the first sign of a block)
+
+
+def looks_offline(outcomes: list[FetchOutcome]) -> bool:
+    """True when the problem was this machine's internet, not the sources: every source tried failed to reach
+    its site, across two or more sites. One unreachable site on its own is that site's problem."""
+    tried = [o for o in outcomes if o.status != "skipped"]
+    if not tried or any(o.status != "error" or o.error_kind not in UNREACHABLE_KINDS for o in tried):
+        return False
+    return len({domain_key(o.url) for o in tried}) >= 2
+
+
+def google_refusals(outcomes: list[FetchOutcome]) -> int:
+    """Google News feeds that answered 403 or 429."""
+    return sum(1 for o in outcomes if domain_key(o.url) == GOOGLE_NEWS and o.http_status in (403, 429))
 
 
 async def run_fetch(
@@ -90,6 +114,11 @@ async def run_fetch(
             snapshots=store.load_snapshots(conn),
             on_done=on_progress,
         )
+        summary.google_refusals = google_refusals(outcomes)
+        if looks_offline(outcomes):
+            summary.offline = True
+            summary.statuses.update(o.status for o in outcomes)
+            return summary
         resolver = Resolver(client, cache=cache)
         cleaned = await clean(outcomes, by_id, blocklist=blocklist, resolver=resolver, now=now)
     finally:
