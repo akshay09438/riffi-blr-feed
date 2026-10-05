@@ -1,3 +1,4 @@
+import re
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -77,6 +78,28 @@ def test_load_reads_the_file_and_names_a_bad_value(tmp_path):
         Schedule.load(path)
     path.write_text("by_route:\n  Manual: never\nsources:\n  # S016: 30m\n", encoding="utf-8")
     assert Schedule.load(path).overrides == {}  # an overrides block holding only comments is empty
+
+
+@pytest.mark.parametrize("bad", ["120", "30", "-1", "2.5", "five", "true"])
+def test_early_minutes_must_be_a_whole_number_from_0_to_29(tmp_path, bad):
+    path = tmp_path / "schedule.yaml"
+    path.write_text(f"early_minutes: {bad}\nby_route:\n  Manual: never\n", encoding="utf-8")
+    # the message names the setting and the value (the file's own path also contains "early_minutes" here)
+    with pytest.raises(ScheduleError, match=rf"(?i)early_minutes must be .*0 to 29, not '?{re.escape(bad)}'?"):
+        Schedule.load(path)
+
+
+@pytest.mark.parametrize("good, minutes", [("0", 0), ("29", 29), ("'7'", 7)])
+def test_early_minutes_inside_the_range_load(tmp_path, good, minutes):
+    path = tmp_path / "schedule.yaml"
+    path.write_text(f"early_minutes: {good}\nby_route:\n  Manual: never\n", encoding="utf-8")
+    assert Schedule.load(path).early == timedelta(minutes=minutes)
+
+
+def test_a_missing_early_minutes_defaults_to_5(tmp_path):
+    path = tmp_path / "schedule.yaml"
+    path.write_text("by_route:\n  Manual: never\n", encoding="utf-8")
+    assert Schedule.load(path).early == timedelta(minutes=5)
 
 
 def test_problems_lists_route_types_without_a_speed_and_unknown_overrides():

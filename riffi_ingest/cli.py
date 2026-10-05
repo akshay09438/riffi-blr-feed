@@ -234,11 +234,15 @@ def _first_run_imports(conn, feeds: Path, topics: Path) -> None:
 
 def _log(path: Path, when: datetime, mode: str, outcome: str, detail: str = "") -> None:
     """One line per run (plus a traceback under a failure) in engine.log beside the database. Windows' timer runs
-    the engine with no window, so this file and `status` are how anyone sees what happened."""
-    path.parent.mkdir(parents=True, exist_ok=True)
+    the engine with no window, so this file and `status` are how anyone sees what happened. Best-effort: a log
+    that cannot be written is skipped, never allowed to break the run."""
     line = f"{when.astimezone(IST):%Y-%m-%d %H:%M} IST  {mode:<6} {outcome:<11} {detail}".rstrip()
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(line + "\n")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except OSError:
+        pass  # the diary row is the other trace; a log that cannot be written must not lose it
 
 
 def _trace() -> str:

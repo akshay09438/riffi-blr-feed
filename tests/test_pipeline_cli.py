@@ -496,6 +496,26 @@ def test_a_run_that_cannot_start_is_recorded(tmp_path, repo_root, monkeypatch):
     assert "database is locked" in (tmp_path / "engine.log").read_text(encoding="utf-8")
 
 
+def test_a_log_that_cannot_be_written_does_not_lose_the_diary_row(tmp_path, repo_root, monkeypatch):
+    (tmp_path / "engine.log").mkdir()  # opening a directory for append raises: the log cannot be written
+    handler, _ = network()
+    monkeypatch.setattr(pipeline, "PoliteClient", lambda: fake_client(handler))
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    r = CliRunner().invoke(cli.app, ["fetch", "--source", "S011", "--db", str(db_path)])
+    assert r.exit_code == 0, r.output
+    rows = diary(conn)
+    assert [(x["mode"], x["outcome"]) for x in rows] == [("source", "ok")]
+    assert rows[0]["finished_at"] is not None  # the row was closed, not left 'running'
+
+
+def test_a_quiet_check_with_a_log_that_cannot_be_written_still_leaves_its_diary_row(tmp_path, repo_root):
+    (tmp_path / "engine.log").mkdir()
+    db_path, conn = prepared_db(tmp_path, repo_root)
+    r = fetch_due(db_path, schedule_file(tmp_path, {}))  # every source 'never': nothing is due
+    assert r.exit_code == 0 and "Nothing is due" in r.output
+    assert [x["outcome"] for x in diary(conn)] == ["nothing_due"]
+
+
 def test_a_database_that_will_not_open_still_leaves_a_log_line(tmp_path, monkeypatch):
     def unopenable(*args, **kwargs):
         raise sqlite3.OperationalError("unable to open database file")

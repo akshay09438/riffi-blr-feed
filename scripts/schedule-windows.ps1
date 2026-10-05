@@ -8,6 +8,8 @@ The task runs `.venv\Scripts\pythonw.exe -m riffi_ingest fetch --due` from the p
 only while this user is logged on (no password is stored), also on battery. After a missed start (laptop off
 or asleep) it runs as soon as it can. Never two at once; Windows stops a run after 1 hour.
 Check on it with: .venv\Scripts\python.exe -m riffi_ingest status
+While the task exists, keep this folder on the main branch: the task runs whatever code is here. Remove it
+before trying other branches.
 #>
 param([switch]$Remove)
 
@@ -16,8 +18,12 @@ $TaskName = 'Riffi ingestion engine - fetch'
 $Project = Split-Path -Parent $PSScriptRoot
 
 if ($Remove) {
-    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
-    Write-Output "Removed '$TaskName' (if it was there)."
+    if (-not (Get-ScheduledTask -TaskName $TaskName -ErrorAction SilentlyContinue)) {
+        Write-Output "Nothing to remove: '$TaskName' is not installed."
+        return
+    }
+    Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false  # a real failure stops here with an error
+    Write-Output "Removed '$TaskName'."
     return
 }
 
@@ -36,3 +42,5 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Se
     -Principal $principal -Force `
     -Description 'Riffi ingestion engine: fetch the sources that are due (config/schedule.yaml). See README.' | Out-Null
 Write-Output "Installed '$TaskName': every 30 minutes from $($start.ToString('yyyy-MM-dd HH:mm'))."
+Write-Output "Check it with: .venv\Scripts\python.exe -m riffi_ingest status"
+Write-Output "Stop it with:  powershell -ExecutionPolicy Bypass -File scripts\schedule-windows.ps1 -Remove"

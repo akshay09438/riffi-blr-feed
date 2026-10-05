@@ -1,6 +1,6 @@
 """Step 7 (BRIEF.md "STEP 7: SCHEDULE", D-008): which sources are due for a fetch.
 
-Windows Task Scheduler starts `python -m riffi_ingest fetch --due` every 30 minutes
+Windows Task Scheduler starts `pythonw -m riffi_ingest fetch --due` every 30 minutes
 (scripts/schedule-windows.ps1). Each time, only the sources whose interval is up are fetched, counted from
 their last attempt (the latest fetch_runs.started_at, whatever its status). After the laptop has slept or been
 off, the next tick finds every overdue source due once: one catch-up run, never a pile-up.
@@ -21,6 +21,8 @@ import yaml
 from .sources import Source
 
 _SPEED = re.compile(r"(\d+)([mh])")
+_DIGITS = re.compile(r"[0-9]+")
+BEAT_MINUTES = 30  # how often Windows' timer starts the engine (scripts/schedule-windows.ps1)
 
 
 class ScheduleError(ValueError):
@@ -39,6 +41,16 @@ def parse_interval(text: object) -> timedelta | None:
     return timedelta(minutes=n) if m.group(2) == "m" else timedelta(hours=n)
 
 
+def parse_early_minutes(value: object) -> timedelta:
+    """A whole number of minutes from 0 to 29. 30 or more would make sources due every beat (Google over-fetch);
+    a negative would make them late; a fraction or a word is a typo."""
+    if isinstance(value, str) and _DIGITS.fullmatch(value.strip()):
+        value = int(value)
+    if not isinstance(value, int) or isinstance(value, bool) or not 0 <= value < BEAT_MINUTES:
+        raise ScheduleError(f"early_minutes must be a whole number from 0 to {BEAT_MINUTES - 1}, not {value!r}")
+    return timedelta(minutes=value)
+
+
 @dataclass
 class Schedule:
     by_route: dict[str, timedelta | None]
@@ -52,7 +64,7 @@ class Schedule:
             return cls(
                 by_route={str(k).strip(): parse_interval(v) for k, v in (raw.get("by_route") or {}).items()},
                 overrides={str(k).strip().upper(): parse_interval(v) for k, v in (raw.get("sources") or {}).items()},
-                early=timedelta(minutes=int(raw.get("early_minutes", 5))),
+                early=parse_early_minutes(raw.get("early_minutes", 5)),
             )
         except (ValueError, TypeError, AttributeError, yaml.YAMLError) as exc:
             raise ScheduleError(f"{path}: {exc}") from exc
