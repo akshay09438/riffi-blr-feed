@@ -7,6 +7,9 @@ from riffi_ingest.db import connect
 from riffi_ingest.db.connection import from_iso, utc_iso
 from riffi_ingest.db.importers import import_sources, import_topics
 from riffi_ingest.db.store import (
+    DIARY_MODES,
+    FINISHED_OUTCOMES,
+    TICK_OUTCOMES,
     engine_runs_since,
     failing_sources,
     finish_engine_run,
@@ -981,3 +984,118 @@ def test_last_attempted_takes_the_latest_try_of_an_inactive_source(db):
     db.execute("UPDATE sources SET active = 0 WHERE source_id = 'S025'")
     db.commit()
     assert last_attempted(db) == {"S025": NOW - HOUR}
+
+
+# ---- after the Task 4 review (5 Oct 2026): fetch stamps from a wrong laptop clock, and frozen diary values
+
+IST = timezone(timedelta(hours=5, minutes=30))
+WEST = timezone(timedelta(hours=-8))  # the other side of UTC, so a sign slip cannot pass
+
+
+# -- last_attempted(conn, now): rows stamped after `now` are ignored
+
+
+def test_last_attempted_with_now_ignores_rows_stamped_after_now(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - 3 * HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 3 * HOUR)  # written by a clock that ran ahead
+    assert last_attempted(db, NOW) == {"S011": NOW - HOUR}  # the latest row at or before now, not the future one
+    assert last_attempted(db, NOW - 2 * HOUR) == {"S011": NOW - 3 * HOUR}  # `now` really is the cut-off
+
+
+def test_last_attempted_with_now_applies_to_each_source_on_its_own_and_to_every_status(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - 3 * HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "error", reason="HTTP 503"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 5 * HOUR)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "ok"), NOW + HOUR)  # only future rows
+    record_fetch(db, FetchOutcome("S034", NATIVE, "error", reason="HTTP 500"), NOW + 2 * HOUR)
+    record_fetch(db, FetchOutcome("S112", "Manual", "skipped", reason="over the cap"), NOW - 2 * HOUR)
+    record_fetch(db, FetchOutcome("S112", "Manual", "not_modified"), NOW + 30 * HOUR)
+    result = last_attempted(db, NOW)
+    assert result == {"S011": NOW - HOUR, "S112": NOW - 2 * HOUR}
+    assert all(when.tzinfo is not None for when in result.values())
+
+
+def test_a_source_whose_only_rows_are_after_now_is_absent_not_none_or_epoch(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + HOUR)
+    fail(db, "S034", 2, at=NOW + 2 * HOUR)
+    result = last_attempted(db, NOW)
+    assert result == {}
+    assert "S011" not in result and "S034" not in result
+    assert last_attempted(db, NOW + HOUR) == {"S011": NOW + HOUR}  # reachable once real time catches up
+    assert last_attempted(db, NOW - 10 * HOUR) == {}  # a `now` before every row leaves nothing
+
+
+def test_a_row_exactly_at_now_counts_and_one_second_later_does_not(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "ok"), NOW + timedelta(seconds=1))
+    record_fetch(db, FetchOutcome("S112", "Manual", "ok"), NOW - timedelta(seconds=1))
+    assert last_attempted(db, NOW) == {"S011": NOW, "S112": NOW - timedelta(seconds=1)}
+
+
+@pytest.mark.parametrize("zone", [IST, WEST, timezone.utc], ids=["ist", "utc-8", "utc"])
+def test_now_in_any_time_zone_is_the_same_instant(db, zone):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW)  # exactly now: counts
+    # four hours after now, though its UTC text ("...T10:00...") sorts before the IST clock text "...T11:30...":
+    # comparing text instead of instants would wrongly count it
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 4 * HOUR)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "ok"), NOW + timedelta(seconds=1))  # one second after: ignored
+    record_fetch(db, FetchOutcome("S112", "Manual", "ok"), NOW - HOUR)
+    now_there = NOW.astimezone(zone)
+    assert now_there == NOW and now_there.utcoffset() == zone.utcoffset(None)  # same instant, different clock face
+    assert last_attempted(db, now_there) == {"S011": NOW, "S112": NOW - HOUR}
+    assert last_attempted(db, now_there) == last_attempted(db, NOW)
+
+
+def test_now_can_be_given_by_name(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + HOUR)
+    assert last_attempted(db, now=NOW) == {"S011": NOW - HOUR}
+
+
+def test_last_attempted_without_now_still_counts_every_row_including_future_ones(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 3 * HOUR)
+    record_fetch(db, FetchOutcome("S034", NATIVE, "error", reason="HTTP 503"), NOW + HOUR)  # only after NOW
+    everything = {"S011": NOW + 3 * HOUR, "S034": NOW + HOUR}
+    assert last_attempted(db) == everything  # the one-argument call is unchanged
+    assert last_attempted(db, None) == everything  # and so is an explicit "no cut-off"
+    assert last_attempted(db, now=None) == everything
+
+
+def test_last_attempted_with_now_only_reads_and_the_ignored_rows_stay_stored(db):
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW - HOUR)
+    record_fetch(db, FetchOutcome("S011", NATIVE, "ok"), NOW + 3 * HOUR)
+    before = other_tables(db)
+    last_attempted(db, NOW)
+    assert other_tables(db) == before  # nothing deleted, rewritten or added
+    assert db.execute("SELECT COUNT(*) FROM fetch_runs").fetchone()[0] == 2
+    assert last_attempted(db) == {"S011": NOW + 3 * HOUR}  # the future row is still there for the one-argument call
+
+
+# -- the allowed-value sets are frozen: no other code can quietly widen what the diary accepts
+
+AGREED_VALUES = [
+    (DIARY_MODES, {"due", "all", "source"}),
+    (FINISHED_OUTCOMES, {"ok", "offline", "failed"}),
+    (TICK_OUTCOMES, {"nothing_due", "busy", "failed"}),
+]
+AGREED_IDS = ["modes", "finished-outcomes", "tick-outcomes"]
+
+
+@pytest.mark.parametrize(("values", "agreed"), AGREED_VALUES, ids=AGREED_IDS)
+def test_the_allowed_value_sets_hold_exactly_the_agreed_values(values, agreed):
+    assert set(values) == agreed
+
+
+@pytest.mark.parametrize(("values", "agreed"), AGREED_VALUES, ids=AGREED_IDS)
+def test_the_allowed_value_sets_cannot_be_added_to(values, agreed):
+    sentinel = "widened-by-test"
+    try:
+        with pytest.raises(AttributeError):
+            values.add(sentinel)
+    finally:
+        if isinstance(values, set):  # a mutable set would otherwise keep the sentinel for every later test
+            values.discard(sentinel)
+    assert set(values) == agreed and sentinel not in values
+    assert isinstance(values, frozenset)
