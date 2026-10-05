@@ -18,8 +18,18 @@ What does not count as a change:
   JavaScript" lines are dropped, and a page left with no text is an error ("needs JavaScript"), which
   keeps the last snapshot and gets the health check's JavaScript fix.
 
+The karnataka.gov.in template (S004 CM, S048, S109 BMTC, S110 BWSSB) is read differently. Its pages carry
+about 20 hidden modals (policies, help, link lists) and trafilatura picks one of those, or a block of photo
+captions, as the main text. On this template the news lists are the page: the "latest news" modal
+(#newsModal) with its "Quick Announcements" (#exampleModal), or the visible "News and Events" list
+(section.news_container). When a page has one, its items are the page's lines and trafilatura is not
+used. Each item loses its list number ("1:") and its relative age ("4 months ago"), which changes by
+itself every month.
+
 A previous snapshot that was itself blind (only policy text, or only a JavaScript notice - taken before
 these rules) is replaced without an "updated" item, so the first visit after the fix is a new baseline.
+Such a snapshot is fetched without the conditional-GET validators too: a 304 would otherwise keep it
+forever (S008 and S009 did, 5 Oct).
 
 Dates inside real content still count ("effective from 10 October" becoming "15 October"), and so do
 lines of numbers or dates without a stamp word (table rows, "Date: 15/10/2026"), and any line with
@@ -108,6 +118,15 @@ JS_NOTICE_RE = re.compile(
     re.I,
 )
 MAX_JS_NOTICE_CHARS = 160
+# karnataka.gov.in template news lists (rules in the module docstring); #exampleModal is Bootstrap's demo id,
+# so it only counts on a page that has one of the others
+NEWS_BLOCK_XPATH = (
+    '//*[@id="newsModal"] | //section[contains(concat(" ", normalize-space(@class), " "), " news_container ")]'
+)
+NEWS_EXTRA_XPATH = '//*[@id="exampleModal"]'
+NEWS_ITEM_TAGS = ("p", "li", "td", *HEADING_TAGS)
+ITEM_NUMBER_RE = re.compile(r"^\d{1,3}\s*:\s*")
+AGE_TAIL_RE = re.compile(r"\s*\b(?:\d+|an?|one)\s+(?:second|minute|hour|day|week|month|year)s?\s+ago$", re.I)
 NEEDS_JS_REASON = "the page needs JavaScript (only an app shell or no text came back); kept the last snapshot"
 
 
@@ -196,6 +215,23 @@ def strip_template_blocks(tree) -> None:
         _drop(h)
 
 
+def news_lines(tree) -> list[str]:
+    """The items of a karnataka.gov.in news list, one line each, without list numbers or ages; [] when the
+    page has no such list."""
+    blocks = tree.xpath(NEWS_BLOCK_XPATH)
+    if not blocks:
+        return []
+    lines = []
+    for block in blocks + tree.xpath(NEWS_EXTRA_XPATH):
+        for el in block.iter(*NEWS_ITEM_TAGS):
+            if next(el.iterdescendants(*NEWS_ITEM_TAGS), None) is not None:
+                continue  # the innermost element holds the item
+            line = AGE_TAIL_RE.sub("", ITEM_NUMBER_RE.sub("", WS_RE.sub(" ", el.text_content()).strip()))
+            if line:
+                lines.append(line)
+    return lines
+
+
 def _pruned(page_html: str):
     tree = load_html(page_html)
     if tree is None:
@@ -207,7 +243,8 @@ def _pruned(page_html: str):
 def page_lines(page_html: str) -> list[str]:
     """The page's main text as comparable lines, without stamp lines, policy blocks or JavaScript notices."""
     tree = _pruned(page_html)
-    text = trafilatura.extract(tree, include_tables=True, include_comments=False, favor_recall=True)
+    news = news_lines(tree) if not isinstance(tree, str) else []
+    text = "\n".join(news) or trafilatura.extract(tree, include_tables=True, include_comments=False, favor_recall=True)
     if not text or all(is_js_notice(WS_RE.sub(" ", line).strip()) for line in text.splitlines() if line.strip()):
         # pages that are mostly links and menus: fall back to all visible text, split into sentences
         visible = trafilatura.html2txt(
@@ -227,16 +264,22 @@ def page_lines(page_html: str) -> list[str]:
     return kept
 
 
+def _js_only(old: list[str]) -> bool:
+    return bool(old) and all(is_js_notice(line) for line in old)
+
+
+def looks_blind(previous_text: str) -> bool:
+    """True when a stored snapshot may never have seen the page: it is only JavaScript notices, or it
+    carries policy wording. Such a snapshot is fetched in full, never with a conditional GET."""
+    old = [line for line in previous_text.splitlines() if line.strip()]
+    return _js_only(old) or any(is_policy_title(line) or POLICY_MENTION_RE.search(line) for line in old)
+
+
 def was_blind(previous_text: str, new_lines: list[str]) -> bool:
     """True when the stored snapshot never saw the page (taken before the policy and JavaScript rules):
     it is only JavaScript notices, or it carries policy wording and shares no line with the new text."""
     old = [line for line in previous_text.splitlines() if line.strip()]
-    if not old:
-        return False
-    if all(is_js_notice(line) for line in old):
-        return True
-    policy = any(is_policy_title(line) or POLICY_MENTION_RE.search(line) for line in old)
-    return policy and not set(old) & set(new_lines)
+    return looks_blind(previous_text) and (_js_only(old) or not set(old) & set(new_lines))
 
 
 def snapshot_of(lines: list[str], title: str) -> PageSnapshot:
@@ -276,8 +319,8 @@ async def monitor_page(
 ) -> FetchOutcome:
     out = FetchOutcome(source.source_id, source.route_type, "error", url=url, snapshot=previous)
     started = time.monotonic()
-    # no snapshot yet: ask for the full page, or a 304 would leave the page without a baseline forever
-    v = (validators or Validators()) if previous is not None else Validators()
+    # no snapshot yet, or a blind one: ask for the full page, or a 304 would keep it that way forever
+    v = (validators or Validators()) if previous is not None and not looks_blind(previous.text) else Validators()
     try:
         res = await client.fetch(url, accept=PAGE_ACCEPT, etag=v.etag, last_modified=v.last_modified)
         out.http_status, out.error_kind = res.status, res.error_kind
