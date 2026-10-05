@@ -472,7 +472,9 @@ User job: the evidence for the day-14 report. For every 30 minutes of the test, 
 
 def test_last_attempted_counts_every_status(db):
     record_fetch(db, FetchOutcome("S011", "Native publisher RSS/Atom", "ok"), NOW - timedelta(hours=3))
-    record_fetch(db, FetchOutcome("S011", "Native publisher RSS/Atom", "error", reason="HTTP 500"), NOW - timedelta(hours=1))
+    record_fetch(
+        db, FetchOutcome("S011", "Native publisher RSS/Atom", "error", reason="HTTP 500"), NOW - timedelta(hours=1)
+    )
     record_fetch(db, FetchOutcome("S112", "Manual", "skipped", reason="manual source"), NOW)
     assert last_attempted(db) == {"S011": NOW - timedelta(hours=1), "S112": NOW}
 
@@ -483,12 +485,25 @@ def test_the_run_diary_records_a_run_from_start_to_finish(db):
     assert (row["outcome"], row["finished_at"], row["mode"], row["sources_due"]) == ("running", None, "due", 12)
     assert from_iso(row["started_at"]) == NOW
     finish_engine_run(
-        db, rid, NOW + timedelta(minutes=11), "ok",
-        sources_ok=10, sources_failed=1, sources_skipped=1, items_new=240, google_refusals=0,
+        db,
+        rid,
+        NOW + timedelta(minutes=11),
+        "ok",
+        sources_ok=10,
+        sources_failed=1,
+        sources_skipped=1,
+        items_new=240,
+        google_refusals=0,
     )
     row = db.execute("SELECT * FROM engine_runs WHERE engine_run_id = ?", (rid,)).fetchone()
     assert row["outcome"] == "ok" and from_iso(row["finished_at"]) == NOW + timedelta(minutes=11)
-    counts = (row["sources_ok"], row["sources_failed"], row["sources_skipped"], row["items_new"], row["google_refusals"])
+    counts = (
+        row["sources_ok"],
+        row["sources_failed"],
+        row["sources_skipped"],
+        row["items_new"],
+        row["google_refusals"],
+    )
     assert counts == (10, 1, 1, 240, 0) and row["error"] is None
 
 
@@ -1245,8 +1260,12 @@ def _last_run(row: sqlite3.Row, now: datetime) -> str:
 def _last_day(rows: list[sqlite3.Row], now: datetime) -> list[str]:
     if not rows:
         return ["Last 24 hours: no checks at all - the timer is not running, or the laptop was off or asleep."]
-    counts = Counter("did not finish" if _unfinished(r, now) else OUTCOMES.get(r["outcome"], r["outcome"]) for r in rows)
-    lines = [f"Last 24 hours: {len(rows)} checks - " + ", ".join(f"{n} {what}" for what, n in counts.most_common()) + "."]
+    counts = Counter(
+        "did not finish" if _unfinished(r, now) else OUTCOMES.get(r["outcome"], r["outcome"]) for r in rows
+    )
+    lines = [
+        f"Last 24 hours: {len(rows)} checks - " + ", ".join(f"{n} {what}" for what, n in counts.most_common()) + "."
+    ]
     times = [from_iso(r["started_at"]) for r in rows] + [now]
     gap, start, end = max((b - a, a, b) for a, b in zip(times, times[1:]))
     if gap > NORMAL_GAP:
