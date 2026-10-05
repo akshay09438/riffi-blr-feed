@@ -444,27 +444,55 @@ User job: the evidence for the day-14 report. For every 30 minutes of the test, 
 **Gate (heavy path):**
 1. The **test-author** subagent writes Step 1's tests from the acceptance criteria, independently of the implementation.
 2. An **adversarial-safety-reviewer quorum** (correctness; data safety and reversibility; does it hold up against the real 5 Oct `engine.db`) reviews Steps 3-4 below before they are applied.
-3. The founder gives a plain-language yes. Then: `node .zuko/approve.js --files "riffi_ingest/db/schema.py,riffi_ingest/db/store.py" --reason "Add the run diary table (engine_runs) and its read/write functions" --ack "<founder's words>"`.
+3. The founder gives a plain-language yes. Then: `node .zuko/approve.js --files "riffi_ingest/db/schema.py,riffi_ingest/db/store.py,tests/conftest.py,data/engine-backup-2026-10-05.db" --reason "Run diary table and functions; a backup of engine.db first; tests never touch the real database" --ack "<founder's words>"`.
 4. Apply, run the checks, then `node .zuko/approve.js --clear`.
+
+**Revisions after the safety review (5 Oct 2026).** The quorum found the table additive and reversible on copies of the real `engine.db`: correctness `safe`, data safety `safe`, holds-up `not proven safe`. The holds-up reviewer's findings were mostly about the callers (Tasks 4-5, revised there). Folded in here:
+- `finish_engine_run` closes only a row that is still `running`, exactly once, and raises `ValueError` otherwise. An unknown id, a finished row or a tick is a bug, never a silent no-op.
+- `mode` and `outcome` are checked in Python against the allowed values, not by a CHECK constraint, so a future outcome needs no table rebuild. A typo raises instead of misleading `status`.
+- `log_engine_tick` takes `error=` and allows `failed`, so a check that fails before a run can start still leaves a row.
+- `last_attempted` does one index lookup per source instead of scanning all of `fetch_runs` (131 ms at a year's rows, versus 0.3 ms).
+- New `first_engine_run_at` lets `status` see an outage that began before its 24 h window.
+- **Before** the new code first touches the real file, a backup copy is taken with SQLite's backup API. Step 6 also uses that API rather than a plain copy, which can miss the WAL.
+- `tests/conftest.py` gets an autouse fixture pointing `RIFFI_DB_PATH` at a temporary file, so a test that forgets `--db` can never write into the real evidence.
+- The tests are the test-author's, independent of this code (commit `b76f9f5`, plus its additions for the points above). Step 1 below is the plan's first draft, kept for reference.
 
 **Files:**
 - Modify: `riffi_ingest/db/schema.py` (docstring; append the table to `SCHEMA`)
-- Modify: `riffi_ingest/db/store.py` (append six functions)
-- Test: `tests/test_db.py` (append; extend the `store` import)
+- Modify: `riffi_ingest/db/store.py` (append the functions below)
+- Modify: `tests/conftest.py` (autouse fixture)
+- Test: `tests/test_db.py` (the test-author's tests)
 
 **Interfaces:**
 - Consumes: `db.connection.utc_iso`, `from_iso`; existing `fetch_runs` and `sources` tables.
 - Produces:
+  - `store.DIARY_MODES = {"due", "all", "source"}`
+  - `store.FINISHED_OUTCOMES = {"ok", "offline", "failed"}`
+  - `store.TICK_OUTCOMES = {"nothing_due", "busy", "failed"}`
   - `store.last_attempted(conn) -> dict[str, datetime]`
-  - `store.start_engine_run(conn, started_at: datetime, mode: str, sources_due: int) -> int`
-  - `store.finish_engine_run(conn, engine_run_id: int, finished_at: datetime, outcome: str, *, sources_ok=None, sources_failed=None, sources_skipped=None, items_new=None, google_refusals=None, error=None) -> None`
-  - `store.log_engine_tick(conn, at: datetime, mode: str, outcome: str, sources_due: int = 0) -> int`
+  - `store.start_engine_run(conn, started_at: datetime, mode: str, sources_due: int) -> int` (ValueError on an unknown mode)
+  - `store.finish_engine_run(conn, engine_run_id: int, finished_at: datetime, outcome: str, *, sources_ok=None, sources_failed=None, sources_skipped=None, items_new=None, google_refusals=None, error=None) -> None` (ValueError unless outcome is in FINISHED_OUTCOMES and the row exists and is still `running`)
+  - `store.log_engine_tick(conn, at: datetime, mode: str, outcome: str, sources_due: int = 0, error: str | None = None) -> int` (outcome in TICK_OUTCOMES)
   - `store.engine_runs_since(conn, since: datetime) -> list[sqlite3.Row]` (oldest first)
   - `store.last_engine_run(conn) -> sqlite3.Row | None` (skips `nothing_due` / `busy`)
+  - `store.first_engine_run_at(conn) -> datetime | None`
   - `store.failing_sources(conn, at_least: int = 3) -> list[sqlite3.Row]` (`source_id`, `name`, `consecutive_failures`, `last_status`)
   - Table `engine_runs` columns: `engine_run_id`, `started_at`, `finished_at`, `mode`, `outcome`, `sources_due`, `sources_ok`, `sources_failed`, `sources_skipped`, `items_new`, `google_refusals`, `error`.
 
-- [ ] **Step 1: Write the failing tests** - append to `tests/test_db.py`, and add to its `from riffi_ingest.db.store import (...)` list: `engine_runs_since`, `failing_sources`, `finish_engine_run`, `last_attempted`, `last_engine_run`, `log_engine_tick`, `start_engine_run`.
+- [ ] **Step 0 (after the founder's yes, before anything touches the real file): back up `data/engine.db`**
+
+With no fetch running, run a script (written to a file first) that does `sqlite3.connect("file:<project>/data/engine.db?mode=ro", uri=True).backup(sqlite3.connect("<project>/data/engine-backup-2026-10-05.db"))`. Check that the backup's table counts equal the original's and that `PRAGMA integrity_check` returns `ok`. `data/` is gitignored, so the backup stays on the laptop.
+
+- [ ] **Step 0b (after the founder's yes): `tests/conftest.py`** - add below the `repo_root` fixture
+
+```python
+@pytest.fixture(autouse=True)
+def never_the_real_database(tmp_path, monkeypatch):
+    """A test that forgets --db must never write into data/engine.db: it holds the two-week test's evidence."""
+    monkeypatch.setenv("RIFFI_DB_PATH", str(tmp_path / "default-engine.db"))
+```
+
+- [ ] **Step 1: Write the failing tests** (done by the test-author, commit `b76f9f5` plus additions; first draft below) - append to `tests/test_db.py`, and add to its `from riffi_ingest.db.store import (...)` list: `engine_runs_since`, `failing_sources`, `finish_engine_run`, `last_attempted`, `last_engine_run`, `log_engine_tick`, `start_engine_run`.
 
 ```python
 # ---- the run diary (step 7)
@@ -598,16 +626,31 @@ CREATE INDEX IF NOT EXISTS engine_runs_started ON engine_runs (started_at);
 ```python
 # ---- the run diary (step 7, D-008)
 
+DIARY_MODES = {"due", "all", "source"}  # the timer's `fetch --due`, or a person's `fetch --all` / `--source`
+FINISHED_OUTCOMES = {"ok", "offline", "failed"}  # how a started run ends
+TICK_OUTCOMES = {"nothing_due", "busy", "failed"}  # one-shot rows: fetched nothing, or failed before a run could start
+
+
+def _check(value: str, allowed: set[str], what: str) -> None:
+    # free text in the table, so a typo here would quietly mislead `status` and the day-14 report
+    if value not in allowed:
+        raise ValueError(f"unknown run {what}: {value!r} (expected one of {sorted(allowed)})")
+
 
 def last_attempted(conn: sqlite3.Connection) -> dict[str, datetime]:
-    """When each source was last tried, whatever the result: the scheduler counts intervals from here."""
-    rows = conn.execute("SELECT source_id, MAX(started_at) AS last FROM fetch_runs GROUP BY source_id")
-    return {r["source_id"]: from_iso(r["last"]) for r in rows}
+    """When each source was last tried, whatever the result: the scheduler counts intervals from here. One index
+    lookup per source, so it stays fast however long fetch_runs grows."""
+    rows = conn.execute(
+        "SELECT s.source_id, (SELECT MAX(f.started_at) FROM fetch_runs f WHERE f.source_id = s.source_id) AS last"
+        " FROM sources s"
+    )
+    return {r["source_id"]: from_iso(r["last"]) for r in rows if r["last"]}
 
 
 def start_engine_run(conn: sqlite3.Connection, started_at: datetime, mode: str, sources_due: int) -> int:
     """A diary row marked 'running'; finish_engine_run closes it. A row left 'running' is a run that never
     finished (killed or crashed)."""
+    _check(mode, DIARY_MODES, "mode")
     with conn:
         cur = conn.execute(
             "INSERT INTO engine_runs (started_at, mode, outcome, sources_due) VALUES (?, ?, 'running', ?)",
@@ -629,10 +672,14 @@ def finish_engine_run(
     google_refusals: int | None = None,
     error: str | None = None,
 ) -> None:
+    """Close a 'running' row, once. Anything else (an unknown id, a finished run, a tick) is a bug and raises,
+    so the diary never says something that did not happen."""
+    _check(outcome, FINISHED_OUTCOMES, "outcome")
     with conn:
-        conn.execute(
+        updated = conn.execute(
             "UPDATE engine_runs SET finished_at = ?, outcome = ?, sources_ok = ?, sources_failed = ?,"
-            " sources_skipped = ?, items_new = ?, google_refusals = ?, error = ? WHERE engine_run_id = ?",
+            " sources_skipped = ?, items_new = ?, google_refusals = ?, error = ?"
+            " WHERE engine_run_id = ? AND outcome = 'running'",
             (
                 utc_iso(finished_at),
                 outcome,
@@ -644,17 +691,25 @@ def finish_engine_run(
                 error,
                 engine_run_id,
             ),
-        )
+        ).rowcount
+    if updated != 1:
+        raise ValueError(f"no running diary row with id {engine_run_id}")
 
 
-def log_engine_tick(conn: sqlite3.Connection, at: datetime, mode: str, outcome: str, sources_due: int = 0) -> int:
-    """A timer check that fetched nothing ('nothing_due', or 'busy' while another run held the lock): one
-    finished row, so the diary shows the engine was awake at that time."""
+def log_engine_tick(
+    conn: sqlite3.Connection, at: datetime, mode: str, outcome: str, sources_due: int = 0, error: str | None = None
+) -> int:
+    """A check that fetched nothing ('nothing_due', or 'busy' while another run held the lock), or that failed
+    before a run could start ('failed', with the error): one finished row, so the diary shows the engine was
+    awake at that time."""
+    _check(mode, DIARY_MODES, "mode")
+    _check(outcome, TICK_OUTCOMES, "outcome")
     stamp = utc_iso(at)
     with conn:
         cur = conn.execute(
-            "INSERT INTO engine_runs (started_at, finished_at, mode, outcome, sources_due) VALUES (?, ?, ?, ?, ?)",
-            (stamp, stamp, mode, outcome, sources_due),
+            "INSERT INTO engine_runs (started_at, finished_at, mode, outcome, sources_due, error)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (stamp, stamp, mode, outcome, sources_due, error),
         )
     return cur.lastrowid
 
@@ -674,6 +729,11 @@ def last_engine_run(conn: sqlite3.Connection) -> sqlite3.Row | None:
     ).fetchone()
 
 
+def first_engine_run_at(conn: sqlite3.Connection) -> datetime | None:
+    """When the diary began, so `status` can tell an outage that started before its 24 h window."""
+    return from_iso(conn.execute("SELECT MIN(started_at) FROM engine_runs").fetchone()[0])
+
+
 def failing_sources(conn: sqlite3.Connection, at_least: int = 3) -> list[sqlite3.Row]:
     """Active sources that failed `at_least` runs in a row (BRIEF.md: flagged for replacement after 3)."""
     return conn.execute(
@@ -690,12 +750,18 @@ Expected: all pass.
 
 - [ ] **Step 6: Check against a copy of the real database (laptop)**
 
-Copy `data/engine.db` to the session scratchpad, `connect()` the copy, and check that the counts of `sources`, `fetch_runs`, `items`, `story_clusters`, `item_topics`, `page_snapshots` and `gnews_cache` match the original (131 / 131 / 2,177 / 2,065 / 1,368 / 14 / 100 on 5 Oct), that `engine_runs` exists and is empty, and that `schema_version` is 1. The real file is not touched.
+With no fetch running, copy `data/engine.db` to the session scratchpad with SQLite's backup API (`sqlite3.connect("file:...?mode=ro", uri=True).backup(dst)`, not a plain file copy, which can miss the WAL). `connect()` the copy and check:
+- the counts of `sources`, `fetch_runs`, `items`, `story_clusters`, `item_topics`, `page_snapshots` and `gnews_cache` match the original (131 / 131 / 2,177 / 2,065 / 1,368 / 14 / 100 on 5 Oct);
+- `engine_runs` exists and is empty;
+- `schema_version` is 1;
+- `last_attempted` returns 131 entries.
+
+The real file is not touched.
 
 - [ ] **Step 7: Commit, then clear the approval**
 
 ```bash
-git add riffi_ingest/db/schema.py riffi_ingest/db/store.py tests/test_db.py
+git add riffi_ingest/db/schema.py riffi_ingest/db/store.py tests/conftest.py tests/test_db.py
 git commit -m "Database: the run diary (engine_runs) and its queries (founder-approved)"
 node .zuko/approve.js --clear
 ```
@@ -704,17 +770,45 @@ node .zuko/approve.js --clear
 
 ### Task 4: `fetch --due`, and every fetch written to the diary and the log
 
-User job: the command Windows' timer runs. The founder never types it. Every run, and every check that fetched nothing, leaves a trace.
+User job: the command Windows' timer runs. The founder never types it. Every run, every check that fetched nothing, and every run that could not start leaves a trace, so `status` never mistakes a failure for the laptop being off.
+
+**Revisions after the safety review (5 Oct 2026):**
+- Any failure before a run starts writes a `failed` diary row (via `log_engine_tick(..., "failed", error=...)`) and a log line. Examples: a broken or missing `config/schedule.yaml`, the database staying locked for 30 s, a bad `load_sources`.
+- A started run is closed as `failed` on any exception, including Ctrl+C (BaseException). Only a hard kill leaves `running`.
+- `scheduler.due` treats a last attempt dated in the future (the clock was wrong then) as due.
 
 **Files:**
-- Modify: `riffi_ingest/cli.py` (docstring, imports, options, `fetch`, two helpers)
-- Test: `tests/test_pipeline_cli.py` (append; update one assertion in `test_cli_rejects_unclear_requests`)
+- Modify: `riffi_ingest/cli.py` (docstring, imports, options, `fetch`, helpers)
+- Modify: `riffi_ingest/scheduler.py` (one line in `due`)
+- Test: `tests/test_pipeline_cli.py` (append; update one assertion in `test_cli_rejects_unclear_requests`), `tests/test_scheduler.py` (append one test)
 
 **Interfaces:**
-- Consumes: Task 1 (`Schedule`, `due`), Task 2 (`RunSummary.offline`, `.google_refusals`), Task 3 (`store.last_attempted`, `start_engine_run`, `finish_engine_run`, `log_engine_tick`), `runlock.run_lock` / `AlreadyRunning`, `pipeline.run_fetch(conn, sources, *, paths, client, now, on_progress)`.
-- Produces: CLI `fetch --due [--schedule PATH]`; `ScheduleOption` (reused by `status` in Task 5); `engine.log` beside the database; diary rows with mode `due` / `all` / `source`.
+- Consumes:
+  - Task 1: `Schedule`, `ScheduleError`, `due`.
+  - Task 2: `RunSummary.offline`, `RunSummary.google_refusals`.
+  - Task 3: `store.last_attempted`, `start_engine_run`, `finish_engine_run`, `log_engine_tick(conn, at, mode, outcome, sources_due=0, error=None)`.
+  - `runlock.run_lock` / `AlreadyRunning`.
+  - `pipeline.run_fetch(conn, sources, *, paths, client, now, on_progress)`, `pipeline.RunSummary`.
+- Produces:
+  - CLI `fetch --due [--schedule PATH]`.
+  - `ScheduleOption`, which `status` reuses in Task 5.
+  - `engine.log` beside the database.
+  - Diary rows with mode `due` / `all` / `source`.
+  - `cli._run_and_record(conn, sources, mode, now, log) -> RunSummary`.
+  - `cli.RunFailed`.
 
-- [ ] **Step 1: Write the failing tests** - append to `tests/test_pipeline_cli.py`, and add `from riffi_ingest.runlock import run_lock` to its imports.
+- [ ] **Step 1: Write the failing tests**
+
+Append to `tests/test_scheduler.py`:
+
+```python
+def test_a_last_attempt_dated_in_the_future_is_due():
+    # the clock was wrong when it was stamped (then corrected): fetch now rather than wait out the error
+    last = {"S002": NOW + timedelta(hours=24), "S001": NOW + timedelta(minutes=1)}
+    assert due([TG, GN], last, SCHEDULE, NOW) == [TG, GN]
+```
+
+Append to `tests/test_pipeline_cli.py`, and add `from riffi_ingest.runlock import run_lock` to its imports:
 
 ```python
 # ---- fetch --due: what Windows' timer runs
@@ -753,6 +847,10 @@ def fetch_due(db_path, schedule):
     return CliRunner().invoke(cli.app, ["fetch", "--due", "--db", str(db_path), "--schedule", str(schedule)])
 
 
+def diary(conn):
+    return conn.execute("SELECT * FROM engine_runs ORDER BY engine_run_id").fetchall()
+
+
 def test_fetch_due_fetches_what_is_due_and_writes_the_diary(tmp_path, repo_root, monkeypatch):
     handler, calls = network()
     monkeypatch.setattr(pipeline, "PoliteClient", lambda: fake_client(handler))
@@ -761,7 +859,7 @@ def test_fetch_due_fetches_what_is_due_and_writes_the_diary(tmp_path, repo_root,
     r = fetch_due(db_path, schedule)
     assert r.exit_code == 0, r.output
     assert calls == ["www.deccanherald.com"]  # only the one source that is due
-    row = conn.execute("SELECT * FROM engine_runs").fetchone()
+    row = diary(conn)[0]
     assert (row["mode"], row["outcome"], row["sources_due"], row["sources_ok"], row["items_new"]) == (
         "due",
         "ok",
@@ -775,8 +873,7 @@ def test_fetch_due_fetches_what_is_due_and_writes_the_diary(tmp_path, repo_root,
     assert " due " in log and " ok " in log and "new items 1" in log
     again = fetch_due(db_path, schedule)  # straight away: nothing is due for another 2 hours
     assert again.exit_code == 0 and "Nothing is due" in again.output
-    outcomes = [x[0] for x in conn.execute("SELECT outcome FROM engine_runs ORDER BY engine_run_id")]
-    assert outcomes == ["ok", "nothing_due"]
+    assert [x["outcome"] for x in diary(conn)] == ["ok", "nothing_due"]
     assert "nothing_due" in (tmp_path / "engine.log").read_text(encoding="utf-8")
 
 
@@ -788,7 +885,7 @@ def test_a_check_while_a_run_is_going_is_skipped_and_noted(tmp_path, repo_root):
         by_hand = CliRunner().invoke(cli.app, ["fetch", "--all", "--db", str(db_path)])
     assert r.exit_code == 0 and "still running" in r.output
     assert by_hand.exit_code == 1 and "already running" in by_hand.output
-    assert [tuple(x) for x in conn.execute("SELECT outcome, sources_due FROM engine_runs")] == [("busy", 1)]
+    assert [(x["outcome"], x["sources_due"]) for x in diary(conn)] == [("busy", 1)]
 
 
 def test_a_crashed_run_is_marked_failed_with_its_reason(tmp_path, repo_root, monkeypatch):
@@ -799,9 +896,22 @@ def test_a_crashed_run_is_marked_failed_with_its_reason(tmp_path, repo_root, mon
     db_path, conn = prepared_db(tmp_path, repo_root)
     r = fetch_due(db_path, schedule_file(tmp_path, {"S011": "2h"}))
     assert r.exit_code == 1 and "disk full" in r.output
-    row = conn.execute("SELECT outcome, error, finished_at FROM engine_runs").fetchone()
-    assert row["outcome"] == "failed" and "RuntimeError: disk full" in row["error"] and row["finished_at"]
+    rows = diary(conn)
+    assert len(rows) == 1 and rows[0]["outcome"] == "failed" and rows[0]["finished_at"]
+    assert "RuntimeError: disk full" in rows[0]["error"]
     assert "RuntimeError: disk full" in (tmp_path / "engine.log").read_text(encoding="utf-8")
+
+
+def test_an_interrupted_run_is_closed_as_failed(tmp_path, repo_root, monkeypatch):
+    async def interrupted(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "run_fetch", interrupted)
+    _, conn = prepared_db(tmp_path, repo_root)
+    with pytest.raises(KeyboardInterrupt):
+        cli._run_and_record(conn, store.load_sources(conn, ["S011"]), "all", NOW, tmp_path / "engine.log")
+    row = diary(conn)[0]
+    assert row["outcome"] == "failed" and row["error"].startswith("KeyboardInterrupt") and row["finished_at"]
 
 
 def test_no_internet_is_recorded_as_offline(tmp_path, repo_root, monkeypatch):
@@ -809,7 +919,7 @@ def test_no_internet_is_recorded_as_offline(tmp_path, repo_root, monkeypatch):
     db_path, conn = prepared_db(tmp_path, repo_root)
     r = fetch_due(db_path, schedule_file(tmp_path, {"S011": "2h", gn_source_id(conn): "2h"}))
     assert r.exit_code == 0 and "No internet" in r.output
-    assert tuple(conn.execute("SELECT outcome, sources_failed FROM engine_runs").fetchone()) == ("offline", 2)
+    assert [(x["outcome"], x["sources_failed"]) for x in diary(conn)] == [("offline", 2)]
     assert conn.execute("SELECT COUNT(*) FROM fetch_runs").fetchone()[0] == 0
 
 
@@ -819,15 +929,22 @@ def test_runs_by_hand_are_in_the_diary_too(tmp_path, repo_root, monkeypatch):
     db_path, conn = prepared_db(tmp_path, repo_root)
     r = CliRunner().invoke(cli.app, ["fetch", "--source", "S011", "--db", str(db_path)])
     assert r.exit_code == 0, r.output
-    assert tuple(conn.execute("SELECT mode, outcome FROM engine_runs").fetchone()) == ("source", "ok")
+    assert [(x["mode"], x["outcome"]) for x in diary(conn)] == [("source", "ok")]
 
 
-def test_a_bad_schedule_file_stops_with_its_name(tmp_path, repo_root):
-    db_path, _ = prepared_db(tmp_path, repo_root)
+def test_a_broken_or_missing_schedule_leaves_a_failed_row(tmp_path, repo_root):
+    db_path, conn = prepared_db(tmp_path, repo_root)
     bad = tmp_path / "schedule.yaml"
     bad.write_text("by_route:\n  Google News RSS: fortnightly\n", encoding="utf-8")
     r = fetch_due(db_path, bad)
     assert r.exit_code == 1 and "fortnightly" in r.output
+    missing = fetch_due(db_path, tmp_path / "nope.yaml")
+    assert missing.exit_code == 1 and "nope.yaml" in missing.output
+    rows = diary(conn)
+    assert [x["outcome"] for x in rows] == ["failed", "failed"]
+    assert "fortnightly" in rows[0]["error"] and "nope.yaml" in rows[1]["error"]
+    log = (tmp_path / "engine.log").read_text(encoding="utf-8")
+    assert "fortnightly" in log and "nope.yaml" in log
 ```
 
 In `test_cli_rejects_unclear_requests`, the message changes with the new option. Replace the line
@@ -842,10 +959,19 @@ with:
 
 - [ ] **Step 2: Run them to see them fail**
 
-Run: `node .claude/hooks/py.js -m pytest -q tests/test_pipeline_cli.py`
-Expected: the 6 new tests and `test_cli_rejects_unclear_requests` FAIL (`No such option: --due` / message mismatch).
+Run: `node .claude/hooks/py.js -m pytest -q tests/test_pipeline_cli.py tests/test_scheduler.py`
+Expected: the new tests and `test_cli_rejects_unclear_requests` FAIL (`No such option: --due`, a message mismatch, `no attribute '_run_and_record'`, and the future-date case in `due`).
 
-- [ ] **Step 3: Implement in `riffi_ingest/cli.py`**
+- [ ] **Step 3: `riffi_ingest/scheduler.py`** - in `due`, the condition becomes:
+
+```python
+        last = last_attempted.get(source.source_id)
+        # a last attempt dated in the future means the clock was wrong then: fetch now rather than wait it out
+        if last is None or last > now or now - last >= every - schedule.early:
+            out.append(source)
+```
+
+- [ ] **Step 4: Implement in `riffi_ingest/cli.py`**
 
 Docstring command list becomes:
 
@@ -864,7 +990,10 @@ Coming with later steps: digest --date and report.
 """
 ```
 
-Imports: add `import textwrap` and `import traceback` (standard library block); add `from .scheduler import Schedule, ScheduleError, due` (after `from .runlock ...`).
+Imports:
+- Add `import sqlite3`, `import textwrap` and `import traceback` to the standard-library block.
+- Change `from .pipeline import Paths, run_fetch` to `from .pipeline import Paths, RunSummary, run_fetch`.
+- Add `from .scheduler import Schedule, due` after `from .runlock ...`.
 
 Options, after `LabelOption`:
 
@@ -877,9 +1006,13 @@ ScheduleOption = typer.Option(
 )
 ```
 
-Two helpers before `fetch` (the first is the existing first-run code moved out of `fetch` unchanged):
+Helpers, before `fetch`. `_first_run_imports` is the existing first-run code moved out of `fetch`, unchanged.
 
 ```python
+class RunFailed(Exception):
+    """A run that started and failed; it is already in the diary and in engine.log."""
+
+
 def _first_run_imports(conn, feeds: Path, topics: Path) -> None:
     if conn.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == 0:
         _read_feeds(feeds)  # a clear message if feeds.csv is missing
@@ -898,6 +1031,79 @@ def _log(path: Path, when: datetime, mode: str, outcome: str, detail: str = "") 
     line = f"{when.astimezone(IST):%Y-%m-%d %H:%M} IST  {mode:<6} {outcome:<11} {detail}".rstrip()
     with open(path, "a", encoding="utf-8") as f:
         f.write(line + "\n")
+
+
+def _trace() -> str:
+    return textwrap.indent(traceback.format_exc().rstrip(), "    ")
+
+
+def _note_failure(conn, log: Path, now: datetime, mode: str, exc: Exception, sources_due: int = 0) -> None:
+    """A run that could not start still leaves a trace: a line in engine.log and, if the database answers, a
+    'failed' row in the diary, so `status` does not mistake it for the laptop being off."""
+    reason = f"{type(exc).__name__}: {exc}"[:500]
+    _log(log, now, mode, "failed", f"{reason}\n{_trace()}")
+    if conn is not None:
+        try:
+            store.log_engine_tick(conn, now, mode, "failed", sources_due, error=reason)
+        except sqlite3.Error:
+            pass  # the database itself is the problem (still locked, say): the log line above is the trace
+
+
+def _pick_for_run(conn, mode: str, wanted: list[str], schedule: Path, now: datetime, log: Path) -> list[Source]:
+    if mode == "source":  # by id, inactive sources included, so a person can still try one by hand
+        ids = [w.strip().upper() for w in wanted]
+        sources = store.load_sources(conn, ids)
+        unknown = sorted(set(ids) - {s.source_id for s in sources})
+        if unknown:
+            _fail(f"no such source id: {', '.join(unknown)} (see source_id in feeds.csv)")
+        return sources
+    active = store.load_sources(conn)
+    if mode == "all":
+        return active
+    speeds = Schedule.load(schedule)
+    for problem in speeds.problems(active):
+        typer.echo(f"Warning: {problem} in {schedule}; those sources are never fetched.")
+        _log(log, now, mode, "warning", problem)
+    return due(active, store.last_attempted(conn), speeds, now)
+
+
+def _run_and_record(conn, sources: list[Source], mode: str, now: datetime, log: Path) -> RunSummary:
+    """One run between a 'running' diary row and its end. The row is always closed, Ctrl+C included; only a hard
+    kill leaves it 'running', which `status` then reports as 'did not finish'."""
+    run_id = store.start_engine_run(conn, now, mode, len(sources))
+    try:
+        s = asyncio.run(run_fetch(conn, sources, paths=Paths(), now=now, on_progress=_progress(len(sources))))
+    except BaseException as exc:
+        reason = f"{type(exc).__name__}: {exc}"[:500]
+        store.finish_engine_run(conn, run_id, datetime.now(timezone.utc), "failed", error=reason)
+        _log(log, now, mode, "failed", f"due {len(sources)}\n{_trace()}")
+        if isinstance(exc, Exception):
+            raise RunFailed(reason) from exc
+        raise
+    ok = s.statuses["ok"] + s.statuses["not_modified"]
+    failed, skipped = s.statuses["error"], s.statuses["skipped"]
+    finished = datetime.now(timezone.utc)
+    outcome = "offline" if s.offline else "ok"
+    store.finish_engine_run(
+        conn,
+        run_id,
+        finished,
+        outcome,
+        sources_ok=ok,
+        sources_failed=failed,
+        sources_skipped=skipped,
+        items_new=s.items_new,
+        google_refusals=s.google_refusals,
+    )
+    _log(
+        log,
+        now,
+        mode,
+        outcome,
+        f"due {len(sources)}, ok {ok}, failed {failed}, skipped {skipped}, new items {s.items_new},"
+        f" google refusals {s.google_refusals}, {(finished - now).total_seconds() / 60:.1f} min",
+    )
+    return s
 ```
 
 `fetch` becomes:
@@ -919,74 +1125,31 @@ def fetch(
     if [all_sources, bool(source), due_only].count(True) != 1:
         _fail("say exactly one of --all, --source S004 (repeatable) or --due")
     db_path = Path(db) if db else default_db_path()
-    conn = connect(db_path)
     log = db_path.parent / "engine.log"
-    _first_run_imports(conn, feeds, topics)
+    mode = "due" if due_only else "all" if all_sources else "source"
     now = datetime.now(timezone.utc)
-    if source:  # by id, inactive sources included, so a person can still try one by hand
-        mode = "source"
-        ids = [w.strip().upper() for w in source]
-        sources = store.load_sources(conn, ids)
-        unknown = sorted(set(ids) - {s.source_id for s in sources})
-        if unknown:
-            _fail(f"no such source id: {', '.join(unknown)} (see source_id in feeds.csv)")
-    elif all_sources:
-        mode, sources = "all", store.load_sources(conn)
-    else:
-        mode, active = "due", store.load_sources(conn)
-        try:
-            speeds = Schedule.load(schedule)
-        except (OSError, ScheduleError) as exc:
-            _log(log, now, mode, "failed", str(exc))
-            _fail(str(exc))
-        for problem in speeds.problems(active):
-            typer.echo(f"Warning: {problem} in {schedule}; those sources are never fetched.")
-            _log(log, now, mode, "warning", problem)
-        sources = due(active, store.last_attempted(conn), speeds, now)
-        if not sources:
-            store.log_engine_tick(conn, now, mode, "nothing_due")
-            _log(log, now, mode, "nothing_due")
-            typer.echo("Nothing is due yet.")
-            return
+    conn = None
+    try:
+        conn = connect(db_path)
+        _first_run_imports(conn, feeds, topics)
+        sources = _pick_for_run(conn, mode, source, schedule, now, log)
+    except typer.Exit:
+        raise
+    except Exception as exc:  # the timer runs with no window: a run that cannot start must still leave a trace
+        _note_failure(conn, log, now, mode, exc)
+        _fail(f"could not start: {exc} (details in {log})")
+    if not sources:
+        store.log_engine_tick(conn, now, mode, "nothing_due")
+        _log(log, now, mode, "nothing_due")
+        typer.echo("Nothing is due yet.")
+        return
     typer.echo(
         f"Fetching {len(sources)} sources; expect up to about {_estimate_minutes(sources, with_lookups=True)} minutes"
         " (sites are asked politely, one request every 2 s each). Please leave it running. Progress:"
     )
     try:
         with run_lock(db_path.parent / "fetch.lock"):
-            run_id = store.start_engine_run(conn, now, mode, len(sources))
-            try:
-                s = asyncio.run(run_fetch(conn, sources, paths=Paths(), now=now, on_progress=_progress(len(sources))))
-            except Exception as exc:
-                store.finish_engine_run(
-                    conn, run_id, datetime.now(timezone.utc), "failed", error=f"{type(exc).__name__}: {exc}"[:500]
-                )
-                trace = textwrap.indent(traceback.format_exc().rstrip(), "    ")
-                _log(log, now, mode, "failed", f"due {len(sources)}\n{trace}")
-                _fail(f"the run failed: {exc} (details in {log})")
-            ok = s.statuses["ok"] + s.statuses["not_modified"]
-            failed, skipped = s.statuses["error"], s.statuses["skipped"]
-            finished = datetime.now(timezone.utc)
-            outcome = "offline" if s.offline else "ok"
-            store.finish_engine_run(
-                conn,
-                run_id,
-                finished,
-                outcome,
-                sources_ok=ok,
-                sources_failed=failed,
-                sources_skipped=skipped,
-                items_new=s.items_new,
-                google_refusals=s.google_refusals,
-            )
-            _log(
-                log,
-                now,
-                mode,
-                outcome,
-                f"due {len(sources)}, ok {ok}, failed {failed}, skipped {skipped}, new items {s.items_new},"
-                f" google refusals {s.google_refusals}, {(finished - now).total_seconds() / 60:.1f} min",
-            )
+            s = _run_and_record(conn, sources, mode, now, log)
     except AlreadyRunning as exc:
         if mode != "due":
             _fail(str(exc))
@@ -994,6 +1157,11 @@ def fetch(
         _log(log, now, mode, "busy", f"due {len(sources)}")
         typer.echo("Another fetch is still running; this check is skipped.")
         return
+    except RunFailed as exc:
+        _fail(f"the run failed: {exc} (details in {log})")
+    except Exception as exc:  # e.g. the database stayed locked for 30 s before the run could start
+        _note_failure(conn, log, now, mode, exc, len(sources))
+        _fail(f"could not start: {exc} (details in {log})")
     statuses = ", ".join(f"{n} {k}" for k, n in sorted(s.statuses.items()))
     typer.echo(f"Sources: {statuses}.")
     if s.offline:
@@ -1018,18 +1186,18 @@ def fetch(
     typer.echo("See the best ones with: python -m riffi_ingest stories")
 ```
 
-Note: `_fail` raises `typer.Exit`, so it never returns; the code after a `_fail` call in an `except` block does not run.
+`_fail` raises `typer.Exit` (a `RuntimeError`), so it never returns. The `except typer.Exit: raise` keeps a person's own mistakes, such as an unknown source id, out of the diary.
 
-- [ ] **Step 4: Run the tests**
+- [ ] **Step 5: Run the tests**
 
-Run: `node .claude/hooks/py.js -m pytest -q tests/test_pipeline_cli.py`
+Run: `node .claude/hooks/py.js -m pytest -q tests/test_pipeline_cli.py tests/test_scheduler.py`, then the whole suite and both lint commands.
 Expected: all pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add riffi_ingest/cli.py tests/test_pipeline_cli.py
-git commit -m "fetch --due for Windows' timer; every fetch goes into the run diary and engine.log"
+git add riffi_ingest/cli.py riffi_ingest/scheduler.py tests/test_pipeline_cli.py tests/test_scheduler.py
+git commit -m "fetch --due for Windows' timer; every fetch, and every failed start, goes into the run diary and engine.log"
 ```
 
 ---
@@ -1038,14 +1206,26 @@ git commit -m "fetch --due for Windows' timer; every fetch goes into the run dia
 
 User job: the founder (or Zuko) sees in a few seconds that the engine is running, how its last run went, whether any time went missing, whether Google is pushing back, and which sources need fixing.
 
+**Revisions after the safety review (5 Oct 2026):**
+- **Gaps** are measured from the *end* of one check to the start of the next, so a long run is not mistaken for the laptop being off. They start at the later of 24 h ago and the diary's first row, so an outage that began before the window is still shown.
+- **Running vs dead:** a `running` row is "running now" only if a fetch holds the run lock right now (`status` tries the lock without waiting) and it is the latest run. Any other `running` row is "did not finish". This replaces the 1-hour rule.
+- **Clock warning:** rows dated in the future produce a warning (the laptop's clock jumped).
+- **Before the first diary row,** `status` says the diary has no runs yet, not that the engine never ran. The 5 Oct fetches pre-date the diary.
+
 **Files:**
 - Create: `riffi_ingest/runstatus.py`
 - Modify: `riffi_ingest/cli.py` (import `runstatus`; `status` command after `stories`)
 - Test: `tests/test_runstatus.py`
 
 **Interfaces:**
-- Consumes: Task 3 (`store.last_engine_run`, `engine_runs_since`, `failing_sources`, `start_engine_run`, `finish_engine_run`, `log_engine_tick`), Task 1 (`Schedule.load(...).problems`), Task 4 (`ScheduleOption`).
-- Produces: `runstatus.report(conn, now) -> list[str]`; CLI `status [--db PATH] [--schedule PATH]`.
+- Consumes:
+  - Task 3: `store.last_engine_run`, `engine_runs_since`, `first_engine_run_at`, `failing_sources`, `start_engine_run`, `finish_engine_run`, `log_engine_tick`.
+  - Task 1: `Schedule.load(...).problems`, `ScheduleError`.
+  - Task 4: `ScheduleOption`.
+  - `runlock.run_lock` / `AlreadyRunning`.
+- Produces:
+  - `runstatus.report(conn, now, run_in_progress: bool = False) -> list[str]`.
+  - CLI `status [--db PATH] [--schedule PATH]`.
 
 - [ ] **Step 1: Write the failing tests** - `tests/test_runstatus.py`
 
@@ -1060,8 +1240,11 @@ from riffi_ingest.db import connect
 from riffi_ingest.db.importers import import_sources
 from riffi_ingest.db.store import finish_engine_run, log_engine_tick, record_fetch, start_engine_run
 from riffi_ingest.fetchers.outcome import FetchOutcome
+from riffi_ingest.runlock import run_lock
 
 NOW = datetime(2026, 10, 10, 6, 0, tzinfo=timezone.utc)  # 11:30 IST
+H = timedelta(hours=1)
+M = timedelta(minutes=1)
 
 
 @pytest.fixture
@@ -1095,81 +1278,114 @@ def ticks(conn, start, end):
     at = start
     while at <= end:
         log_engine_tick(conn, at, "due", "nothing_due")
-        at += timedelta(minutes=30)
+        at += 30 * M
 
 
-def text(conn):
-    return "\n".join(runstatus.report(conn, NOW))
+def text(conn, run_in_progress=False):
+    return "\n".join(runstatus.report(conn, NOW, run_in_progress=run_in_progress))
 
 
 def test_before_any_run(db):
-    assert "has not run yet" in text(db)
+    assert "No runs in the run diary yet" in text(db)
 
 
 def test_a_healthy_day(db):
-    ticks(db, NOW - timedelta(hours=23, minutes=30), NOW - timedelta(minutes=30))
-    a_run(db, NOW - timedelta(minutes=10))
+    ticks(db, NOW - 23 * H - 30 * M, NOW - 30 * M)
+    a_run(db, NOW - 10 * M)
     out = text(db)
     assert "Last run: 2026-10-10 11:20 IST (10 min ago), the sources that were due: done in 8 min." in out
     assert "120 sources: 110 worked, 6 failed, 4 skipped; 240 new articles." in out
     assert "Last 24 hours: 48 checks - 47 nothing due, 1 ran." in out
-    assert "No gaps" in out and "Google refusals: 0." in out
+    assert "No gaps" in out and "Google refusals: 0." in out and "future" not in out
     assert "Sources failing 3+ runs in a row: none." in out
 
 
 def test_a_gap_is_shown_with_its_times(db):
-    ticks(db, NOW - timedelta(hours=20), NOW - timedelta(hours=12))
-    ticks(db, NOW - timedelta(hours=6), NOW)
-    a_run(db, NOW - timedelta(hours=6))
+    ticks(db, NOW - 20 * H, NOW - 12 * H)
+    ticks(db, NOW - 6 * H, NOW)
+    a_run(db, NOW - 6 * H)
     assert "Longest gap with no check: 6.0 h, 2026-10-09 23:30 IST to 2026-10-10 05:30 IST" in text(db)
 
 
+def test_an_outage_that_began_before_the_window_still_counts(db):
+    ticks(db, NOW - 30 * H, NOW - 25 * H)
+    ticks(db, NOW - 2 * H, NOW)
+    a_run(db, NOW - 2 * H)
+    assert "Longest gap with no check: 22.0 h, 2026-10-09 11:30 IST to 2026-10-10 09:30 IST" in text(db)
+
+
+def test_a_long_run_is_not_a_gap(db):
+    ticks(db, NOW - 23 * H, NOW - 90 * M)
+    a_run(db, NOW - 60 * M, minutes=50)  # Windows skipped the tick due while it ran
+    ticks(db, NOW, NOW)
+    assert "No gaps" in text(db)
+
+
 def test_a_run_that_never_finished(db):
-    a_run(db, NOW - timedelta(hours=3), outcome="running")
-    ticks(db, NOW - timedelta(hours=2, minutes=30), NOW)
+    a_run(db, NOW - 3 * H, outcome="running")
+    ticks(db, NOW - 2 * H - 30 * M, NOW)
     out = text(db)
     assert "did not finish (stopped or crashed)" in out and "1 did not finish" in out
 
 
-def test_a_run_still_going(db):
-    a_run(db, NOW - timedelta(minutes=5), outcome="running")
-    assert ": running now." in text(db)
+def test_a_run_holding_the_lock_is_running_and_a_dead_one_is_not(db):
+    a_run(db, NOW - 3 * M, outcome="running")
+    assert ": running now." in text(db, run_in_progress=True)
+    assert "did not finish (stopped or crashed)" in text(db, run_in_progress=False)  # killed 3 minutes in
 
 
 def test_failed_and_offline_runs_are_explained(db):
-    a_run(db, NOW - timedelta(minutes=40), outcome="failed", minutes=1, error="RuntimeError: disk full")
-    out = text(db)
-    assert "FAILED after 1 min - RuntimeError: disk full" in out
-    a_run(db, NOW - timedelta(minutes=10), outcome="offline", minutes=1, ok=0, failed=116)
+    a_run(db, NOW - 40 * M, outcome="failed", minutes=1, error="RuntimeError: disk full")
+    assert "FAILED after 1 min - RuntimeError: disk full" in text(db)
+    a_run(db, NOW - 10 * M, outcome="offline", minutes=1, ok=0, failed=116)
     out = text(db)
     assert "no internet - none of the 120 sources could be reached" in out
     assert "1 failed" in out and "1 offline (no internet)" in out
 
 
+def test_a_check_that_could_not_start_is_shown_as_failed(db):
+    log_engine_tick(db, NOW - 5 * M, "due", "failed", error="ScheduleError: not a speed: 'fortnightly'")
+    assert "FAILED after under a minute - ScheduleError: not a speed: 'fortnightly'" in text(db)
+
+
 def test_google_refusals_raise_a_warning(db):
-    a_run(db, NOW - timedelta(minutes=10), refusals=3)
+    a_run(db, NOW - 10 * M, refusals=3)
     assert "Google refusals: 3 - WARNING" in text(db)
+
+
+def test_rows_dated_in_the_future_raise_a_clock_warning(db):
+    a_run(db, NOW - 10 * M)
+    log_engine_tick(db, NOW + 24 * H, "due", "nothing_due")
+    assert "dated in the future" in text(db)
 
 
 def test_sources_failing_three_runs_in_a_row_are_listed(db):
     for n in range(3):
         outcome = FetchOutcome("S057", "Native publisher RSS/Atom", "error", reason="HTTP 404")
-        record_fetch(db, outcome, NOW - timedelta(hours=n))
-    a_run(db, NOW - timedelta(minutes=10))
+        record_fetch(db, outcome, NOW - n * H)
+    a_run(db, NOW - 10 * M)
     out = text(db)
     assert "Sources failing 3+ runs in a row (1;" in out
     assert "  S057 Vijaya Karnataka - 3 in a row - error: HTTP 404" in out
 
 
 def test_a_day_with_no_checks_says_so(db):
-    a_run(db, NOW - timedelta(days=2))
+    a_run(db, NOW - 48 * H)
     out = text(db)
     assert "(2.0 days ago)" in out and "no checks at all" in out
 
 
 def test_the_status_command(tmp_path):
-    r = CliRunner().invoke(cli.app, ["status", "--db", str(tmp_path / "e.db")])
-    assert r.exit_code == 0 and "has not run yet" in r.output
+    db_path = tmp_path / "e.db"
+    r = CliRunner().invoke(cli.app, ["status", "--db", str(db_path)])
+    assert r.exit_code == 0 and "No runs in the run diary yet" in r.output
+    conn = connect(db_path)
+    start_engine_run(conn, datetime.now(timezone.utc) - 2 * M, "due", 3)
+    with run_lock(tmp_path / "fetch.lock"):  # a fetch is running right now
+        busy = CliRunner().invoke(cli.app, ["status", "--db", str(db_path)])
+    assert busy.exit_code == 0 and "running now" in busy.output
+    dead = CliRunner().invoke(cli.app, ["status", "--db", str(db_path)])
+    assert "did not finish" in dead.output
 ```
 
 - [ ] **Step 2: Run them to see them fail**
@@ -1194,8 +1410,8 @@ from .db.connection import from_iso
 from .fetchers.parse import IST
 
 DAY = timedelta(hours=24)
-RUN_LIMIT = timedelta(hours=1)  # Windows' timer stops a run after an hour (scripts/schedule-windows.ps1)
 NORMAL_GAP = timedelta(minutes=45)  # the timer checks every 30 minutes; a longer silence is worth showing
+CLOCK_SLACK = timedelta(minutes=5)  # a row dated further ahead than this means the laptop's clock jumped
 
 MODES = {"due": "the sources that were due", "all": "all sources", "source": "chosen sources"}
 OUTCOMES = {
@@ -1223,26 +1439,34 @@ def _span(delta: timedelta) -> str:
     return f"{minutes / 1440:.1f} days"
 
 
-def _unfinished(row: sqlite3.Row, now: datetime) -> bool:
-    return row["outcome"] == "running" and now - from_iso(row["started_at"]) > RUN_LIMIT
-
-
-def report(conn: sqlite3.Connection, now: datetime) -> list[str]:
+def report(conn: sqlite3.Connection, now: datetime, run_in_progress: bool = False) -> list[str]:
+    """`run_in_progress`: whether a fetch holds the run lock right now. Without one, every row still marked
+    'running' belongs to a run that was killed or crashed."""
     last = store.last_engine_run(conn)
     if last is None:
-        return ["The engine has not run yet. Run it once with: python -m riffi_ingest fetch --all"]
+        return [
+            "No runs in the run diary yet (it begins with the first run after the 5 Oct 2026 update)."
+            " Run one now with: python -m riffi_ingest fetch --all"
+        ]
+    current = last["engine_run_id"] if run_in_progress and last["outcome"] == "running" else None
+    since = now - DAY
+    start = max(since, store.first_engine_run_at(conn))
     return [
-        _last_run(last, now),
-        *_last_day(store.engine_runs_since(conn, now - DAY), now),
+        _last_run(last, now, current),
+        *_last_day(store.engine_runs_since(conn, since), now, start, current),
         *_failing(store.failing_sources(conn)),
     ]
 
 
-def _last_run(row: sqlite3.Row, now: datetime) -> str:
+def _dead(row: sqlite3.Row, current: int | None) -> bool:
+    return row["outcome"] == "running" and row["engine_run_id"] != current
+
+
+def _last_run(row: sqlite3.Row, now: datetime, current: int | None) -> str:
     started = from_iso(row["started_at"])
     head = f"Last run: {_when(started)} ({_span(now - started)} ago), {MODES.get(row['mode'], row['mode'])}"
     if row["outcome"] == "running":
-        return head + (": did not finish (stopped or crashed)." if _unfinished(row, now) else ": running now.")
+        return head + (": did not finish (stopped or crashed)." if _dead(row, current) else ": running now.")
     took = _span(from_iso(row["finished_at"]) - started)
     if row["outcome"] == "failed":
         return head + f": FAILED after {took} - {row['error']}"
@@ -1257,24 +1481,48 @@ def _last_run(row: sqlite3.Row, now: datetime) -> str:
     )
 
 
-def _last_day(rows: list[sqlite3.Row], now: datetime) -> list[str]:
+def _longest_gap(
+    rows: list[sqlite3.Row], now: datetime, start: datetime, current: int | None
+) -> tuple[timedelta, datetime, datetime]:
+    """The longest stretch with no check at all, from the end of one check to the start of the next, so a long
+    run is not mistaken for the laptop being off."""
+    seen = start
+    longest = (timedelta(0), start, start)
+    for r in rows:
+        began = from_iso(r["started_at"])
+        if began - seen > longest[0]:
+            longest = (began - seen, seen, began)
+        if r["engine_run_id"] == current:
+            ended = now
+        else:
+            ended = from_iso(r["finished_at"]) if r["finished_at"] else began
+        seen = max(seen, ended)
+    if now - seen > longest[0]:
+        longest = (now - seen, seen, now)
+    return longest
+
+
+def _last_day(rows: list[sqlite3.Row], now: datetime, start: datetime, current: int | None) -> list[str]:
     if not rows:
         return ["Last 24 hours: no checks at all - the timer is not running, or the laptop was off or asleep."]
-    counts = Counter(
-        "did not finish" if _unfinished(r, now) else OUTCOMES.get(r["outcome"], r["outcome"]) for r in rows
-    )
+    counts = Counter("did not finish" if _dead(r, current) else OUTCOMES.get(r["outcome"], r["outcome"]) for r in rows)
     lines = [
         f"Last 24 hours: {len(rows)} checks - " + ", ".join(f"{n} {what}" for what, n in counts.most_common()) + "."
     ]
-    times = [from_iso(r["started_at"]) for r in rows] + [now]
-    gap, start, end = max((b - a, a, b) for a, b in zip(times, times[1:]))
+    gap, gap_start, gap_end = _longest_gap(rows, now, start, current)
     if gap > NORMAL_GAP:
         lines.append(
-            f"Longest gap with no check: {_span(gap)}, {_when(start)} to {_when(end)}"
+            f"Longest gap with no check: {_span(gap)}, {_when(gap_start)} to {_when(gap_end)}"
             " (the laptop was off or asleep, or the timer was not running)."
         )
     else:
         lines.append("No gaps: the engine checked at least every 45 minutes.")
+    future = sum(1 for r in rows if from_iso(r["started_at"]) > now + CLOCK_SLACK)
+    if future:
+        lines.append(
+            f"Warning: {future} diary entries are dated in the future - the laptop's clock may have jumped,"
+            " so the times above may be wrong."
+        )
     refusals = sum(r["google_refusals"] or 0 for r in rows)
     if refusals:
         lines.append(
@@ -1298,18 +1546,27 @@ def _failing(rows: list[sqlite3.Row]) -> list[str]:
 
 - [ ] **Step 4: Add the `status` command to `riffi_ingest/cli.py`**
 
-Import: change `from . import health` to `from . import health, runstatus`. After the `stories` command:
+Import: change `from . import health` to `from . import health, runstatus`. Change `from .scheduler import Schedule, due` to `from .scheduler import Schedule, ScheduleError, due`. After the `stories` command:
 
 ```python
 @app.command("status")
 def status(db: Path = DbOption, schedule: Path = ScheduleOption) -> None:
     """Is the engine alive? The last run, the last 24 hours (checks, gaps, Google refusals) and the sources
     failing 3+ runs in a row. Changes nothing."""
-    conn = connect(db)
-    for line in runstatus.report(conn, datetime.now(timezone.utc)):
+    db_path = Path(db) if db else default_db_path()
+    conn = connect(db_path)
+    try:  # a fetch holding the run lock right now is the only run that can still be going
+        with run_lock(db_path.parent / "fetch.lock"):
+            run_in_progress = False
+    except AlreadyRunning:
+        run_in_progress = True
+    for line in runstatus.report(conn, datetime.now(timezone.utc), run_in_progress=run_in_progress):
         typer.echo(line)
-    for problem in Schedule.load(schedule).problems(store.load_sources(conn)):
-        typer.echo(f"Warning: {problem} in {schedule}; those sources are never fetched.")
+    try:
+        for problem in Schedule.load(schedule).problems(store.load_sources(conn)):
+            typer.echo(f"Warning: {problem} in {schedule}; those sources are never fetched.")
+    except (OSError, ScheduleError) as exc:
+        typer.echo(f"Warning: cannot read the speeds ({exc}); timed runs fail until it is fixed.")
 ```
 
 - [ ] **Step 5: Run the tests**
@@ -1442,6 +1699,15 @@ In the `CLAUDE.md` config block and in `.zuko/config.json`, the entry becomes:
 
 Then check that the two JSON copies are still identical: extract the fenced json block from `CLAUDE.md`, `json.loads` both, compare equal. Then `node .zuko/approve.js --clear`.
 
+- [ ] **Step 2b: the design spec** - bring `docs/superpowers/specs/2026-10-05-scheduler-design.md` in line with what was built after the safety review:
+  - Google refusals are 403 / 429 only (`blocked` never happens for news.google.com).
+  - A failed start writes a `failed` row.
+  - `finish_engine_run` closes only running rows, and mode and outcome values are checked.
+  - `status` uses the run lock to tell running from dead.
+  - Gaps run from the end of a check, and start at the diary's first row or 24 h ago.
+  - Rows dated in the future raise a warning, and a future-dated last attempt is due.
+  - There is a backup of `engine.db` and a test safety net in `tests/conftest.py`.
+
 - [ ] **Step 3: `docs/technical-spec.md`**
 - Header status line: steps 1-7 built (scheduler as-built, 5 Oct 2026).
 - Stack: `Scheduling: APScheduler.` becomes `Scheduling: Windows Task Scheduler runs \`fetch --due\` every 30 min (D-008); no scheduler library.`
@@ -1465,7 +1731,7 @@ Then check that the two JSON copies are still identical: extract the fenced json
 - [ ] **Step 6: Run every check**
 
 Run: `node .claude/hooks/py.js -m ruff check .`, `node .claude/hooks/py.js -m ruff format --check .`, `node .claude/hooks/py.js -m pytest -q tests`
-Expected: all clean; tests 181 + 9 + 4 + 6 + 6 + 10 = 216 passed.
+Expected: all clean, and every test passes (181 before this branch, plus the new ones).
 
 - [ ] **Step 7: Commit**
 
