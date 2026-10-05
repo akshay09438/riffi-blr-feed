@@ -9,7 +9,7 @@
 ## Where things stand
 
 - **Built and merged before this session:** fetchers for every route, cleaning + Google News resolution + blocklist, grouping into stories, keyword tagging, scoring, the database, pipeline / health / CLI / README (PRs #1-#13), and the 5 Oct handoff (#14).
-- **Merged 5 Oct 2026 (PR #15):** the engine runs on its own (D-008). The timer is not installed yet (In flight 2).
+- **Merged 5 Oct 2026 (PR #15):** the engine can run on its own (D-008), **but the founder decided not to use the timer for now (D-009): fetch only when the founder asks.** Never install the timer or offer to until the founder changes D-009.
   - Windows Task Scheduler starts `pythonw -m riffi_ingest fetch --due` every 30 minutes. Speeds per route are in `config/schedule.yaml`: Telegram 30 min; Google News, X/Instagram backups, publisher feeds and YouTube 2 h; page monitors 6 h.
   - A run diary (`engine_runs` table) and `data/engine.log` record every run, every check that fetched nothing, and every failure.
   - An offline run blames no source, and Google 403/429 refusals are counted.
@@ -22,7 +22,7 @@
 ## In flight
 
 1. ~~**PR for `feat/scheduler`.**~~ Merged 5 Oct 2026 with the founder's OK.
-2. **Install the Windows timer: only after the merge, and only with the founder's explicit yes.** It is a lasting setting on the laptop.
+2. **~~Install the Windows timer.~~ Not now (D-009): the founder fetches by hand.** The steps below stay for when the founder changes D-009.
    - `git checkout main && git pull` first. The timer runs whatever code is in this folder.
    - Then `powershell -ExecutionPolicy Bypass -File scripts\schedule-windows.ps1`.
    - Verify:
@@ -97,7 +97,7 @@
 
 ## Open escalations
 
-None beyond decisions A-C above and the two founder yeses in "In flight" (merge; install the timer).
+None beyond decisions A-C above. The timer is not to be installed (D-009).
 
 ## Known small follow-ups (recorded by the reviews, triaged "later")
 
