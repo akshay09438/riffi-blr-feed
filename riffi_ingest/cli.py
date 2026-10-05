@@ -406,7 +406,10 @@ def fetch(
         return
     if s.google_refusals:
         typer.echo(f"Warning: Google News refused {s.google_refusals} requests (403 / 429). Check `status`.")
-    typer.echo(f"Entries read: {s.entries}; new items stored: {s.items_new}.")
+    typer.echo(
+        f"Entries read: {s.entries}; new items stored: {s.items_new}; already stored: {s.already_stored};"
+        f" repeated within this run: {s.repeated}."
+    )
     if s.dropped:
         typer.echo("Dropped: " + ", ".join(f"{n} {reason}" for reason, n in s.dropped.most_common()) + ".")
     typer.echo(

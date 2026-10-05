@@ -47,7 +47,7 @@
 4. Ranking fixes seen in the first `stories` output, one PR each:
    - Old ESPNcricinfo scorecards appear as recent.
    - `stories --hours` filters on `updated_at` (`db/store.py` is dangerous).
-   - Count within-run duplicates in `RunSummary`.
+   - ~~Count within-run duplicates in `RunSummary`.~~ Done 5 Oct 2026 (cloud): `fetch` now prints "already stored" and "repeated within this run", so the numbers add up. Check on the next laptop run that the gap is gone.
    - Tighten the "RCB" keyword.
    - The Namma Metro timing story was split into 3 (check against `tests/test_dedupe.py` pairs).
 5. Fix and re-test `feeds.csv` URLs:
