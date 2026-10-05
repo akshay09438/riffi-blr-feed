@@ -25,7 +25,7 @@ from pathlib import Path
 
 import typer
 
-from . import health
+from . import health, runstatus
 from .config import rsshub_base
 from .db import connect, store
 from .db.connection import PROJECT_ROOT, default_db_path
@@ -36,7 +36,7 @@ from .fetchers.http import DOMAIN_INTERVAL, PoliteClient, domain_key
 from .fetchers.parse import IST
 from .pipeline import Paths, RunSummary, run_fetch
 from .runlock import AlreadyRunning, run_lock
-from .scheduler import Schedule, due
+from .scheduler import Schedule, ScheduleError, due
 from .sources import Source, load_sources
 
 app = typer.Typer(help="Riffi news ingestion engine.", no_args_is_help=True, add_completion=False)
@@ -433,6 +433,26 @@ def stories(
             f"{n:>3}. {score:>3} {r['label'] or '-':<6} {r['source_count']:>2} src  {(r['topics'] or '-')[:24]:<24}"
             f"  {r['headline'][:90]}{flags}"
         )
+
+
+@app.command("status")
+def status(db: Path = DbOption, schedule: Path = ScheduleOption) -> None:
+    """Is the engine alive? The last run, the last 24 hours (checks, gaps, Google refusals) and the sources
+    failing 3+ runs in a row. Changes nothing."""
+    db_path = Path(db) if db else default_db_path()
+    conn = connect(db_path)
+    try:  # a fetch holding the run lock right now is the only run that can still be going
+        with run_lock(db_path.parent / "fetch.lock"):
+            run_in_progress = False
+    except AlreadyRunning:
+        run_in_progress = True
+    for line in runstatus.report(conn, datetime.now(timezone.utc), run_in_progress=run_in_progress):
+        typer.echo(line)
+    try:
+        for problem in Schedule.load(schedule).problems(store.load_sources(conn)):
+            typer.echo(f"Warning: {problem} in {schedule}; those sources are never fetched.")
+    except (OSError, ScheduleError) as exc:
+        typer.echo(f"Warning: cannot read the speeds ({exc}); timed runs fail until it is fixed.")
 
 
 def main() -> None:
