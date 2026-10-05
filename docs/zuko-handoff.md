@@ -40,8 +40,8 @@
 2. If the timer is installed: run `status` first and act on it.
    - `FAILED`, `did not finish` or `no checks at all`: run `/zuko:fix`.
    - Google refusals: stop the timer, then ask the founder.
-3. Founder decisions still open (open questions 8-10 in the plan):
-   - **A. Certificates.** S004, S009, S109 and S110 send an incomplete certificate chain. Proposed fix: the `truststore` library (Windows trust store; TLS stays verified). It touches `fetchers/http.py` and `requirements.txt` and is certificate configuration, so it needs explicit sign-off.
+3. Founder decisions A-C (open questions 8-10 in the plan), all decided 5 Oct 2026:
+   - ~~**A. Certificates.**~~ Decided 5 Oct 2026: the founder approved the `truststore` fix (D-010). Built in the cloud and reviewed adversarially; prove it on the laptop with `test-feeds --source S004 --source S009 --source S109 --source S110`. Windows only: see open question 11.
    - ~~**B. Telegram.**~~ Decided 5 Oct 2026: read each channel's public `t.me/s/<channel>` page (D-011). Built in the cloud; prove it on the laptop with `test-feeds --source S016 --source S101 --source S102`.
    - ~~**C. README note.**~~ Done 5 Oct 2026: the founder said yes, and the note is in the README's Setup section.
 4. Ranking fixes seen in the first `stories` output, one PR each:
@@ -90,7 +90,8 @@
   - `tests/conftest.py`: test DB guard.
   - `CLAUDE.md` and `.zuko/config.json`: the scheduling line is now Windows Task Scheduler. The two copies are identical.
   - Approvals were recorded with `.zuko/approve.js` and cleared after each change.
-- Untouched: `fetchers/http.py`, `fetchers/gnews.py`, `requirements.txt` (its header comment still mentions APScheduler; harmless, and it needs the founder to change).
+- Changed in the cloud on 5 Oct 2026 with the founder's explicit yes (decision A, D-010): `fetchers/http.py` (certificates checked against the OS trust store through truststore; errors classed as TLS by type) and `requirements.txt` (truststore==0.10.4 added; its header comment still mentions APScheduler). An adversarial review said "safe with fixes"; the fixes are in the same PR.
+- Untouched: `fetchers/gnews.py`.
 - TLS verification is always on.
 - `config/exclusions.yaml`, `api/stories.py`, `tagging/llm*.py` and `config/prompts/**` do not exist yet.
 - Still pending from the founder: the Slack channel and member ID for `ZUKO_SLACK_WEBHOOK_INGEST` (an environment variable, never a file). `.env.example` is not written (it matches a dangerous glob).

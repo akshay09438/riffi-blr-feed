@@ -10,6 +10,20 @@ The brief reads Telegram through RSSHub (`rsshub.app`). On the first live run, r
 
 A channel page with no posts at all counts as a failure, not as quiet: it means the channel turned off its public preview, or Telegram changed the page. Built and tested in the cloud against a sample page; the real proof is `test-feeds --source S016 --source S101 --source S102` on the laptop.
 
+## D-010 · Certificates are checked against the operating system's trust store (5 Oct 2026, founder)
+
+On the first live run (5 Oct 2026), four government sites failed the certificate check: DIPR (S004), GBA (S009), BMTC (S109) and BWSSB (S110). They send an incomplete certificate chain: they leave out the intermediate certificate between their own and the trusted root. Browsers work anyway, because Windows fetches the missing piece itself. Python's default check uses its own bundled list and does not.
+
+The HTTP client (`fetchers/http.py`) now checks certificates with the operating system's own trust store, through the `truststore` library (pinned in `requirements.txt`). On Windows that is the same store and the same check the browser uses. **Verification stays fully on:** a certificate is required, it must chain to a trusted root, and it must match the site's name. Nothing is switched off and no site gets an exception. The founder explicitly approved this change to the protected `fetchers/http.py` and `requirements.txt`.
+
+Limits, found by an adversarial review on 5 Oct 2026:
+- **It fixes the four sites on Windows only.** On Linux (cloud sessions, and the small server planned before launch, D-003), truststore uses OpenSSL with the system's list, which does not fetch a missing intermediate. The four sites will fail again there unless they fix their certificates. This is open question 11 in the implementation plan.
+- **Fetching the missing piece blocks the run for a moment.** Windows fetches the intermediate during the handshake, and the engine waits for it. Windows caches it, so this happens about once per site.
+- **The trust list is the browser's.** It includes roots added by an employer or by antivirus HTTPS scanning, which the old bundled list would have refused. Revocation is not checked, the same as before.
+- Certificate errors are now recognised by their type, not their English wording, because Windows writes them in the system's language.
+
+Why: these are official sources the test needs, and this is the fix that keeps TLS verification on. Checked in the cloud with unit tests; the real proof is `test-feeds --source S004 --source S009 --source S109 --source S110` on the laptop.
+
 ## D-009 · No timer for now: the engine fetches only when the founder asks (5 Oct 2026, founder)
 
 The Windows timer from D-008 is **not installed**. Do not install it, and do not offer to, until the founder says otherwise. Fetching happens only when the founder asks for it: a session on the laptop runs `python -m riffi_ingest fetch --all` (or `--due`, or `--source ...`) by hand. Everything else in D-008 stays: the speeds in `config/schedule.yaml`, the run diary, `engine.log` and `status`. `scripts/schedule-windows.ps1` stays in the repo, unused, so switching to the timer later is one command.

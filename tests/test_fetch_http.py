@@ -1,9 +1,11 @@
 import asyncio
+import ssl
 import time
 
 import httpx
+import truststore
 
-from riffi_ingest.fetchers.http import BROWSER_UA, PoliteClient, domain_key
+from riffi_ingest.fetchers.http import BROWSER_UA, PoliteClient, domain_key, tls_context
 from tests.feedtools import fake_client
 
 
@@ -272,3 +274,35 @@ def test_the_overall_deadline_counts_toward_a_dead_domain(monkeypatch):
 
     first, second = run(go())
     assert first.error_kind == "timeout" and second.error_kind == "domain_down"
+
+
+def test_certificates_are_checked_against_the_system_store_and_never_switched_off():
+    # D-010: the operating system's trust store (on Windows, the browser's), with verification fully on
+    ctx = tls_context()
+    assert isinstance(ctx, truststore.SSLContext)
+    assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname is True
+
+
+def test_the_clients_connections_use_that_context():
+    client, other = PoliteClient(), PoliteClient()
+    try:
+        ctx = client._client._transport._pool._ssl_context  # what every real connection is opened with
+        assert isinstance(ctx, truststore.SSLContext)
+        assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname is True
+        assert other._client._transport._pool._ssl_context is not ctx  # never shared between clients
+    finally:
+        run(client.aclose())
+        run(other.aclose())
+
+
+def test_a_certificate_error_in_any_language_is_classed_as_tls():
+    from riffi_ingest.fetchers.http import _classify_error
+
+    try:
+        try:
+            raise ssl.SSLCertVerificationError("Die Zertifikatkette ist unvollständig")
+        except ssl.SSLError as inner:
+            raise httpx.ConnectError("Verbindung fehlgeschlagen") from inner
+    except httpx.ConnectError as exc:
+        assert _classify_error(exc) == "tls"
+    assert _classify_error(httpx.ConnectError("Connection refused")) == "connect"
