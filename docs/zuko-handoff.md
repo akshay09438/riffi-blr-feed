@@ -34,10 +34,39 @@
 3. **While the timer is on:** keep this folder on `main`, and never try other branches here. Remove the timer first with `scripts\schedule-windows.ps1 -Remove`. That is also the emergency stop: it stops a run in progress too.
    - **Google refusals above 0 in `status`: stop the timer and ask the founder.** A Google block cannot be undone by reverting code (D-004).
 
+## Next laptop session: the checklist (written 5 Oct 2026, cloud)
+
+Everything below needs the laptop: the cloud cannot reach the news sites or the real database. Say at the start that the session uses the founder's plan, not cloud credits, and keep it short. The founder only says yes or no; Zuko runs every command. `py` below means `.venv\Scripts\python.exe -m riffi_ingest`.
+
+1. **Get the newest code.** `git checkout main` then `git pull`. Do **not** install the timer (D-009).
+2. **Install the one new library** (truststore, D-010): `.venv\Scripts\python.exe -m pip install -r requirements.txt`. Then run `node .claude/hooks/py.js -m pytest -q tests`; everything must pass.
+3. **Back up the database before any fetch:** copy it with SQLite's backup API to `data\engine-backup-<date>.db`, and check every table count and `integrity_check`, as on 5 Oct.
+4. **Prove today's cloud fixes against the real sites** (stores nothing):
+   - certificates (D-010): `py test-feeds --source S004 --source S009 --source S109 --source S110`;
+   - Telegram (D-011): `py test-feeds --source S016 --source S101 --source S102`.
+
+   If one still fails, read its suggested fix and stop to tell the founder. Never switch certificate checking off.
+5. **Fix the source addresses** (decision D: Zuko finds them, the founder approves).
+   - Wrong or missing: S057 (Vijaya Karnataka, 404), S007 (KSEC, DNS), S073, S021, S011.
+   - Kannada Google News queries that come back empty: S045 TV9 and S058 Udayavani. The publishers' own feeds work: `tv9kannada.com/feed` (S045) and `prajavani.net/feed/` (S055).
+   - Missing an address: S047 (the DPAR holiday notification page), S107 (the PIB Bengaluru RSS link on `pib.gov.in/ViewRss.aspx?reg=1&lang=1`), S108 (a Google News backup query for the 4 city corporations) and S121 (the Prajavani YouTube channel ID, giving `youtube.com/feeds/videos.xml?channel_id=...`).
+
+   For each one: find a candidate, test it with `py test-feeds --source <id>`, and show the founder a table of old URL, new URL and result. Only after the founder's yes, edit `feeds.csv` and run `py import-sources`. Changing a route type changes the counts in `tests/test_inputs.py` and the brief's numbers, so update them together.
+6. **One full fetch, with the founder's yes:** `py fetch --all` (about 12 minutes). Then check:
+   - the "Entries read" line adds up, with "already stored" and "repeated" (PR #17);
+   - the Polish "Alert RCB" story is no longer tagged RCB (PR #18);
+   - `py status` reads "fetching is by hand" with no gap warnings (PR #23).
+7. **Look at the two ranking problems in the real data**, then fix each in its own PR:
+   - old ESPNcricinfo scorecards showing as recent: find the items and see what dates their feed gives;
+   - the Namma Metro timing story split into 3: take the three headlines and add them as labelled pairs in `tests/test_dedupe.py` before changing anything.
+8. **The editor's log:** `py log-template`, then give the founder `data\ground_truth.csv` and `data\ground_truth_topics.csv` for the editor.
+9. **The morning report** (if PR "digest" is merged by then): `py digest`, then open `reports\<today>\digest.md` with the founder.
+10. Update this file, then stop.
+
 ## Do first next session
 
-1. Read this file, then `BRIEF.md`, `DECISIONS.md` (wins over the brief, now up to D-008), `docs/implementation-plan.md` (open questions 1-10, drift log) and `docs/technical-spec.md` (as-built, including "Scheduler (as built)").
-2. If the timer is installed: run `status` first and act on it.
+1. Read this file, then `BRIEF.md`, `DECISIONS.md` (wins over the brief, now up to D-011), `docs/implementation-plan.md` (open questions 1-10, drift log) and `docs/technical-spec.md` (as-built, including "Scheduler (as built)").
+2. The timer is not installed (D-009). Run `status` first anyway and act on it.
    - `FAILED`, `did not finish` or `no checks at all`: run `/zuko:fix`.
    - Google refusals: stop the timer, then ask the founder.
 3. Founder decisions A-C (open questions 8-10 in the plan), all decided 5 Oct 2026:
