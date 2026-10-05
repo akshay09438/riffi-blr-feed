@@ -27,6 +27,7 @@ PAGE_STALE_AFTER = timedelta(days=30)  # BRIEF.md "Alive": a monitored page may 
 REQUIRED_FIELDS = ("title", "link", "date")
 PAGE_MONITOR = "Web page monitor"
 TELEGRAM = "RSSHub Telegram"
+NEEDS_JS_FIX = "this page needs JavaScript: find a different URL or a JSON endpoint for this source"
 
 
 @dataclass
@@ -89,6 +90,8 @@ def _fix_for_error(outcome: FetchOutcome) -> str:
         return "the URL is a web page, not a feed: find the site's RSS link, or switch the row to a page monitor"
     if "not a web page" in reason:
         return "the page is a PDF or file: monitor the page that links to it instead"
+    if "needs javascript" in reason:
+        return NEEDS_JS_FIX
     if "bot check" in reason:
         return "the site shows a bot check: try a different page or route for this source"
     return "check the URL by hand"
@@ -125,7 +128,7 @@ def check(outcome: FetchOutcome, now: datetime) -> Health:
             return Health(
                 passed=False,
                 problems=["no readable text on the page"],
-                fix="the page is probably built by JavaScript: monitor a simpler page, a feed or an API for this source",
+                fix=NEEDS_JS_FIX,
             )
         return Health(passed=True)
     fields = _fields(outcome)

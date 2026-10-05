@@ -9,7 +9,17 @@ What does not count as a change:
 - "stamp" lines: a line that names a page stamp ("Last updated", "Visitors", "Sunrise", "All rights
   reserved"...) and otherwise holds only dates, times, numbers and filler words - plus a bare date/time
   line right after such a line ("Last updated:" / "04/10/2026");
-- a bot-check page (Cloudflare "Just a moment...", "Access denied"): that is an error, not new content.
+- a bot-check page (Cloudflare "Just a moment...", "Access denied"): that is an error, not new content;
+- site-template policy text: before extraction, the page loses its privacy / disclaimer / terms /
+  hyperlinking / copyright-policy blocks (an element whose id or class names one, a hidden modal or
+  popup whose heading is one, or a policy heading and everything after it in its section), so
+  trafilatura cannot take the karnataka.gov.in privacy-policy modal for the page's main text;
+- a JavaScript app shell ("You need to enable JavaScript to run this app."): <noscript> and "enable
+  JavaScript" lines are dropped, and a page left with no text is an error ("needs JavaScript"), which
+  keeps the last snapshot and gets the health check's JavaScript fix.
+
+A previous snapshot that was itself blind (only policy text, or only a JavaScript notice - taken before
+these rules) is replaced without an "updated" item, so the first visit after the fix is a new baseline.
 
 Dates inside real content still count ("effective from 10 October" becoming "15 October"), and so do
 lines of numbers or dates without a stamp word (table rows, "Date: 15/10/2026"), and any line with
@@ -30,7 +40,8 @@ import time
 from datetime import datetime, timezone
 
 import trafilatura
-from trafilatura.utils import decode_file
+from lxml import html as lxml_html
+from trafilatura.utils import decode_file, load_html
 
 from ..sources import Source
 from .http import PAGE_ACCEPT, PoliteClient
@@ -72,6 +83,32 @@ STAMP_FILLER = STAMP_ANCHORS | {
 # Bot-check pages: matched on the <title>, and on markup only a challenge page carries.
 BOT_CHECK_TITLES = ("just a moment", "attention required", "access denied", "are you a robot", "security check")
 BOT_CHECK_MARKUP = ("cf-chl-", "challenge-platform", "cf_chl_opt", "verify you are human")
+# Site-template policy blocks (karnataka.gov.in pages carry a Kannada/English privacy policy in a hidden
+# modal). Bare "policy" is not on the list: a department's "Policies" list is real content.
+POLICY_ATTR_RE = re.compile(
+    r"privacy|disclaimer|hyperlink(?:ing)?[-_ ]?polic|terms[-_ ]?(?:of|and|&|conditions|use|service)|copyright[-_ ]?polic|website[-_ ]?polic",
+    re.I,
+)
+POLICY_TITLE_RE = re.compile(
+    r"^(?:website\s+)?(?:privacy\s+(?:policy|statement|notice)|disclaimer|terms\s*(?:of\s+(?:use|service)|(?:and|&)\s*conditions)"
+    r"|hyperlink(?:ing)?\s+policy|copyright\s+policy|website\s+policies"
+    r"|ಗೌಪ್ಯತಾ\s*ನೀತಿ|ಗೌಪ್ಯತೆ\s*ನೀತಿ|ಖಾಸಗಿತನ\s*ನೀತಿ|ಹಕ್ಕು\s*ನಿರಾಕರಣೆ|ಹಕ್ಕುತ್ಯಾಗ|ಹೈಪರ್\s*ಲಿಂಕ್\s*ನೀತಿ|ಹೈಪರ್ಲಿಂಕ್\s*ನೀತಿ"
+    r"|ಹಕ್ಕುಸ್ವಾಮ್ಯ\s*ನೀತಿ|ನಿಯಮಗಳು\s*ಮತ್ತು\s*ಷರತ್ತುಗಳು|ಬಳಕೆಯ\s*ನಿಯಮಗಳು)",
+    re.I,
+)
+MAX_POLICY_TITLE_CHARS = 60
+POLICY_MENTION_RE = re.compile(r"privacy policy|ಗೌಪ್ಯತಾ ನೀತಿ|ಗೌಪ್ಯತೆ ನೀತಿ|personal information|ವೈಯಕ್ತಿಕ ಮಾಹಿತಿ", re.I)
+HIDDEN_ATTR_RE = re.compile(r"modal|popup|pop-up|lightbox|overlay|dialog", re.I)
+HIDDEN_STYLE_RE = re.compile(r"display\s*:\s*none|visibility\s*:\s*hidden", re.I)
+HEADING_TAGS = ("h1", "h2", "h3", "h4", "h5", "h6")
+# "You need to enable JavaScript to run this app.", "Please enable JavaScript", "JavaScript is required"
+JS_NOTICE_RE = re.compile(
+    r"\b(?:enable|turn on|switch on|requires?|required|needs?|activate)\b.{0,40}\bjavascript\b"
+    r"|\bjavascript\b.{0,40}\b(?:enabled?|required|disabled|turned off|not supported)\b",
+    re.I,
+)
+MAX_JS_NOTICE_CHARS = 160
+NEEDS_JS_REASON = "the page needs JavaScript (only an app shell or no text came back); kept the last snapshot"
 
 
 def _words(line: str) -> list[str]:
@@ -99,16 +136,88 @@ def is_bot_check(title: str, page_html: str) -> bool:
     return any(m in t for m in BOT_CHECK_TITLES) or any(m in head for m in BOT_CHECK_MARKUP)
 
 
+def is_policy_title(text: str) -> bool:
+    """True for a policy heading: "Privacy Policy", "ಗೌಪ್ಯತಾ ನೀತಿ", "Hyperlinking Policy", "Disclaimer"."""
+    t = WS_RE.sub(" ", text.replace("\u200c", "").replace("\u200d", "")).strip(" :-|\u2013")
+    return 0 < len(t) <= MAX_POLICY_TITLE_CHARS and bool(POLICY_TITLE_RE.fullmatch(t))
+
+
+def is_js_notice(line: str) -> bool:
+    """True for a JavaScript app shell's only text: "You need to enable JavaScript to run this app."."""
+    return len(line) <= MAX_JS_NOTICE_CHARS and bool(JS_NOTICE_RE.search(line))
+
+
+def _attrs(el) -> str:
+    return f"{el.get('id', '')} {el.get('class', '')} {el.get('role', '')}"
+
+
+def _is_hidden(el) -> bool:
+    return (
+        el.get("hidden") is not None
+        or el.get("aria-hidden", "").lower() == "true"
+        or bool(HIDDEN_STYLE_RE.search(el.get("style", "")))
+        or bool(HIDDEN_ATTR_RE.search(_attrs(el)))
+    )
+
+
+def _first_heading(el):
+    for h in el.iter(*HEADING_TAGS, "strong", "b"):
+        if h.text_content().strip():
+            return h
+    return None
+
+
+def _drop(el) -> None:
+    parent = el.getparent()
+    if parent is not None:
+        el.drop_tree()
+
+
+def strip_template_blocks(tree) -> None:
+    """Remove policy blocks and <noscript> notices in place (rules in the module docstring)."""
+    for el in list(tree.iter("noscript")):
+        _drop(el)
+    for el in list(tree.iter()):
+        if not isinstance(el.tag, str) or el.getparent() is None or el.tag in ("html", "body", "a"):
+            continue
+        if POLICY_ATTR_RE.search(_attrs(el)):
+            _drop(el)
+        elif _is_hidden(el) and (h := _first_heading(el)) is not None and is_policy_title(h.text_content()):
+            _drop(el)
+    # a policy printed in the page itself: the heading and what follows it, up to the next heading
+    for h in list(tree.iter(*HEADING_TAGS)):
+        if h.getparent() is None or not is_policy_title(h.text_content()):
+            continue
+        level, sib = h.tag, h.getnext()
+        while sib is not None and not (isinstance(sib.tag, str) and sib.tag in HEADING_TAGS and sib.tag <= level):
+            nxt = sib.getnext()
+            _drop(sib)
+            sib = nxt
+        _drop(h)
+
+
+def _pruned(page_html: str):
+    tree = load_html(page_html)
+    if tree is None:
+        return page_html
+    strip_template_blocks(tree)
+    return tree
+
+
 def page_lines(page_html: str) -> list[str]:
-    """The page's main text as comparable lines, without stamp lines."""
-    text = trafilatura.extract(page_html, include_tables=True, include_comments=False, favor_recall=True)
-    if not text:
+    """The page's main text as comparable lines, without stamp lines, policy blocks or JavaScript notices."""
+    tree = _pruned(page_html)
+    text = trafilatura.extract(tree, include_tables=True, include_comments=False, favor_recall=True)
+    if not text or all(is_js_notice(WS_RE.sub(" ", line).strip()) for line in text.splitlines() if line.strip()):
         # pages that are mostly links and menus: fall back to all visible text, split into sentences
-        text = "\n".join(SENTENCE_SPLIT_RE.split(trafilatura.html2txt(page_html) or ""))
+        visible = trafilatura.html2txt(
+            lxml_html.tostring(tree, encoding="unicode") if not isinstance(tree, str) else tree
+        )
+        text = "\n".join(SENTENCE_SPLIT_RE.split(visible or ""))
     lines = [WS_RE.sub(" ", line).strip() for line in text.splitlines()]
     kept, after_stamp = [], False
     for line in lines:
-        if len(line) < MIN_LINE_CHARS:
+        if len(line) < MIN_LINE_CHARS or is_js_notice(line):
             continue
         if is_stamp_line(line) or (after_stamp and _is_bare_date_time(line)):
             after_stamp = True
@@ -116,6 +225,18 @@ def page_lines(page_html: str) -> list[str]:
         after_stamp = False
         kept.append(line)
     return kept
+
+
+def was_blind(previous_text: str, new_lines: list[str]) -> bool:
+    """True when the stored snapshot never saw the page (taken before the policy and JavaScript rules):
+    it is only JavaScript notices, or it carries policy wording and shares no line with the new text."""
+    old = [line for line in previous_text.splitlines() if line.strip()]
+    if not old:
+        return False
+    if all(is_js_notice(line) for line in old):
+        return True
+    policy = any(is_policy_title(line) or POLICY_MENTION_RE.search(line) for line in old)
+    return policy and not set(old) & set(new_lines)
 
 
 def snapshot_of(lines: list[str], title: str) -> PageSnapshot:
@@ -171,11 +292,14 @@ async def monitor_page(
             title = page_title(page_html)
             if is_bot_check(title, page_html):
                 out.reason = f"blocked by a bot check ({title or 'no title'}); kept the last snapshot"
+            elif not lines:
+                out.reason = NEEDS_JS_REASON
             else:
                 snap = snapshot_of(lines, title)
                 out.status, out.snapshot, out.feed_title = "ok", snap, title
                 out.validators = Validators(res.etag, res.last_modified)
-                if previous is not None and snap.text_hash != previous.text_hash:
+                blind_before = previous is not None and was_blind(previous.text, lines)
+                if previous is not None and snap.text_hash != previous.text_hash and not blind_before:
                     out.entries = [
                         Entry(
                             title=f"{title or source.name} updated",
