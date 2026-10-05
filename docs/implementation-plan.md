@@ -39,7 +39,7 @@
 
 8. **Certificates (the founder's decision A, asked 5 Oct 2026, still open):** four sources (S004, S009, S109, S110) fail because their servers send an incomplete certificate chain. Proposed fix: use the Windows trust store through the `truststore` library, which fills in the missing certificate the way a browser does; TLS stays verified. It touches `fetchers/http.py` and `requirements.txt` and is certificate configuration, so it needs the founder's explicit sign-off. The alternative is to leave them failing.
 
-9. **Telegram (decision B, still open):** rsshub.app answers 403 for S016, S101 and S102. Options: read each channel's public page (`t.me/s/<channel>`), self-host RSSHub (the base URL is already a setting), or drop them. Until this is decided the three are expected to keep failing at every 30-minute check and to show under "failing 3+ runs" in `status`.
+9. ~~**Telegram (decision B)**~~ Resolved 5 Oct 2026: each channel's public `t.me/s/<channel>` page (D-011, `fetchers/telegram.py`); still to prove on the laptop with `test-feeds`. Background: rsshub.app answers 403 for S016, S101 and S102. Options: read each channel's public page (`t.me/s/<channel>`), self-host RSSHub (the base URL is already a setting), or drop them. Until this is decided the three are expected to keep failing at every 30-minute check and to show under "failing 3+ runs" in `status`.
 
 10. ~~**README note on PyYAML (decision C)**~~ Resolved 5 Oct 2026: the founder said yes, and the note is in the README's Setup section. Background: on the laptop (Windows ARM64, Python 3.11) PyYAML 6.0.3 has no prebuilt wheel, so the laptop session installed it without the C extension. Whether to add a note about it to the README is not decided.
 

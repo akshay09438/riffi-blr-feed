@@ -43,10 +43,69 @@ def test_rows_with_an_instruction_instead_of_a_url_are_skipped():
     assert "not a URL" in plan(src(feeds.NATIVE, pib))[2]
 
 
-def test_telegram_follows_the_configured_rsshub_base():
+def test_telegram_reads_the_public_channel_page_unless_an_rsshub_is_set():
     tg = src(feeds.TELEGRAM, "https://rsshub.app/telegram/channel/Prajavani1947")
-    assert plan(tg)[0] == "https://rsshub.app/telegram/channel/Prajavani1947"
+    assert plan(tg)[0] == "https://t.me/s/Prajavani1947"
+    assert plan(src(feeds.TELEGRAM, "https://t.me/tv9kannadaofficial/"))[0] == "https://t.me/s/tv9kannadaofficial"
+    assert "no Telegram channel name" in plan(src(feeds.TELEGRAM, "https://t.me/s/"))[2]
     assert plan(tg, "https://rss.example.in/hub/")[0] == "https://rss.example.in/hub/telegram/channel/Prajavani1947"
+
+
+TG_PAGE = """<!DOCTYPE html><html><head><meta property="og:title" content="Prajavani"></head><body>
+<div class="tgme_widget_message_wrap"><div class="tgme_widget_message js-widget_message" data-post="Prajavani1947/10">
+  <div class="tgme_widget_message_bubble">
+    <div class="tgme_widget_message_text js-message_text" dir="auto">BBMP floats tunnel road tender.<br/>Bids due Nov 3</div>
+    <div class="tgme_widget_message_footer"><a class="tgme_widget_message_date" href="https://t.me/Prajavani1947/10">
+      <time datetime="2026-10-04T05:30:00+00:00" class="time">11:00</time></a></div>
+  </div></div></div>
+<div class="tgme_widget_message_wrap"><div class="tgme_widget_message js-widget_message" data-post="Prajavani1947/11">
+  <a class="tgme_widget_message_photo_wrap" href="https://t.me/Prajavani1947/11"></a>
+  <a class="tgme_widget_message_date" href="https://t.me/Prajavani1947/11"><time datetime="2026-10-04T05:40:00+00:00">
+  </time></a></div></div>
+<div class="tgme_widget_message_wrap"><div class="tgme_widget_message js-widget_message" data-post="Prajavani1947/12">
+  <div class="tgme_widget_message_reply"><div class="tgme_widget_message_text js-message_reply_text">quoted old post</div></div>
+  <div class="tgme_widget_message_text js-message_text">ಮೆಟ್ರೋ ದರ <b>ಏರಿಕೆ</b> &amp; more</div>
+  <a class="tgme_widget_message_date" href="https://t.me/Prajavani1947/12"><time datetime="2026-10-04T05:50:00+00:00">
+  </time></a></div></div>
+</body></html>"""
+
+
+def test_a_telegram_page_becomes_entries_newest_first():
+    tg = src(feeds.TELEGRAM, "https://rsshub.app/telegram/channel/Prajavani1947")
+    seen = {}
+
+    def handler(request):
+        seen["url"], seen["accept"] = str(request.url), request.headers["accept"]
+        return httpx.Response(200, text=TG_PAGE, headers={"content-type": "text/html"})
+
+    async def go():
+        async with fake_client(handler) as client:
+            return await fetch_source(client, tg)
+
+    out = run(go())
+    assert seen["url"] == "https://t.me/s/Prajavani1947" and "text/html" in seen["accept"]
+    assert out.status == "ok" and out.feed_title == "Prajavani"
+    assert [e.link for e in out.entries] == ["https://t.me/Prajavani1947/12", "https://t.me/Prajavani1947/10"]
+    assert out.entries[0].summary == "ಮೆಟ್ರೋ ದರ ಏರಿಕೆ & more"  # the quoted reply is not this post's text
+    assert out.entries[1].summary == "BBMP floats tunnel road tender.\nBids due Nov 3"
+    assert out.entries[1].published == datetime(2026, 10, 4, 5, 30, tzinfo=timezone.utc)
+    assert out.entries[1].guid == "Prajavani1947/10" and out.entries[1].title == ""
+
+
+def test_a_telegram_page_with_no_posts_or_an_error_is_a_failure():
+    tg = src(feeds.TELEGRAM, "https://t.me/someone")
+
+    def fetch(handler):
+        async def go():
+            async with fake_client(handler) as client:
+                return await fetch_source(client, tg)
+
+        return run(go())
+
+    empty = fetch(lambda r: httpx.Response(200, text="<html><body>Contact @someone</body></html>"))
+    assert empty.status == "error" and "no posts" in empty.reason
+    gone = fetch(lambda r: httpx.Response(404))
+    assert gone.status == "error" and gone.http_status == 404
 
 
 def test_fetch_ok_keeps_entries_and_validators():

@@ -126,6 +126,9 @@ def test_telegram_publisher_is_the_channel_and_kannada_is_detected():
     (item,) = run_clean([outcome("S101", [post], feed_title="Prajavani")])[0].items
     assert item.publisher == "Prajavani" and item.language == "kn"
     assert item.title == "ಬೆಂಗಳೂರು ಮೆಟ್ರೋ ದರ ಏರಿಕೆ"
+    lines = entry(title="", link="https://t.me/p/2", summary="Tunnel road tender floated\nBids due 3 Nov. More soon")
+    (item,) = run_clean([outcome("S101", [lines], feed_title="Prajavani")])[0].items
+    assert item.title == "Tunnel road tender floated"  # a post from the t.me page keeps its line breaks
 
 
 def test_language_detection():

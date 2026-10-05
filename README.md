@@ -48,7 +48,7 @@ Every command has `--help`.
 | Google News (including the X and Instagram backups), publisher feeds, YouTube | every 2 hours |
 | Web page monitors | every 6 hours |
 
-After the laptop has been asleep or off, the next check fetches everything that is overdue once, then each source goes back to its own speed. Two runs never overlap: a check that finds one still going is skipped and noted. If the internet is down and no site can be reached, the run is marked "offline", no source is blamed, and they are all tried again at the next check. (One limit: a check where only the three Telegram sources are due cannot tell "no internet" from "rsshub.app is down", so those three take a strike each time; after three such checks they show under "failing 3+ runs".)
+After the laptop has been asleep or off, the next check fetches everything that is overdue once, then each source goes back to its own speed. Two runs never overlap: a check that finds one still going is skipped and noted. If the internet is down and no site can be reached, the run is marked "offline", no source is blamed, and they are all tried again at the next check. (One limit: a check where only the three Telegram sources are due cannot tell "no internet" from "t.me is down", so those three take a strike each time; after three such checks they show under "failing 3+ runs".)
 
 **Not in use for now (D-009).** The founder decided on 5 Oct 2026 that the engine fetches only when asked (`fetch --all` by hand), so the timer is not installed and must not be until that decision changes. Expect `status` to show gaps between runs. The rest of this section is for when the timer is switched on.
 
@@ -89,7 +89,7 @@ Matching the log to stories and the recall report come with step 10. They read t
 | Variable | Default | Meaning |
 |---|---|---|
 | `RIFFI_DB_PATH` | `<this folder>\data\engine.db` | The database file. Never put it inside OneDrive (D-001): the engine refuses to. `engine.log` and the run lock (`fetch.lock`) sit beside it. |
-| `RSSHUB_BASE_URL` | `https://rsshub.app` | Where Telegram channels are read from. Point it at a self-hosted RSSHub if rsshub.app blocks or rate-limits. |
+| `RSSHUB_BASE_URL` | not set | Not set: Telegram channels are read from their public page, `t.me/s/<channel>` (D-011). Set it to a self-hosted RSSHub to read them from there instead. |
 | `ZUKO_SLACK_WEBHOOK_INGEST` | (none) | For the Zuko escalation hook; a secret, set on the machine, never written in a file. |
 
 No API keys are needed: AI tagging will run in Claude Code on the founder's plan (D-005).
