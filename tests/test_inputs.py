@@ -7,10 +7,10 @@ from collections import Counter
 import riffi_ingest
 
 ROUTE_TYPES = {
-    "Google News RSS": 60,
+    "Google News RSS": 59,
     "X/Instagram via RSS.app": 25,
     "Web page monitor": 22,
-    "Native publisher RSS/Atom": 18,
+    "Native publisher RSS/Atom": 19,
     "RSSHub Telegram": 3,
     "YouTube Atom": 2,
     "Manual": 1,

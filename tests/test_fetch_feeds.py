@@ -180,10 +180,9 @@ def test_every_row_in_feeds_csv_gets_a_plan(repo_root):
     plans = {s.source_id: plan(s) for s in sources}
     fetchable = [sid for sid, (url, _, _) in plans.items() if url]
     on_backup = [sid for sid, (url, backup, _) in plans.items() if url and backup]
-    assert len(on_backup) == 24  # 25 X/Instagram rows, minus S108 which has no backup
-    assert sum(1 for s in sources if s.route_type == feeds.PAGE_MONITOR and plans[s.source_id][0]) == 21
-    for sid in ("S108", "S107", "S121", "S112", "S047"):
-        assert not plans[sid][0], sid
+    assert len(on_backup) == 25  # every X/Instagram row has a backup since S108 got one (5 Oct 2026)
+    assert sum(1 for s in sources if s.route_type == feeds.PAGE_MONITOR and plans[s.source_id][0]) == 22
+    assert [sid for sid, (url, _, _) in plans.items() if not url] == ["S112"]  # only the manual source
     assert all(plans[sid][0].startswith("https://") for sid in fetchable)
     assert sum(s.priority_x_feed for s in sources) == 5
 
