@@ -22,8 +22,10 @@ if ($Remove) {
         Write-Output "Nothing to remove: '$TaskName' is not installed."
         return
     }
+    # this is also the emergency stop (say, Google starts refusing): end a run in progress, not just future ones
+    Stop-ScheduledTask -TaskName $TaskName
     Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false  # a real failure stops here with an error
-    Write-Output "Removed '$TaskName'."
+    Write-Output "Removed '$TaskName' (and stopped any run in progress)."
     return
 }
 
