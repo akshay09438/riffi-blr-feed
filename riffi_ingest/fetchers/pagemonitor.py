@@ -22,7 +22,8 @@ The karnataka.gov.in template (S004 CM, S048, S109 BMTC, S110 BWSSB) is read dif
 about 20 hidden modals (policies, help, link lists) and trafilatura picks one of those, or a block of photo
 captions, as the main text. On this template the news lists are the page: the "latest news" modal
 (#newsModal) with its "Quick Announcements" (#exampleModal), or the visible "News and Events" list
-(section.news_container). When a page has one, its items are the page's lines and trafilatura is not
+(section.news_container), or, on a template page with neither, the scrolling news ticker
+(div.breaking-news-ticker, S048). When a page has one, its items are the page's lines and trafilatura is not
 used. Each item loses its list number ("1:") and its relative age ("4 months ago"), which changes by
 itself every month.
 
@@ -124,6 +125,10 @@ NEWS_BLOCK_XPATH = (
     '//*[@id="newsModal"] | //section[contains(concat(" ", normalize-space(@class), " "), " news_container ")]'
 )
 NEWS_EXTRA_XPATH = '//*[@id="exampleModal"]'
+# S048's news is a scrolling ticker; that is a common jQuery plugin, so it counts only on a page that carries
+# the template's policy modals (#fmyModal3-9 on Kannada pages, #myModalf3-9 on English ones)
+TEMPLATE_XPATH = '//*[starts-with(@id, "fmyModal") or starts-with(@id, "myModalf")]'
+TICKER_XPATH = '//div[contains(concat(" ", normalize-space(@class), " "), " breaking-news-ticker ")]'
 NEWS_ITEM_TAGS = ("p", "li", "td", *HEADING_TAGS)
 ITEM_NUMBER_RE = re.compile(r"^\d{1,3}\s*:\s*")
 AGE_TAIL_RE = re.compile(r"\s*\b(?:\d+|an?|one)\s+(?:second|minute|hour|day|week|month|year)s?\s+ago$", re.I)
@@ -216,9 +221,11 @@ def strip_template_blocks(tree) -> None:
 
 
 def news_lines(tree) -> list[str]:
-    """The items of a karnataka.gov.in news list, one line each, without list numbers or ages; [] when the
-    page has no such list."""
+    """The items of a karnataka.gov.in news list or ticker, one line each, without list numbers or ages; []
+    when the page has none."""
     blocks = tree.xpath(NEWS_BLOCK_XPATH)
+    if not blocks and tree.xpath(TEMPLATE_XPATH):
+        blocks = tree.xpath(TICKER_XPATH)
     if not blocks:
         return []
     lines = []

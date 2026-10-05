@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
+from trafilatura.utils import decode_file
 
 from riffi_ingest import health
 from riffi_ingest.fetchers import feeds, pagemonitor
@@ -376,3 +377,20 @@ def test_the_stored_policy_snapshot_of_a_real_page_is_replaced_without_an_update
     for real in (DIPR, BMTC, CM_EN):
         out = visit(real, previous=blind)
         assert out.status == "ok" and out.entries == [] and out.snapshot == visit(real).snapshot
+
+
+KANNADASIRI = (FIXTURES / "karnataka_gov_real_S048_kannadasiri.html").read_bytes()
+RAJYOTSAVA = 'ಕನ್ನಡ ಮತ್ತು ಸಂಸ್ಕೃತಿ ಇಲಾಖೆಯ ವತಿಯಿಂದ ಪ್ರದಾನ ಮಾಡುವ "ಕರ್ನಾಟಕ ರಾಜ್ಯೋತ್ಸವ" ಪ್ರಶಸ್ತಿ ಕುರಿತಂತೆ ಅನುಸರಿಸಬೇಕಾದ ಮಾರ್ಗಸೂಚಿಗಳು'
+
+
+def test_real_s048_page_gives_its_news_ticker_not_the_policy_modal():
+    lines = page_lines(decode_file(KANNADASIRI))
+    assert any(line.startswith(RAJYOTSAVA) for line in lines)  # the newest item, 22 Sep 2026
+    assert len([line for line in lines if "2026-" in line]) >= 10  # the ticker's items, each with its stamp
+    assert_no_template_text("\n".join(lines))
+
+
+def test_a_news_ticker_off_the_karnataka_template_does_not_replace_the_main_text():
+    ticker = "<div class='breaking-news-ticker'><div class='bn-news'><p><a>Flash sale ends tonight</a></p></div></div>"
+    lines = page_lines(page("<p>Purple line services start at 5 AM from 10 October 2026.</p>" + ticker))
+    assert "Purple line services start at 5 AM from 10 October 2026." in lines
