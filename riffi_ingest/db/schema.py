@@ -153,4 +153,32 @@ CREATE TABLE IF NOT EXISTS engine_runs (
     error TEXT
 );
 CREATE INDEX IF NOT EXISTS engine_runs_started ON engine_runs (started_at);
+
+-- The AI pass's verdict on each story (step 4 part 2, D-005, D-016): one row per story it has checked, replaced
+-- when it checks the story again. A story with a row here is "AI checked": it scores by its llm topics in
+-- item_topics (none at all if the AI found none), with the AI's points. Kept forever, like the stories.
+CREATE TABLE IF NOT EXISTS ai_verdicts (
+    cluster_id TEXT PRIMARY KEY REFERENCES story_clusters(cluster_id),
+    is_new_development INTEGER NOT NULL,
+    whats_new TEXT NOT NULL,           -- one line; '' when not new
+    debate_angle TEXT NOT NULL,        -- one line; '' when the AI found none
+    excluded INTEGER NOT NULL,         -- a communal or religious flashpoint: Drop. Once 1, never set back to 0
+    excluded_reason TEXT NOT NULL,
+    reports_seen INTEGER NOT NULL,     -- the story's report count when it was sent; more later = check again
+    batch_id TEXT NOT NULL,
+    batch_written_at TEXT NOT NULL,    -- an answer from an older batch never replaces a newer one
+    checked_at TEXT NOT NULL
+);
+
+-- What the engine sent in each AI batch. Kept here, not in the batch folder, because the AI session writes into
+-- that folder: nothing it writes can change which stories an answer may touch, or when the batch was written.
+CREATE TABLE IF NOT EXISTS ai_batches (
+    batch_id TEXT PRIMARY KEY,
+    folder TEXT NOT NULL,              -- the run folder's full path (answers are read only from there)
+    batch_file TEXT NOT NULL,
+    answer_file TEXT NOT NULL,
+    stories TEXT NOT NULL,             -- JSON {cluster_id: the story's report count when sent}
+    written_at TEXT NOT NULL           -- UTC with microseconds, so two runs in one second keep their order
+);
+CREATE INDEX IF NOT EXISTS ai_batches_folder ON ai_batches (folder);
 """

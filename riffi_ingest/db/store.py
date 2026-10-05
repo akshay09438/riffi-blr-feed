@@ -21,6 +21,14 @@ from .connection import from_iso, utc_iso
 FAILURE_STATUSES = {"error"}
 RETENTION = timedelta(days=30)
 
+# A story is "AI checked" when its verdict (alias v, a row of ai_verdicts) is current: it excluded the story, or
+# the story has no report the AI has not seen. A story that grew since is scored as if never checked (keyword
+# topics, no AI points) until it is checked again; an excluded one stays excluded. One definition for scoring,
+# the digest, the topic counts and `stories`.
+AI_CHECKED_SQL = (
+    "(v.excluded = 1 OR v.reports_seen >= (SELECT COUNT(*) FROM items iv WHERE iv.cluster_id = v.cluster_id))"
+)
+
 
 def fields_present(outcome: FetchOutcome) -> str:
     """Which item fields this source actually returned (BRIEF.md: fetch_runs.fields_present)."""
@@ -300,14 +308,20 @@ def prune(conn: sqlite3.Connection, now: datetime) -> tuple[int, int]:
 
 
 def story_facts(conn: sqlite3.Connection, cluster_id: str) -> StoryFacts:
-    """What a story is scored on. Topics: the AI's when it has tagged the story, else the keyword pass's."""
+    """What a story is scored on. Once the AI pass has a verdict on the story: the AI's topics (none, if it
+    found none), its new-development and debate-angle points and its excluded flag. Before that: the keyword
+    pass's topics, and no AI points (awaiting the AI pass)."""
     tagged = conn.execute(
         "SELECT it.topic_id, it.match_method, t.priority, t.geography, t.sensitive_note FROM item_topics it"
         " LEFT JOIN topics t ON t.topic_id = it.topic_id WHERE it.cluster_id = ?",
         (cluster_id,),
     ).fetchall()
-    methods = {r["match_method"] for r in tagged}
-    use = "llm" if "llm" in methods else "keyword"
+    verdict = conn.execute(
+        f"SELECT v.is_new_development, v.debate_angle, v.excluded, {AI_CHECKED_SQL} AS current"
+        " FROM ai_verdicts v WHERE v.cluster_id = ?",
+        (cluster_id,),
+    ).fetchone()
+    use = "llm" if verdict is not None and verdict["current"] else "keyword"
     topics = [
         TopicFacts(r["topic_id"], r["priority"] or "", r["geography"] or "", bool((r["sensitive_note"] or "").strip()))
         for r in tagged
@@ -321,26 +335,87 @@ def story_facts(conn: sqlite3.Connection, cluster_id: str) -> StoryFacts:
             (cluster_id,),
         )
     ]
-    return StoryFacts(topics=topics, source_tiers=tiers)
+    if verdict is None or not verdict["current"]:  # never checked, or grown since: awaiting the AI pass
+        return StoryFacts(topics=topics, source_tiers=tiers)
+    return StoryFacts(
+        topics=topics,
+        source_tiers=tiers,
+        new_development=bool(verdict["is_new_development"]),
+        debate_angle=bool(verdict["debate_angle"]),
+        excluded=bool(verdict["excluded"]),
+    )
+
+
+def report_count(conn: sqlite3.Connection, cluster_id: str) -> int:
+    return conn.execute("SELECT COUNT(*) FROM items WHERE cluster_id = ?", (cluster_id,)).fetchone()[0]
+
+
+def save_ai_verdict(
+    conn: sqlite3.Connection, v, *, reports_seen: int, batch_id: str, batch_written_at: str, now: datetime
+) -> str:
+    """Store one checked AI answer (`v`, a tagging.llm_batches.Verdict) and the story's llm topics, in the
+    caller's transaction. Returns "saved"; or "older" when the story already has a verdict from a newer batch,
+    which is then kept, except that an older answer's exclusion still applies ("older-excluded"). An excluded
+    story stays excluded: no answer, older or newer, can set it back."""
+    old = conn.execute(
+        "SELECT excluded, excluded_reason, batch_written_at FROM ai_verdicts WHERE cluster_id = ?", (v.story_id,)
+    ).fetchone()
+    if old is not None and old["batch_written_at"] > batch_written_at:
+        if v.excluded and not old["excluded"]:
+            conn.execute(
+                "UPDATE ai_verdicts SET excluded = 1, excluded_reason = ? WHERE cluster_id = ?",
+                (v.excluded_reason, v.story_id),
+            )
+            return "older-excluded"
+        return "older"
+    excluded, reason = v.excluded, v.excluded_reason
+    if old is not None and old["excluded"] and not excluded:
+        excluded, reason = True, old["excluded_reason"]
+    stamp = utc_iso(now)
+    conn.execute(
+        "INSERT INTO ai_verdicts (cluster_id, is_new_development, whats_new, debate_angle, excluded, excluded_reason,"
+        " reports_seen, batch_id, batch_written_at, checked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        " ON CONFLICT(cluster_id) DO UPDATE SET is_new_development = excluded.is_new_development,"
+        " whats_new = excluded.whats_new, debate_angle = excluded.debate_angle, excluded = excluded.excluded,"
+        " excluded_reason = excluded.excluded_reason, reports_seen = excluded.reports_seen,"
+        " batch_id = excluded.batch_id, batch_written_at = excluded.batch_written_at, checked_at = excluded.checked_at",
+        (v.story_id, int(v.is_new_development), v.whats_new, v.debate_angle, int(excluded), reason, reports_seen,
+         batch_id, batch_written_at, stamp),
+    )  # fmt: skip
+    conn.execute("DELETE FROM item_topics WHERE cluster_id = ? AND match_method = 'llm'", (v.story_id,))
+    conn.executemany(
+        "INSERT INTO item_topics (cluster_id, topic_id, match_method, confidence, evidence, tagged_at)"
+        " VALUES (?, ?, 'llm', NULL, ?, ?)",
+        [(v.story_id, tid, json.dumps({"batch_id": batch_id}), stamp) for tid in v.topic_ids],
+    )
+    return "saved"
+
+
+def write_score(conn: sqlite3.Connection, cluster_id: str, score: Score) -> None:
+    """Like save_score, inside the caller's transaction (the AI pass saves a verdict and its score together)."""
+    conn.execute(
+        "UPDATE story_clusters SET relevance_score = ?, label = ?, sensitive = ? WHERE cluster_id = ?",
+        (score.total, score.label, int(score.sensitive), cluster_id),
+    )
 
 
 def save_score(conn: sqlite3.Connection, cluster_id: str, score: Score) -> None:
     with conn:
-        conn.execute(
-            "UPDATE story_clusters SET relevance_score = ?, label = ?, sensitive = ? WHERE cluster_id = ?",
-            (score.total, score.label, int(score.sensitive), cluster_id),
-        )
+        write_score(conn, cluster_id, score)
 
 
 def top_stories(conn: sqlite3.Connection, since: datetime, limit: int, label: str | None = None) -> list[sqlite3.Row]:
-    """Stories last updated since `since`, best first, with their topic ids (AI's if any, else keyword)."""
+    """Stories last updated since `since`, best first, with their topic ids (AI's if any, else keyword). Drop
+    stories (excluded topics, or too far from the audience) only when `label` is "Drop"."""
     return conn.execute(
         "SELECT c.cluster_id, c.headline, c.relevance_score, c.label, c.sensitive, c.source_count, c.started_at,"
         " (SELECT group_concat(topic_id, ' ') FROM (SELECT DISTINCT topic_id FROM item_topics it"
-        "   WHERE it.cluster_id = c.cluster_id ORDER BY topic_id)) AS topics,"
-        " EXISTS (SELECT 1 FROM item_topics it WHERE it.cluster_id = c.cluster_id AND it.match_method = 'llm')"
-        "   AS ai_checked"
-        " FROM story_clusters c WHERE c.updated_at >= ? AND (? IS NULL OR c.label = ?)"
+        "   WHERE it.cluster_id = c.cluster_id AND it.match_method = CASE WHEN EXISTS (SELECT 1 FROM ai_verdicts v"
+        f"   WHERE v.cluster_id = c.cluster_id AND {AI_CHECKED_SQL}) THEN 'llm' ELSE 'keyword' END"
+        "   ORDER BY topic_id)) AS topics,"
+        f" EXISTS (SELECT 1 FROM ai_verdicts v WHERE v.cluster_id = c.cluster_id AND {AI_CHECKED_SQL}) AS ai_checked"
+        " FROM story_clusters c WHERE c.updated_at >= ?"
+        " AND (CASE WHEN ? IS NULL THEN COALESCE(c.label, '') <> 'Drop' ELSE c.label = ? END)"
         " ORDER BY c.relevance_score DESC, c.source_count DESC, c.started_at DESC LIMIT ?",
         (utc_iso(since), label, label, limit),
     ).fetchall()

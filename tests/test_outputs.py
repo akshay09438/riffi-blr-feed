@@ -92,7 +92,18 @@ def story(
             "INSERT INTO item_topics (cluster_id, topic_id, match_method, tagged_at) VALUES (?, ?, ?, ?)",
             (cid, tid, method, utc_iso(fetched)),
         )
+    if method == "llm":
+        ai_verdict(conn, cid)
     conn.commit()
+
+
+def ai_verdict(conn, cid, whats_new=""):
+    """What the AI pass stores for a story it has checked (tagging/llm_batches.py): it is then "AI checked"."""
+    conn.execute(
+        "INSERT INTO ai_verdicts (cluster_id, is_new_development, whats_new, debate_angle, excluded, excluded_reason,"
+        " reports_seen, batch_id, batch_written_at, checked_at) VALUES (?, ?, ?, '', 0, '', 1, 'b', ?, ?)",
+        (cid, int(bool(whats_new)), whats_new, utc_iso(NOW), utc_iso(NOW)),
+    )
 
 
 def window(now=NOW, day=None):
@@ -177,6 +188,7 @@ def test_awaiting_ai_marker_and_the_ai_tag_rule(db, scorer):
         "INSERT INTO item_topics (cluster_id, topic_id, match_method, tagged_at) VALUES ('ai', 'D05', 'llm', ?)",
         (utc_iso(NOW),),
     )
+    ai_verdict(db, "ai")
     db.commit()
     text, stories, c = build(db, scorer)
     by = {s.headline: s for s in stories}
@@ -235,10 +247,10 @@ def test_kannada_and_pipes_survive(db, scorer, tmp_path):
         rows = list(csv.DictReader(f))
     assert rows[0]["headline"] == "ಬೆಂಗಳೂರು ಸುರಂಗ ರಸ್ತೆ | ಟೆಂಡರ್" and rows[0]["url"] == "https://e.in/a|b"
     assert list(rows[0]) == list(digest.CSV_FIELDS)
-    # every Markdown table row still has its 8 cells (the angles in topics.csv contain `|` too)
+    # every Markdown table row still has its 9 cells (the angles in topics.csv contain `|` too)
     for line in text.splitlines():
         if line.startswith("| 1 |"):
-            assert len(line.replace("\\|", "").split("|")) == 10
+            assert len(line.replace("\\|", "").split("|")) == 11
 
 
 # ---- topics that moved, topics that went quiet, counts
