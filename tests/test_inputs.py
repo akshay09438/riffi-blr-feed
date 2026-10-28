@@ -104,14 +104,14 @@ def test_exactly_five_x_rows_are_priority_feeds(repo_root):
     assert priority == ["S001", "S024", "S026", "S028", "S035"]
 
 
-def test_topics_has_183_topics_151_briefed_plus_32_for_d017(repo_root):
+def test_topics_has_184_topics_151_briefed_plus_33_for_d017(repo_root):
     topics = read(repo_root, "topics.csv")
-    assert len(topics) == 183
-    assert len({r["topic_id"] for r in topics}) == 183
+    assert len(topics) == 184
+    assert len({r["topic_id"] for r in topics}) == 184
     kinds = Counter(r["topic_id"][0] for r in topics)
     assert kinds["D"] == 36
     assert kinds["O"] == 28
-    assert len(topics) - kinds["D"] - kinds["O"] == 119  # evergreen: B, K, SI, P (87 briefed + 32 added, D-017)
+    assert len(topics) - kinds["D"] - kinds["O"] == 120  # evergreen: B, K, SI, P (87 briefed + 33 added, D-017, D-018)
     assert {r["priority"] for r in topics} == {"High", "Medium", "Low"}
 
 
@@ -131,7 +131,7 @@ def test_d017_editor_only_topics_are_marked(repo_root):
     # caste/reservation, language and locals-vs-migrants, leaders and parties, and the cases D-017 added
     assert marked == {
         "O02", "O03", "O04", "O05", "O14", "O15", "O18", "O23", "O26", "O27",
-        "B21", "B22", "B43", "B44", "K03", "K04", "K05", "P05", "P15", "P24", "SI03",
+        "B21", "B22", "B43", "B44", "K03", "K04", "K05", "P05", "P15", "P24", "P58", "SI03",
     }  # fmt: skip
 
 

@@ -153,7 +153,7 @@ def test_a_batch_carries_the_story_its_reports_its_keyword_topics_and_the_instru
     assert len(s["reports"]) == ai.MAX_REPORTS and len(s["reports"][0]["summary"]) <= ai.SUMMARY_CHARS
     assert set(s["reports"][0]) == {"source", "title", "summary"}
     topics = json.loads((run.folder / "topics.json").read_text(encoding="utf-8"))
-    assert len(topics) == 183 and {"id", "topic", "geography", "priority"} <= set(topics[0])
+    assert len(topics) == 184 and {"id", "topic", "geography", "priority"} <= set(topics[0])
     # what the engine keeps for itself is not in the files the AI session reads
     assert "reports_seen" not in json.dumps(batch)
 

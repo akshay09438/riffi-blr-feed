@@ -210,7 +210,7 @@ def test_cli_import_commands(tmp_path, repo_root):
     r = runner.invoke(cli.app, ["import-sources", "--db", str(db_path), "--feeds", str(repo_root / "feeds.csv")])
     assert r.exit_code == 0 and "276 added" in r.output
     r = runner.invoke(cli.app, ["import-topics", "--db", str(db_path), "--topics", str(repo_root / "topics.csv")])
-    assert r.exit_code == 0 and "183 added" in r.output
+    assert r.exit_code == 0 and "184 added" in r.output
     r = runner.invoke(cli.app, ["import-sources", "--db", str(db_path), "--feeds", str(repo_root / "feeds.csv")])
     assert "0 added, 276 updated" in r.output
 
@@ -265,7 +265,7 @@ def test_cli_fetch_needs_a_choice_and_imports_on_first_run(tmp_path, repo_root, 
         cli.app, ["fetch", "--source", "s112", "--db", str(db_path), "--feeds", str(repo_root / "feeds.csv")]
     )
     assert r.exit_code == 0, r.output
-    assert "First run: imported 276 sources" in r.output and "imported 183 topics" in r.output
+    assert "First run: imported 276 sources" in r.output and "imported 184 topics" in r.output
     assert "1 skipped" in r.output
 
 

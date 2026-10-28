@@ -639,7 +639,7 @@ topics:
     local: false
   P26:
     label: "Dowry, live-in relationships, splitting the bill"
-    keywords: ["dowry", "dowry death", "dowry harassment", "live-in", "live-in relationship", "live-in relationships", "live-in registration", "UCC", "Uniform Civil Code", "split the bill", "splitting the bill", "household chores", "ವರದಕ್ಷಿಣೆ"]
+    keywords: ["dowry", "dowry death", "dowry harassment", "live-in", "live-in relationship", "live-in relationships", "live-in registration", "split the bill", "splitting the bill", "household chores", "ವರದಕ್ಷಿಣೆ"]
     local: false
   B45:
     label: "Power cuts, BESCOM tariffs and rooftop solar"
@@ -768,4 +768,8 @@ topics:
   P57:
     label: "Diet and nutrition trends"
     keywords: ["diet trend", "diet trends", "intermittent fasting", "keto", "high-protein", "protein intake", "millets", "ultra-processed", "sugar intake", "sugar tax", "calorie", "calories", "healthy eating", "superfood", "nutrition trend"]
+    local: false
+  P58:
+    label: "Uniform Civil Code: the policy and legal debate"
+    keywords: ["Uniform Civil Code", "UCC", "UCC bill", "common civil code", "civil code bill", "personal laws", "ಏಕರೂಪ ನಾಗರಿಕ ಸಂಹಿತೆ", "समान नागरिक संहिता"]
     local: false

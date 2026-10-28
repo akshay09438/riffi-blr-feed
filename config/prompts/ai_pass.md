@@ -79,7 +79,8 @@ the batch, using their exact `story_id`.
      place of worship, or accusations aimed at a community's voters ("deleting Hindu votes").
   2. **Subjects kept out of the picks** (D-017): sexual content; self-harm and suicide; crime victims, abuse and
      domestic violence; tragedies and deaths (accidents and disasters with casualties); illness stories and
-     medical advice; body shaming; and a story whose main subject is a named private individual.
+     medical advice; body shaming; and a story whose main subject is a private individual (see "Public figures
+     and private individuals" below).
 
   When in doubt, exclude: a wrong exclusion costs one story, a wrong inclusion can put a seed account on a
   flashpoint. **Do not exclude** the editor-only subjects below, or sensitive-but-allowed topics (topics.csv
@@ -130,11 +131,24 @@ is about the subject:
 | Caste survey, reservation | O05, K04, P15 |
 | Kannada vs Hindi, language policy, locals vs migrants, local job quota | O14, O15, O18, B21, B22, K03, SI03 |
 | Party against party, for or against a named leader or party | O02, O03, O04, K05, O26, O27 |
+| The Uniform Civil Code (a state bill, a court remark, an opinion piece): policy and legal angle | P58 |
 | The Darshan murder trial, sport and politics, mental-health content | O23, P24, P05 |
 | Religious festival content that is not a flashpoint (logistics such as holidays, traffic, closures and sales are fine) | B43, B44 |
 
+The Uniform Civil Code is not a flashpoint by itself: tag it P58, do not exclude it, and write no two sides for it.
+Exclude a story about it only when the story itself is a communal clash or hate speech.
+
 Policy and governance stories framed by their effect on the reader (fares, GST, budgets, rules, civic decisions)
 are not on this list: judge them normally.
+
+## Public figures and private individuals
+
+Politicians, celebrities, sportspeople and business leaders are public figures. A story about one is fine: judge
+it normally and write the debate about their public actions and statements (a decision, a remark, a performance,
+a business move, a post). Never write about their personal life, family, health, relationships or appearance, never
+let a side attack the person, and keep both sides about the action or the statement, not about who they are. A
+private individual (anyone who is not a public figure, for example a victim, a complainant, a customer in a
+consumer dispute or a person in a viral video) is not a subject for Riffi: such a story is excluded.
 
 ## File 2: extra-NN.json (checked by ai-facts)
 

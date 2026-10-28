@@ -4,6 +4,16 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-018 · Public figures stay eligible; the Uniform Civil Code is editor-only, not excluded (28 Oct 2026, founder)
+
+Decided after the first real run's report. Both refine D-017.
+- **Public figures** (politicians, celebrities, sportspeople, business leaders) stay eligible for picks: debate their public actions and statements (a decision, a remark, a performance, a business move). Never their personal life, family, health, relationships or appearance, and no side may attack the person. **Private individuals** (a victim, a complainant, a customer in a consumer dispute, a person in a viral video) stay excluded. This is the `ai_pass.md` section "Public figures and private individuals".
+- **The Uniform Civil Code** is a tracked, editor-only subject: its stories are tagged with the new topic P58 (Politics, serves POL1 and REL2), shown in `picks.md`, never in `picks.json`, and are not excluded. A story about it is excluded only when the story itself is a communal clash or hate speech. The UCC keywords moved from P26 to P58.
+- **Stories already excluded stay excluded** (exclusion is sticky and there is no release tool): the UCC stories excluded on 28 Oct before this decision are not brought back. New UCC stories follow the new rule.
+- **Topic labels** (a poll tagged "Deepavali", Sensex tagged "everyday prices"): left as they are for now.
+
+---
+
 ## D-017 · Scope widened to 18 content categories for Riffi's launch audience (28 Oct 2026, founder)
 
 The engine now covers the 18 Riffi content categories (Bangalore, Politics, Sports, Entertainment, Tech/AI, Corporate, Finance, Stock market, Education, College life, Relationships, Social life, General, Growth, Health & fitness, Travel, Fashion & style, Beauty & grooming), not only Bengaluru city news. The audience is English-speaking, tier-1 urban Indians aged 18-28 (college students and young professionals), Bengaluru-first. Plan: `docs/prd/PRD_riffi_news_engine.md`.

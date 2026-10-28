@@ -594,3 +594,9 @@ DELETE FROM ai_verdicts WHERE batch_id LIKE 'lexicon-%' AND whats_new = '';
 `riffi_ingest/filter/safety_state.py` decides whether any story can be `cleared` (the only state that reaches `picks.json`). It will not open the gate for the mere existence of `riffi_ingest/safety/lexicon.py`. The module must define a function `gate0_ready()` that returns exactly `True` when, and only when, the word lists are loaded and enabled (`config/exclusions.yaml` has `enabled: true`, parses, and passes its own checks). Anything else (the function missing, an error, `False`, any other value) keeps every pick out of `picks.json`. Please implement it that way, and add a test that an unreadable or disabled `exclusions.yaml` makes `gate0_ready()` return `False`.
 
 The picks filter also reads the stories' tags of both methods (keyword and AI) for the editor-only topics, and expects the word-list result for each story in the sidecar described in section 5.4 as an extra input once 4c lands; until then the AI verdict (`excluded`) is the only exclusion signal it sees.
+
+
+## 12. D-018 (28 Oct 2026): the Uniform Civil Code and public figures
+
+- The Uniform Civil Code is editor-only, **not** excluded: add `uniform_civil_code: [P58]` to `editor_only_topics` in `config/exclusions.yaml`, and make sure no flashpoint rule fires on the terms "Uniform Civil Code", "UCC" or "common civil code" by themselves. Stories already excluded stay excluded (sticky).
+- "Named private individuals" means private individuals only. The word lists must not drop a story just because it names a politician, a celebrity, a sportsperson or an executive.

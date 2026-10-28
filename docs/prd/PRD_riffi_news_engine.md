@@ -116,7 +116,7 @@ The filter runs after clustering and tagging. A story must pass **Gate 0 → Gat
 - party-vs-party politics and for/against a named politician or party (leader and party topics in `topics.csv` carry `editor_only`)
 
 **Kept out of picks (excluded unless the lexicon is unsure, then `safety_review`):**
-- named private individuals
+- named private individuals (D-018: a *private* individual; public figures stay eligible for picks when the debate is about their public actions or statements, never their personal life)
 - sexual content
 - self-harm and suicide
 - crime victims, abuse, domestic violence
