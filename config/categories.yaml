@@ -1,0 +1,32 @@
+# The 18 Riffi content categories and the daily-picks quotas for each (D-017, PRD section 8.5).
+# Team-editable. The exact category names are the ones used in feeds.csv, topics.csv and needs.csv.
+#
+#   quota_min: the fewest picks a category gets when it has any story that passed every gate
+#   quota_max: the most picks it can get in one day
+#   prefilter_cap: how many of its stories go to the AI pass (keeps the AI pass under its 400-story cap)
+#   editor_only_until_safety: true = its picks are for the editor only until the safety filter (Gate 0)
+#                             has been built, approved and tested (D-017)
+
+needs_file: needs.csv
+
+defaults: {quota_min: 1, quota_max: 4, prefilter_cap: 30, editor_only_until_safety: false}
+
+categories:
+  Bangalore:         {quota_min: 4, quota_max: 4, prefilter_cap: 60}
+  Politics:          {quota_min: 0, quota_max: 3, editor_only_until_safety: true}
+  Sports:            {}
+  Entertainment:     {}
+  Tech/AI:           {}
+  Corporate:         {}
+  Finance:           {}
+  Stock market:      {}
+  Education:         {}
+  College life:      {}
+  Relationships:     {}
+  Social life:       {quota_min: 0, editor_only_until_safety: true}
+  General:           {quota_min: 0, editor_only_until_safety: true}
+  Growth:            {}
+  Health & fitness:  {}
+  Travel:            {}
+  Fashion & style:   {}
+  Beauty & grooming: {}

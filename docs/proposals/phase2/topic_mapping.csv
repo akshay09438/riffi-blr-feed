@@ -1,0 +1,182 @@
+topic_id,topic,old_category,new_category,need_ids,editor_only,note
+D01,India vs New Zealand T20I series (starts 12:30 pm IST),Sports,Sports,SPO1,,
+D02,"Karnataka Legislative Council polls: 4 seats (2 graduates', 2 teachers' incl. Ba",Politics,Politics,POL2; POL3,,
+D03,Maharshi Valmiki Jayanti holiday,Festivals & Holidays,General,GEN4,,"Logistics only (holiday, travel, closures, sales, city events); no religious content (D-017)"
+D04,"WPL 2027 player auction, Kochi (RCB women are defending champions)",Sports,Sports,SPO2,,
+D05,"Namma Metro Pink Line (elevated, 6 stations) opening after CMRS inspection 6–8 O",Civic & Infrastructure,Bangalore,BLR3,,
+D06,"Q2 results from listed new-age tech (Swiggy, Eternal/Zomato etc.)",Business & Tech,Corporate,COR4; TEC2,,
+D07,"Bengaluru FC ISL fixtures (only home game: 20 Nov vs Mumbai City, Kanteerava)",Sports,Sports,SPO3,,
+D08,"Halloween weekend: first big test of ‘No ID, no entry’ at pubs (legal drinking a",Lifestyle,Social life,SOC3; BLR7,,
+D09,Rajyotsava Awards list (announced around 1 Nov),Culture & Identity,Bangalore,BLR8; GEN4,,
+D10,Kannada Rajyotsava: 71st (70 years complete since 1956); first under CM DKS,Festivals & Holidays,Bangalore,BLR8; GEN4,,"Logistics only (holiday, travel, closures, sales, city events); no religious content (D-017)"
+D11,US midterm elections,Politics,Politics,POL2,,
+D12,India vs New Zealand ODI series (06:30 am IST starts),Sports,Sports,SPO1,,
+D13,"Kannada release cluster (NRI, Amma, Rudraprayag etc.) squeezed by Ramayana",Entertainment,Entertainment,ENT2,,
+D14,"Ramayana: Rise of a Legend (Part 1): Ranbir Kapoor, Yash as Ravana, Sai Pallavi",Entertainment,Entertainment,ENT1; ENT2,,
+D15,Deepavali (Naraka Chaturdashi / Lakshmi Puja),Festivals & Holidays,General,GEN4,,"Logistics only (holiday, travel, closures, sales, city events); no religious content (D-017)"
+D16,Appraisal / Diwali bonus discourse,Business & Tech,Corporate,COR3,,
+D17,Diwali bridge day: leave or WFH,Business & Tech,Corporate,COR2,,
+D18,Balipadyami / Deepavali state holiday: 4-day weekend exodus,Festivals & Holidays,General,GEN4,,"Logistics only (holiday, travel, closures, sales, city events); no religious content (D-017)"
+D19,"DGTL Bengaluru, The Lalit Ashok (Nina Kraviz, Stephan Bodzin)",Entertainment,Entertainment,ENT4; BLR7,,
+D20,"Guns N' Roses, NICE Grounds (tickets from ₹4,000)",Entertainment,Entertainment,ENT4; BLR7,,
+D21,"Mid-size gigs: Papon (14 Nov), Satinder Sartaaj (20 Nov), Candlelight A.R. Rahma",Entertainment,Entertainment,ENT4; BLR7,,
+D22,Sunburn Arena ft. Adam Port (Keinemusik),Entertainment,Entertainment,ENT4; BLR7,,
+D23,"Bengaluru Tech Summit 2026 (29th edition), BIEC; ‘AI & Beyond’; India-USA Tech C",Business & Tech,Tech/AI,TEC1; TEC2,,
+D24,"India vs New Zealand 1st Test, Wellington (03:00 am IST)",Sports,Sports,SPO1,,
+D25,"Pan-India releases: Sri Sri (Dulquer, Pooja Hegde) 20 Nov; Yeh Prem Mol Liya (Ay",Entertainment,Entertainment,ENT1,,
+D26,Karnataka SIR final electoral roll (draft published 24 Aug),Politics,Politics,POL2; BLR8,,
+D27,"IPL 2027 retention deadline (auction expected 14–16 Dec, Goa)",Sports,Sports,SPO2,,
+D28,"GBA civic poll notification + campaign: 5 corporations, 369 wards; first city vo",Politics,Bangalore,BLR1; POL2,,
+D29,Kanakadasa Jayanti holiday + Black Friday: long weekend 27–29 Nov,Festivals & Holidays,General,GEN4,,"Logistics only (holiday, travel, closures, sales, city events); no religious content (D-017)"
+D30,"India vs New Zealand 2nd Test, Christchurch (tour ends)",Sports,Sports,SPO1,,
+D31,"Samay Raina India tour kicks off (Delhi); Bengaluru gets only Feb 19–21, 2027",Entertainment,Entertainment,ENT4; ENT5,,
+D32,RBI monetary policy (repo at 5.25%),Business & Tech,Finance,FIN1; POL5,,
+D33,Parliament winter session (2025 ran 1–19 Dec),Politics,Politics,POL1,,
+D34,Basavanagudi Kadalekai Parishe (groundnut fair),Festivals & Holidays,Bangalore,BLR7; GEN4,,"Logistics only (holiday, travel, closures, sales, city events); no religious content (D-017)"
+D35,Belagavi winter session of the legislature (2025: 8–19 Dec),Politics,Politics,POL3; BLR8,,
+D36,Fred again.. NICE Grounds (12 Dec); Avengers: Doomsday (18 Dec); SRK's King (24 ,Entertainment,Entertainment,ENT4; ENT1,,
+O01,GBA elections and Bengaluru's split into 5 corporations,Politics,Bangalore,BLR1; POL2,,
+O02,CM D.K. Shivakumar: Bengaluru-first agenda and viral remarks (‘MLAs who come to ,Politics,Politics,POL3,yes,
+O03,"DKS cabinet: 19 ministers inducted 3 Aug, no women ministers, one berth vacant, ",Politics,Politics,POL3,yes,
+O04,"H.D. Kumaraswamy's offensive: HMT land, NICE project, KPSC recruitment irregular",Politics,Politics,POL3,yes,
+O05,Caste survey report (received 27 May; seeks OBC quota hike to 42%) still not tab,Politics,Politics,POL3; BLR8,yes,
+O06,"Hebbal–Silk Board tunnel road: Adani lowest bid ₹22,267 cr vs ₹17,698 cr estimat",Civic & Infrastructure,Bangalore,BLR2,,
+O07,"Bengaluru's second airport: ‘South Bengaluru’, Harohalli (Kanakapura Rd) frontru",Civic & Infrastructure,Bangalore,BLR3; TRA1,,
+O08,"Namma Metro: Pink Line delays (underground part targeted early 2027), fares amon",Civic & Infrastructure,Bangalore,BLR3,,
+O09,"Traffic: ORR, Silk Board, Hebbal, airport road, Tumakuru Rd",Civic & Infrastructure,Bangalore,BLR2,,
+O10,"Potholes, garbage, ‘No road, no tax’ protests (East Bengaluru); garbage fee push",Civic & Infrastructure,Bangalore,BLR1,,
+O11,"Northeast monsoon cloudbursts and flooding (Mahadevapura, ORR, Yelahanka)",Civic & Infrastructure,Bangalore,BLR5; GEN3,,
+O12,"Water stress: tanker prices, borewells, groundwater",Civic & Infrastructure,Bangalore,BLR5,,
+O13,"Rent, deposits, brokers, PG and flatmate discrimination",Lifestyle,Bangalore,BLR6,,
+O14,Kannada vs Hindi; 60% Kannada signage rule,Culture & Identity,Bangalore,BLR8,yes,
+O15,North vs South / locals vs migrants; Bengaluru vs Hyderabad investment rivalry,Culture & Identity,Bangalore,BLR8,yes,
+O16,Delimitation: will the South lose Lok Sabha seats?,Politics,Politics,POL1,,
+O17,"Mekedatu dam vs Tamil Nadu (TN Assembly resolution, June 2026)",Politics,Politics,POL3,,
+O18,"Local job quota for Kannadigas in private / IT firms (2024 bill, paused)",Politics,Bangalore,BLR8,yes,
+O19,"Autos and bike taxis: meter refusal, app pricing; Karnataka's SC appeal against ",Civic & Infrastructure,Bangalore,BLR4,,
+O20,"Pub rules: 1 am closing, drinking age 21, ID checks (privacy concerns)",Lifestyle,Social life,SOC3; BLR7,,
+O21,"AI layoffs, hiring freezes, RTO mandates; IT workers unionising (KITU rallies)",Business & Tech,Corporate,COR1; TEC5,,
+O22,"Bengaluru startup IPO wait: Zepto, PhonePe (paused), Flipkart",Business & Tech,Tech/AI,TEC2; STK2,,
+O23,Darshan murder trial (day-to-day hearings; more accused seeking approver status),Entertainment,Entertainment,ENT5; POL4,yes,
+O24,RCB fandom and Chinnaswamy crowd safety (June 2025 stampede memory),Sports,Sports,SPO2,,
+O25,"Bigg Boss Kannada 13 and Bigg Boss Hindi 20: weekend episodes, evictions",Entertainment,Entertainment,ENT3; ENT5,,
+O26,Cockroach Janta Party (CJP): Gen Z anti-establishment movement; Bengaluru Freedo,Politics,Politics,POL3,yes,
+O27,Annamalai's new ‘We The Leaders’ movement (quit BJP 5 June),Politics,Politics,POL3,yes,
+O28,Tree felling for Metro Phase 3; ‘Garden City’ loss,Civic & Infrastructure,Bangalore,BLR1,,
+B01,Who runs Bengaluru? GBA and the 5-corporation split,Politics,Bangalore,BLR1,,
+B02,"Bengaluru pays, Bengaluru gets? City revenue vs spending",Politics,Bangalore,BLR1,,
+B03,"Bengaluru traffic: Silk Board, ORR, Hebbal, airport road",Civic & Infrastructure,Bangalore,BLR2,,
+B04,"Namma Metro: fares, delays, crowding, last mile",Civic & Infrastructure,Bangalore,BLR3,,
+B05,"Potholes, garbage, 'No road, no tax'",Civic & Infrastructure,Bangalore,BLR1,,
+B06,Floods and lake encroachment,Civic & Infrastructure,Bangalore,BLR5,,
+B07,Water stress and tanker raj,Civic & Infrastructure,Bangalore,BLR5,,
+B08,Garden City lost? Tree felling vs infrastructure,Civic & Infrastructure,Bangalore,BLR1,,
+B09,"Autos, meters and bike taxis",Civic & Infrastructure,Bangalore,BLR4,,
+B10,"Stray dogs: feed, shelter or remove?",Civic & Infrastructure,Bangalore,BLR1; SOC1,,
+B11,Civic sense and road manners,Civic & Infrastructure,Social life,SOC1; BLR2,,
+B12,Airport commute and the second airport,Civic & Infrastructure,Bangalore,BLR3; TRA1,,
+B13,BMTC buses: would you take the bus to work?,Civic & Infrastructure,Bangalore,BLR3,,
+B14,Startup vs MNC vs GCC job,Business & Tech,Corporate,COR4; GRO1,,
+B15,Hustle culture and toxic startup work,Business & Tech,Corporate,COR2,,
+B16,"Layoffs, AI, RTO and tech unionising",Business & Tech,Corporate,COR1; TEC5,,
+B17,"Startup IPOs, ESOPs and paper millionaires",Business & Tech,Tech/AI,TEC2; STK2,,
+B18,Tech-bro culture and 'Koramangala overheard',Business & Tech,Social life,SOC1; TEC2,,
+B19,10-minute delivery: convenience or curse?,Business & Tech,General,GEN2; SOC4,,
+B20,Is Bengaluru still India's tech capital?,Business & Tech,Tech/AI,TEC2; COR4,,
+B21,Kannada vs Hindi; 60% signage; learn Kannada,Culture & Identity,Bangalore,BLR8,yes,
+B22,What makes someone a Bengalurean? (locals vs migrants),Culture & Identity,Social life,SOC1,yes,
+B23,City wars: Bengaluru vs Hyderabad vs Mumbai vs Delhi vs Pune vs Chennai,Culture & Identity,Social life,SOC1,,
+B24,Bengaluru then vs now,Culture & Identity,Social life,SOC1,,
+B25,"Rent, deposits, brokers",Lifestyle,Bangalore,BLR6,,
+B26,"PG life, flatmates and 'bachelors not allowed'",Lifestyle,Bangalore,BLR6; COL3,,
+B27,Rent vs buy in Bengaluru,Lifestyle,Bangalore,BLR6,,
+B28,Is ₹1 lakh a month enough in Bengaluru?,Lifestyle,Finance,FIN2; BLR6,,
+B29,Bengaluru dating scene and apps,Lifestyle,Relationships,REL1,,
+B30,"Pubs, breweries, 1 am rule, age 21, ID checks",Lifestyle,Social life,SOC3; BLR7,,
+B31,Café culture and laptop camping,Lifestyle,Social life,SOC4; BLR7,,
+B32,"Food wars: darshinis, dosa, biryani, filter coffee",Lifestyle,Social life,SOC4,,
+B33,Neighbourhood wars: Koramangala vs Indiranagar vs HSR vs Whitefield vs Jayanagar,Lifestyle,Bangalore,BLR6; BLR7,,
+B34,Bengaluru weather: still India's best?,Lifestyle,Bangalore,BLR5,,
+B35,"Women's safety at night: commute, cabs, late shifts",Lifestyle,Social life,SOC2,,
+B36,Commute mode wars: two-wheeler vs car vs metro vs EV,Lifestyle,Bangalore,BLR3; BLR2,,
+B37,"Fitness culture: run clubs, Cubbon Park, padel",Lifestyle,Health & fitness,HEA1,,
+B39,"RCB fandom: identity, loyalty, celebrations",Sports,Sports,SPO2,,
+B42,"NYE in Bengaluru: Brigade Road, 1 am rules, traffic curbs",Festivals & Holidays,Bangalore,BLR7; GEN4,,"Logistics only (holiday, travel, closures, sales, city events); no religious content (D-017)"
+B43,"Old Bengaluru festivals: Karaga, Kadalekai Parishe, Lalbagh shows",Festivals & Holidays,Bangalore,BLR7,yes,Religious festival content stays with the editor; heritage and city-event logistics only (D-017)
+B44,"Festival eco debates: crackers, lake immersion, noise",Festivals & Holidays,General,GEN4,yes,Environmental angle only; religious content stays with the editor (D-017)
+K01,Guarantee schemes: welfare or freebies?,Politics,Bangalore,BLR8,,
+K02,Shakti free bus for women,Politics,Bangalore,BLR8,,
+K03,Local job quota for Kannadigas,Politics,Bangalore,BLR8,yes,
+K04,Caste survey and reservation share,Politics,Politics,POL3; BLR8,yes,
+K05,"Power politics: CM vs rivals, high command, 2028",Politics,Politics,POL3,yes,
+K06,Women in Karnataka politics,Politics,Social life,SOC2; POL3,,
+K07,"Kannada Rajyotsava: celebration, brand posts, holiday",Festivals & Holidays,Bangalore,BLR8; GEN4,,"Logistics only (holiday, travel, closures, sales, city events); no religious content (D-017)"
+K08,Mysuru Dasara and Mysuru vs Bengaluru,Festivals & Holidays,General,GEN4; TRA4,,"Logistics only (holiday, travel, closures, sales, city events); no religious content (D-017)"
+K09,Weekend getaways: Coorg vs Chikmagalur vs Gokarna vs Nandi Hills,Lifestyle,Travel,TRA4,,
+K10,Kannada cinema vs pan-India: KGF/Kantara effect,Entertainment,Entertainment,ENT2,,
+K11,Bigg Boss Kannada,Entertainment,Entertainment,ENT2; ENT5,,
+K12,Celebrity accountability and fan culture,Entertainment,Entertainment,ENT5,,
+K13,"Kambala, Yakshagana, Kodava culture",Culture & Identity,Bangalore,BLR8,,
+K14,"Beyond Bengaluru: Mysuru, Hubballi, Mangaluru as tech hubs",Business & Tech,Tech/AI,TEC2; BLR8,,
+K15,"Karnataka exam and results season: PUC, KCET",Lifestyle,Education,EDU1,,
+SI01,Delimitation and tax devolution: North vs South money,Politics,Politics,POL5; POL1,,
+SI02,Mekedatu and Cauvery water with Tamil Nadu,Politics,Politics,POL3,,
+SI03,Three-language policy and Hindi in schools,Culture & Identity,Education,EDU2,yes,
+SI04,South cinema civil war: Telugu vs Tamil vs Malayalam vs Kannada,Entertainment,Entertainment,ENT2,,
+SI05,"Food origin wars: Mysore Pak, dosa, biryani, filter coffee",Culture & Identity,Social life,SOC4,,
+SI06,South Indian cities better to live in?,Culture & Identity,Social life,SOC1,,
+P01,70/90-hour work week,Business & Tech,Corporate,COR2,,
+P02,WFH vs office vs hybrid,Business & Tech,Corporate,COR2,,
+P03,AI replacing jobs,Business & Tech,Tech/AI,TEC5; TEC1,,
+P04,"Salary, appraisals and job hopping",Business & Tech,Corporate,COR3; GRO1,,
+P05,Mental health and burnout at work,Business & Tech,Growth,GRO2; COR2,yes,Workplace angle only; mental-health or medical advice stays with the editor (D-017 never-list)
+P06,Gig worker rights and quick-commerce riders,Business & Tech,General,GEN2; COR2,,
+P07,"Brain drain and the US dream: H-1B, Canada, Germany",Business & Tech,Education,EDU3; TRA3,,
+P08,Is engineering / MBA / college brand worth it?,Lifestyle,College life,COL1; EDU2,,
+P09,Middle-class tax burden: new vs old regime,Lifestyle,Finance,FIN1,,
+P10,"F&O, trading and crypto: investing or gambling?",Lifestyle,Stock market,STK3; STK5,,
+P11,"Save vs spend: FIRE, EMIs, YOLO",Lifestyle,Finance,FIN1,,
+P13,Freebies vs welfare (national),Politics,Politics,POL1,,
+P14,One Nation One Election,Politics,Politics,POL1; POL2,,
+P15,"Reservation and merit (EWS, creamy layer, private quotas)",Politics,Politics,POL1,yes,
+P16,Gen Z and politics: does youth activism work?,Politics,Politics,POL2; COL3,,
+P17,Delhi AQI and pollution refugees,Civic & Infrastructure,Health & fitness,HEA3,,
+P18,EVs vs petrol vs hybrid,Civic & Infrastructure,Tech/AI,TEC3,,
+P19,Gen Z vs Millennials at work and life,Culture & Identity,Social life,SOC1; COL3,,
+P20,"Influencer culture, creator economy, comedy free speech",Culture & Identity,Entertainment,ENT5,,
+P21,Bollywood vs South cinema; nepotism,Entertainment,Entertainment,ENT1; ENT2,,
+P22,Theatres vs OTT; ticket and popcorn prices,Entertainment,Entertainment,ENT3; ENT1,,
+P23,"Cricket culture: IPL vs international, star worship, other sports",Sports,Sports,SPO1; SPO4,,
+P24,"Sport and politics (e.g., playing rivals amid tensions)",Sports,Sports,SPO1,yes,
+P25,Arranged vs love marriage; marriage age; kids or not,Lifestyle,Relationships,REL3; REL2,,
+P26,"Dowry, 'gifts', live-in relationships, splitting the bill",Lifestyle,Relationships,REL2; REL3,,
+B45,"Power cuts, BESCOM tariffs and rooftop solar",(new),Bangalore,BLR5,,NEW
+P27,Court rulings that change daily life,(new),Politics,POL4,,NEW
+P28,"Viral claims, fact-checked",(new),Politics,POL6,,NEW
+P29,"Beyond cricket: Olympics, chess, badminton, F1, kabaddi",(new),Sports,SPO4,,NEW
+P30,"Football for Indians: ISL, European leagues, the national team",(new),Sports,SPO3,,NEW
+P31,"Gaming and esports: BGMI, game launches, bans",(new),Entertainment,ENT6,,NEW
+P32,"AI tools and model launches: ChatGPT, Gemini, Claude, Indian AI",(new),Tech/AI,TEC1,,NEW
+P33,Phone and laptop launches and price wars,(new),Tech/AI,TEC3,,NEW
+P34,"App outages, privacy and new digital rules",(new),Tech/AI,TEC4,,NEW
+P35,"Everyday prices: petrol, LPG, gold, inflation",(new),Finance,FIN2,,NEW
+P36,"Credit cards, EMIs, BNPL and loan rates",(new),Finance,FIN3,,NEW
+P37,"Scams and frauds: digital arrest, UPI fraud, fake apps",(new),Finance,FIN4,,NEW
+P38,"Sensex, Nifty and big market moves",(new),Stock market,STK1,,NEW
+P39,Mutual funds and SIPs for beginners,(new),Stock market,STK4,,NEW
+P40,"Entrance exams and results: CAT, GATE, NEET-PG, CUET, JEE, paper leaks",(new),Education,EDU1,,NEW
+P41,"Colleges, UGC rules, fees and rankings",(new),Education,EDU2,,NEW
+P42,"Campus placements, packages and internships",(new),College life,COL1,,NEW
+P43,"Campus rules, fests and controversies (non-political)",(new),College life,COL2,,NEW
+P44,"Union Budget, Census and big national announcements",(new),General,GEN1,,NEW
+P45,"Productivity, habits and self-improvement research",(new),Growth,GRO2,,NEW
+P46,Founder journeys and success stories,(new),Growth,GRO3,,NEW
+P47,"Food safety, FSSAI and what is in your food",(new),Health & fitness,HEA2,,NEW
+P48,"Trains and roads: Vande Bharat, tatkal, tolls, FASTag",(new),Travel,TRA2,,NEW
+P49,"Fashion weeks, trends and what is in",(new),Fashion & style,FAS1,,NEW
+P50,"Brands and shopping: Myntra, Zudio, sales, quick fashion",(new),Fashion & style,FAS2,,NEW
+P51,Celebrity looks and red carpet style,(new),Fashion & style,FAS3,,NEW
+P52,"Beauty brands and launches: Nykaa, Mamaearth, Sugar",(new),Beauty & grooming,BEA1,,NEW
+P53,"Skincare trends, ingredient bans and safety",(new),Beauty & grooming,BEA2,,NEW
+P54,Men's grooming and skincare,(new),Beauty & grooming,BEA3,,NEW
+P55,OTT releases and what to watch,(new),Entertainment,ENT3,,NEW
