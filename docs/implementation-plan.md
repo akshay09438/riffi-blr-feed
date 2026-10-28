@@ -35,7 +35,8 @@ Plan: `docs/prd/PRD_riffi_news_engine.md`. Founder's order: Phases 1, 2, 3; then
 | 2 Taxonomy and topics | Done 28 Oct (founder approved the proposal): 181 topics (151 + 30), all in the 18 categories, each with its needs; 21 editor-only; `categories.yaml` and `taxonomy.py`. **Still to do on the laptop:** `import-topics`, then a `fetch --all` so the new topics tag |
 | 3 Filter (non-protected parts) | Built and tested 28 Oct (cloud, 521 tests): `riffi_ingest/filter/`, `outputs/picks.py`, `config/filter.yaml`, commands `picks` and `news-24h`, digest and health CSV by category. **Still to do on the laptop:** the dry run on a real 24-hour fetch (acceptance: 15 or more picks across 10 or more categories needs the AI's extra judgements, which need proposal 4a). Details: `docs/technical-spec.md`, "The Daily Picks filter" |
 | 4c Safety filter proposal | Written 28 Oct, waiting for Zuko: `docs/proposals/phase4c-safety-filter.md` |
-| 4a, 4b, 4d | 4a (AI prompt) next; 4b and 4d wait |
+| 4a AI prompt | Proposal written 28 Oct, waiting for Zuko and the founder: `docs/proposals/phase4a-ai-prompt.md` (a second file per batch, `extra-NN.json`, stored by the new `ai-facts` command; `llm_batches.py` unchanged). `ai-facts` itself is built and tested |
+| 4b, 4d | 4b shrinks to one optional change (topic subsets per batch, prefilter-driven selection); 4d (database) waits |
 | 5, 6 | After approval; after launch |
 
 ## Open questions

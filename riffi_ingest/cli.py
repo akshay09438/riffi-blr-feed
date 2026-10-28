@@ -14,6 +14,7 @@
     digest            the day's files in reports/YYYY-MM-DD/: digest.md and digest.csv (ranked stories, topics that
                       moved, quiet High-priority topics) plus the health report; --date regenerates a past day
     report            the health report only: health.md and sources_health.csv
+    ai-facts          store the AI pass's extra judgements (why care, two sides, hook) for the picks
     picks             the Daily Picks (D-017): picks.md / picks.csv / picks.json, candidates.csv, filter_report.md
     news-24h          "the news of the last 24 hours": fetch, write the AI batches, digest and picks in one go
 
@@ -44,6 +45,7 @@ from .fetchers.gnews import ONLINE_CAP_PER_RUN
 from .fetchers.http import DOMAIN_INTERVAL, PoliteClient, domain_key
 from .fetchers.parse import IST
 from .filter.config import FilterConfig
+from .filter.facts_apply import SIDECAR, apply_extras
 from .outputs import picks as picks_out
 from .outputs import queries
 from .outputs.digest import CSV_CAP, day_text, write_digest
@@ -682,6 +684,38 @@ def digest(
         typer.echo("No articles were fetched in this window. Run a fetch first: python -m riffi_ingest fetch --all")
     typer.echo(f"  {d.md_path}\n  {d.csv_path}")
     _write_health_files(conn, db_path, schedule, folder, now, w.day)
+
+
+@app.command("ai-facts")
+def ai_facts(
+    folder: Path = AiFolderArgument,
+    date: str = DayOption,
+    out: Path = OutputsOption,
+    db: Path = DbOption,
+) -> None:
+    """After `ai-apply`: read the `extra-NN.json` files the AI session wrote beside the answer files (why the
+    user cares, the two sides, a hook, a format) and merge them into <out>/YYYY-MM-DD/story_facts_v2.json, the
+    file `picks` reads. Checks the folder, the batch ids and the story ids, skips stories the AI pass excluded,
+    and cleans every number and text. Safe to run again: a later judgement replaces an earlier one."""
+    now = datetime.now(timezone.utc)
+    day = _report_day(date, now) or now.astimezone(IST).date()
+    _, conn = _open_existing(db)
+    sidecar = Path(out) / day.isoformat() / SIDECAR
+    try:
+        r = apply_extras(conn, folder, sidecar)
+    except LookupError as exc:
+        _fail(str(exc))
+    except ValueError as exc:
+        _fail(str(exc))
+    typer.echo(
+        f"AI extras: {r.applied} stored, {len(r.rejected)} rejected, {r.skipped_excluded} skipped (excluded stories)."
+    )
+    for name, sid, why in r.rejected:
+        typer.echo(f"  rejected {name} {sid or '(whole file)'}: {why}")
+    if r.files_missing:
+        typer.echo(f"  no extra file yet for: {', '.join(r.files_missing)}")
+    if r.applied:
+        typer.echo(f"  {sidecar}")
 
 
 @app.command("picks")

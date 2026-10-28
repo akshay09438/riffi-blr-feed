@@ -601,3 +601,109 @@ def test_a_full_day_with_ai_judgements_spreads_across_categories_and_honours_the
     again, _ = run(db, tax, cfg, tmp_path, gate0=True, facts=facts)
     assert [a.story.story_id for a in again.selection.picks] == [a.story.story_id for a in picks]
     assert not r.selection.notes  # 15 or more passed: no "only N" remark
+
+
+# ---- ai-facts: the AI pass's extra judgements into the sidecar
+
+from riffi_ingest.filter.facts_apply import apply_extras, extra_name  # noqa: E402
+from riffi_ingest.tagging import llm_batches  # noqa: E402
+
+
+def batches_for(db, tmp_path):
+    day(db)
+    return llm_batches.write_batches(db, tmp_path / "ai", since=NOW - timedelta(days=1), now=NOW)
+
+
+def write_extra(run, n, entries, batch_id=None):
+    batch = json.loads(run.batches[n - 1].read_text(encoding="utf-8"))
+    path = run.folder / extra_name(batch["answer_file"])
+    path.write_text(json.dumps({"batch_id": batch_id or batch["batch_id"], "extras": entries}), encoding="utf-8")
+    return path
+
+
+def test_extra_name():
+    assert extra_name("answer-03.json") == "extra-03.json"
+
+
+def test_extras_are_stored_cleaned_and_merged(db, tmp_path):
+    run = batches_for(db, tmp_path)
+    sidecar = tmp_path / "r" / "story_facts_v2.json"
+    write_extra(
+        run, 1, [{"story_id": "m1", "why_care": "Your fare rises", "daily_life": 99, "side_a": "A", "side_b": "B"}]
+    )
+    r = apply_extras(db, run.folder, sidecar)
+    assert r.applied == 1 and not r.rejected
+    facts, problems = load_facts(sidecar)
+    assert facts["m1"].daily_life == 20 and facts["m1"].two_sided and problems == []
+    write_extra(run, 1, [{"story_id": "t1", "culture": 4}, {"story_id": "m1", "daily_life": 3}])
+    apply_extras(db, run.folder, sidecar)
+    facts, _ = load_facts(sidecar)
+    assert facts["m1"].daily_life == 3 and facts["t1"].culture == 4  # later replaces earlier; others kept
+
+
+def test_extras_for_other_stories_wrong_batches_and_excluded_stories_are_refused(db, tmp_path):
+    run = batches_for(db, tmp_path)
+    sidecar = tmp_path / "r" / "story_facts_v2.json"
+    # m2 was excluded after the batch was written: its extras are skipped
+    add_exclusion(db, "m2")
+    write_extra(
+        run, 1,
+        [{"story_id": "zz-not-here", "daily_life": 5}, {"story_id": "m2", "daily_life": 5}, {"story_id": "m1"}, {"story_id": "m1"}],
+    )  # fmt: skip
+    r = apply_extras(db, run.folder, sidecar)
+    reasons = {(sid, why) for _, sid, why in r.rejected}
+    assert ("zz-not-here", "not a story of this batch") in reasons and ("m1", "given twice in one file") in reasons
+    assert r.skipped_excluded == 1 and r.applied == 0 and not sidecar.exists()
+    write_extra(run, 1, [{"story_id": "m1"}], batch_id="another-batch")
+    r = apply_extras(db, run.folder, sidecar)
+    assert r.rejected and "batch_id" in r.rejected[0][2] and not sidecar.exists()
+
+
+def test_a_folder_the_engine_did_not_write_is_refused(db, tmp_path):
+    (tmp_path / "fake").mkdir()
+    with pytest.raises(LookupError):
+        apply_extras(db, tmp_path / "fake", tmp_path / "s.json")
+
+
+def test_a_missing_or_broken_extra_file_is_reported(db, tmp_path):
+    run = batches_for(db, tmp_path)
+    r = apply_extras(db, run.folder, tmp_path / "s.json")
+    assert r.files_missing == ["extra-01.json"] and r.applied == 0
+    (run.folder / "extra-01.json").write_text("{nope", encoding="utf-8")
+    r = apply_extras(db, run.folder, tmp_path / "s.json")
+    assert r.rejected and "not valid JSON" in r.rejected[0][2]
+
+
+def test_ai_facts_command_feeds_the_picks(db, tmp_path):
+    day(db, datetime.now(timezone.utc))
+    run = llm_batches.write_batches(
+        db, tmp_path / "ai", since=datetime.now(timezone.utc) - timedelta(days=1), now=datetime.now(timezone.utc)
+    )
+    write_extra(
+        run,
+        1,
+        [
+            {
+                "story_id": "p1",
+                "daily_life": 18,
+                "culture": 8,
+                "audience_fit": 8,
+                "side_a": "A",
+                "side_b": "B",
+                "hook_score": 10,
+            }
+        ],
+    )
+    db_path = tmp_path / "engine.db"
+    r = runner.invoke(cli.app, ["ai-facts", str(run.folder), "--db", str(db_path), "--out", str(tmp_path / "reports")])
+    assert r.exit_code == 0 and "1 stored" in r.output, r.output
+    r = runner.invoke(cli.app, ["picks", "--db", str(db_path), "--out", str(tmp_path / "reports")])
+    assert r.exit_code == 0, r.output
+    folder = next((tmp_path / "reports").iterdir())
+    with open(folder / "candidates.csv", encoding="utf-8-sig", newline="") as f:
+        rows = {c["story_id"]: c for c in csv.DictReader(f)}
+    assert rows["p1"]["ai_missing"] == "no" and rows["m1"]["ai_missing"] == "yes"
+    r = runner.invoke(
+        cli.app, ["ai-facts", str(tmp_path / "nope"), "--db", str(db_path), "--out", str(tmp_path / "reports")]
+    )
+    assert r.exit_code != 0 and "not a folder written by ai-batch" in r.output
