@@ -481,6 +481,9 @@ def stories(
 
 
 AiOutOption = typer.Option(PROJECT_ROOT / "data" / "ai", "--out", help="Batch folders go in <out>/<IST time>/.")
+AiOutDirOption = typer.Option(
+    PROJECT_ROOT / "data" / "ai", "--ai-out", help="AI batch folders go in <ai-out>/<IST time>/."
+)
 AiFolderArgument = typer.Argument(..., help="The folder ai-batch printed.")
 AiMaxOption = typer.Option(llm_batches.MAX_STORIES, "--max", help="At most this many stories (best first).")
 
@@ -773,13 +776,14 @@ def news_24h(
     feeds: Path = FeedsOption,
     topics: Path = TopicsOption,
     schedule: Path = ScheduleOption,
+    ai_out: Path = AiOutDirOption,
 ) -> None:
     """ "Give me the news of the last 24 hours" (D-016, D-017) in one command: fetch every source, write the stories
     that wait into AI batches, then the digest and the Daily Picks from what is stored. The AI pass itself is a
     Claude Code session: answer the batches, run ai-apply on the folder, then run `picks` again."""
     if not skip_fetch:
         fetch(all_sources=True, source=[], due_only=False, db=db, feeds=feeds, topics=topics, schedule=schedule)
-    ai_batch(hours=24, max_stories=llm_batches.MAX_STORIES, out=AiOutOption.default, db=db)
+    ai_batch(hours=24, max_stories=llm_batches.MAX_STORIES, out=ai_out, db=db)
     digest(date=None, out=out, top=top, db=db, schedule=schedule)
     picks(date=None, out=out, db=db)
     typer.echo("After the AI pass (answer the batches, then ai-apply <folder>), run: python -m riffi_ingest picks")

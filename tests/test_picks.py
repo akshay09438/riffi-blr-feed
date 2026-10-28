@@ -539,8 +539,11 @@ def test_picks_command_needs_a_database_with_articles(tmp_path):
 def test_news_24h_without_fetching_writes_batches_digest_and_picks(db, tmp_path):
     day(db, datetime.now(timezone.utc))
     path = tmp_path / "engine.db"
-    r = runner.invoke(cli.app, ["news-24h", "--skip-fetch", "--db", str(path), "--out", str(tmp_path / "reports")])
+    ai = tmp_path / "ai"
+    args = ["news-24h", "--skip-fetch", "--db", str(path), "--out", str(tmp_path / "reports"), "--ai-out", str(ai)]
+    r = runner.invoke(cli.app, args)
     assert r.exit_code == 0, r.output
+    assert ai.is_dir() and any(ai.iterdir())  # the AI batches go where --ai-out says, never into the project's data/
     assert "Digest for" in r.output and "Picks for" in r.output and "run: python -m riffi_ingest picks" in r.output
     folder = next((tmp_path / "reports").iterdir())
     assert {"digest.md", "digest.csv", "picks.md", "filter_report.md"} <= {p.name for p in folder.iterdir()}
