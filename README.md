@@ -1,6 +1,6 @@
 # Riffi news ingestion engine
 
-Collects new developments on Riffi's 151 tracked topics from 281 sources (131 from the brief plus 150 added for D-017), cleans them, groups them into stories and tags them by topic. It only collects, ranks and reports: it never posts anything. What it does and why: `BRIEF.md`; where the team decided differently: `DECISIONS.md`; how it is built: `docs/technical-spec.md`; how far along it is: `docs/implementation-plan.md`.
+Collects new developments on Riffi's 151 tracked topics from 276 sources (131 from the brief plus 145 net added for D-017), cleans them, groups them into stories and tags them by topic. It only collects, ranks and reports: it never posts anything. What it does and why: `BRIEF.md`; where the team decided differently: `DECISIONS.md`; how it is built: `docs/technical-spec.md`; how far along it is: `docs/implementation-plan.md`.
 
 **Built so far:** fetching every route, cleaning, Google News link resolution, the blocklist, grouping into stories, keyword tagging, scoring and labels, the database, the scheduler (`fetch --due`, which fetches each source at its own speed, the run diary and the `status` check are tested; the Windows timer that runs it every 30 minutes is written and checked but has never been registered, and is only switched on after the founder says yes, see "Running on its own"), the daily digest and health report (`digest`, `report`), the AI pass through files (`ai-batch`, `ai-apply`; D-005, D-016), and the commands below. **Not yet:** the exclusions word-list filter, the dashboard and `/api/stories`, and the two-week recall test.
 
@@ -123,7 +123,7 @@ No API keys are needed: AI tagging will run in Claude Code on the founder's plan
 
 | File | What it is | Notes |
 |---|---|---|
-| `feeds.csv` | The 281 sources: 131 from Source List v4 plus 150 added for D-017; `category` is one of the 18 Riffi categories and `notes` lists the information needs (`needs.csv`) each source serves | After editing, run `import-sources`. |
+| `feeds.csv` | The 276 sources: 131 from Source List v4 plus 145 net added for D-017 (retired ones are in `docs/prd/retired_sources.csv`); `category` is one of the 18 Riffi categories and `notes` lists the information needs (`needs.csv`) each source serves | After editing, run `import-sources`. |
 | `topics.csv` | The 151 topics | After editing, run `import-topics`, and give a new topic keywords (below). |
 | `config/scoring.yaml` | The relevance-score weights and label cut-offs | Tune after the two-week test. |
 | `config/schedule.yaml` | How often each kind of source is fetched, plus per-source overrides | Read at every run; no restart. A speed the engine cannot read stops the timed runs (a line in `data/engine.log`) and `status` warns. |

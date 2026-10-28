@@ -93,12 +93,12 @@ def test_a_newer_schema_is_refused(tmp_path):
 
 
 def test_imports_are_idempotent_and_keep_history(db, repo_root, tmp_path):
-    assert db.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == 281
+    assert db.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == 276
     assert db.execute("SELECT COUNT(*) FROM topics").fetchone()[0] == 151
     db.execute("UPDATE sources SET last_ok_at = '2026-10-04T05:00:00+00:00', consecutive_failures = 2")
     db.commit()
     again = import_sources(db, repo_root / "feeds.csv", now=NOW)
-    assert (again.added, again.updated, again.deactivated) == (0, 281, 0)
+    assert (again.added, again.updated, again.deactivated) == (0, 276, 0)
     row = db.execute("SELECT last_ok_at, consecutive_failures FROM sources WHERE source_id = 'S011'").fetchone()
     assert tuple(row) == ("2026-10-04T05:00:00+00:00", 2)  # health columns survive a re-import
     assert import_topics(db, repo_root / "topics.csv", now=NOW).updated == 151
@@ -108,7 +108,7 @@ def test_imports_are_idempotent_and_keep_history(db, repo_root, tmp_path):
     smaller.write_text("\n".join(lines[:-1]) + "\n", encoding="utf-8")  # drop the last source
     result = import_sources(db, smaller, now=NOW)
     assert result.deactivated == 1
-    assert db.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == 281  # never deleted
+    assert db.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == 276  # never deleted
     assert db.execute("SELECT COUNT(*) FROM sources WHERE active = 0").fetchone()[0] == 1
 
 

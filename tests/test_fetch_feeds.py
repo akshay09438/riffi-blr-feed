@@ -176,7 +176,7 @@ def test_one_bad_source_does_not_stop_the_others(monkeypatch):
 
 def test_every_row_in_feeds_csv_gets_a_plan(repo_root):
     sources = load_sources(repo_root / "feeds.csv")
-    assert len(sources) == 281
+    assert len(sources) == 276
     plans = {s.source_id: plan(s) for s in sources}
     fetchable = [sid for sid, (url, _, _) in plans.items() if url]
     on_backup = [sid for sid, (url, backup, _) in plans.items() if url and backup]

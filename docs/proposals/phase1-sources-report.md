@@ -1,8 +1,20 @@
 # Phase 1 report: sources (D-017)
 
-*Status: offline part done on branch `main-nb68vk`; the live part (C5, C6 and the health pass rate) can only run on the laptop, because this cloud session cannot reach any news site (the proxy answers 403). Nothing here was fetched live. The "28 Oct" status of each new source is from the founder's browser test in `docs/prd/new_sources.csv`, not from the engine.*
+*Status: Phase 1 complete apart from the laptop re-check after the retirements. The cloud session cannot reach any news site, so the live results below came from the laptop run. The sections after "Live results" describe the offline work and are written for the 281-source version; the final count is 276.*
 
-## What changed
+## Live results (laptop, 28 Oct 2026) and what changed because of them
+
+*Run in a fresh folder with a fresh database: the old `engine.db` was not found on that laptop. So every number below is a first run. The fetch time is a worst case (empty Google News cache); the health rate is not comparable with the earlier 87%.*
+
+- `import-sources`: 281 added. `test-feeds` on S132 to S281: **144 passed, 6 failed**, in 2.3 minutes. All Times of India, Economic Times and Filmfare feeds passed (the 15 untested ones are now confirmed).
+- Timed `fetch --all`: **22.6 minutes** for 281 sources (target 35; 14.8 for 131). 276 ok, 4 failed, 1 skipped, 0 Google refusals; 15,823 entries read, 7,493 stored, 6,941 stories (22 High, 1,171 Medium, 819 Low, 4,929 Drop).
+- `report`: **227 of 255 non-X sources pass = 89%** (target 90%). Nothing failed 3 runs in a row.
+- **Six new sources retired** (they leave `feeds.csv`, so `import-sources` marks them inactive; history is kept; reasons in `docs/prd/retired_sources.csv`): S141 Vijaya Karnataka (404), S142 PIB Bengaluru native (0 items), S147 PIB and S174 Formula 1 (no dates, so the engine can never count them healthy), S238 Koimoi and S281 GQ India (403).
+- **One source added:** S282, the Google News men's-grooming query, so BEA3 keeps a source. This makes **61** new Google News rows, one over the PRD's cap of 60 (founder to confirm).
+- Result: 276 sources (103 native, 125 Google News, 25 X/Instagram backups, 17 page monitors, 3 Telegram, 2 YouTube, 1 manual). Expected health after the next `import-sources` and `report`: 227 of 249 = about 91% (to be confirmed on the laptop). Need coverage by file: 57 full, 18 partial, 0 none (`docs/prd/need_coverage.csv`).
+- **Not touched:** S131 (District upcoming movies, an original source) now returns 404; it needs a person to find the page's new address. 29 sources are "stale" and 80 "not useful" in this first-run count; they mean little until there is a week of history.
+
+## What changed (offline part, before the live run)
 
 - `feeds.csv`: 131 -> **281 sources** (S132 to S281 are new). All 281 carry one of the 18 categories (C1). The old 10 values are re-mapped by hand, source by source; a secondary category goes into `topics_hint` after "| also:".
 - Every source's `notes` now ends with `needs: ...`, the information needs (`needs.csv`) it serves (C3). New rows also record the 28 Oct browser-test status.

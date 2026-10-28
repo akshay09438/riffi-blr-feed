@@ -31,7 +31,7 @@ Plan: `docs/prd/PRD_riffi_news_engine.md`. Founder's order: Phases 1, 2, 3; then
 | Phase | Status |
 |---|---|
 | 0 Decision | Done 28 Oct: D-017 approved and in `DECISIONS.md`; the CLAUDE.md edits are for Zuko in `docs/proposals/phase0-d017.md` |
-| 1 Sources | Offline part done 28 Oct (cloud): `feeds.csv` 131 -> 281, 18 categories, needs in `notes`, tests updated. **Still to do on the laptop:** `import-sources`, `test-feeds` on S132 to S281, a timed full run, health rate. Report: `docs/proposals/phase1-sources-report.md` |
+| 1 Sources | Done 28 Oct: `feeds.csv` 131 -> 276 (6 new ones retired after the live test, 1 added), 18 categories, needs in `notes`. Laptop (fresh database): `test-feeds` 144/150, `fetch --all` 22.6 min, health 89% (about 91% once the retired ones are out; to confirm after `import-sources` + `report`). Report: `docs/proposals/phase1-sources-report.md` |
 | 2 Taxonomy and topics | Not started |
 | 3 Filter (non-protected parts) | Not started |
 | 4c Safety filter proposal | Written 28 Oct, waiting for Zuko: `docs/proposals/phase4c-safety-filter.md` |

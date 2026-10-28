@@ -6,17 +6,17 @@ BLR4,Bangalore,Autos cabs & bike taxis,0,4,0,partial
 BLR5,Bangalore,Water power & weather,0,7,2,partial
 BLR6,Bangalore,Rent housing & real estate,1,3,1,full
 BLR7,Bangalore,Events & going out,0,9,1,partial
-BLR8,Bangalore,Karnataka state govt & policy,7,9,2,full
-POL1,Politics,National govt & Parliament,9,2,1,full
+BLR8,Bangalore,Karnataka state govt & policy,6,9,2,full
+POL1,Politics,National govt & Parliament,8,2,1,full
 POL2,Politics,Elections,0,8,1,partial
 POL3,Politics,Karnataka politics,5,17,2,full
 POL4,Politics,Courts & legal rulings,2,2,0,full
 POL5,Politics,Economy & policy,3,0,0,full
 POL6,Politics,Fact-checks,3,2,0,full
-SPO1,Sports,Cricket (India & international),3,1,0,full
+SPO1,Sports,Cricket (India & international),4,1,0,full
 SPO2,Sports,IPL & RCB,1,4,0,full
 SPO3,Sports,Football,2,1,1,full
-SPO4,Sports,Other sports & Olympics,3,1,0,full
+SPO4,Sports,Other sports & Olympics,2,1,0,full
 ENT1,Entertainment,Bollywood & Indian film,4,1,1,full
 ENT2,Entertainment,South & Kannada cinema,5,2,1,full
 ENT3,Entertainment,OTT & series,2,1,0,full
@@ -24,27 +24,27 @@ ENT4,Entertainment,Music & concerts,3,2,2,full
 ENT5,Entertainment,Creators & internet culture,3,3,0,full
 ENT6,Entertainment,Gaming,0,2,0,partial
 TEC1,Tech/AI,AI news & tools,4,0,0,full
-TEC2,Tech/AI,Indian startups & funding,3,6,0,full
+TEC2,Tech/AI,Indian startups & funding,4,6,0,full
 TEC3,Tech/AI,Gadgets & launches,2,0,0,full
-TEC4,Tech/AI,Big tech & apps,2,1,0,full
-TEC5,Tech/AI,AI & jobs,0,2,0,partial
-COR1,Corporate,Layoffs & hiring,0,4,0,partial
-COR2,Corporate,Workplace policy,0,4,0,partial
-COR3,Corporate,Pay & appraisals,0,1,0,partial
-COR4,Corporate,Company news (IT & GCCs),1,4,0,full
+TEC4,Tech/AI,Big tech & apps,3,1,0,full
+TEC5,Tech/AI,AI & jobs,1,2,0,full
+COR1,Corporate,Layoffs & hiring,2,4,0,full
+COR2,Corporate,Workplace policy,1,4,0,full
+COR3,Corporate,Pay & appraisals,1,1,0,full
+COR4,Corporate,Company news (IT & GCCs),2,4,0,full
 FIN1,Finance,Personal finance rules,4,1,0,full
-FIN2,Finance,Prices & cost of living,1,1,0,full
+FIN2,Finance,Prices & cost of living,2,1,0,full
 FIN3,Finance,Credit loans & cards,2,0,0,full
 FIN4,Finance,Consumer & money scams,0,2,0,partial
-STK1,Stock market,Market moves,2,0,0,full
-STK2,Stock market,IPOs,1,2,0,full
+STK1,Stock market,Market moves,3,0,0,full
+STK2,Stock market,IPOs,2,2,0,full
 STK3,Stock market,SEBI & F&O rules,3,1,0,full
-STK4,Stock market,Mutual funds & SIPs,0,1,0,partial
-STK5,Stock market,Crypto,1,1,0,full
+STK4,Stock market,Mutual funds & SIPs,1,1,0,full
+STK5,Stock market,Crypto,2,1,0,full
 EDU1,Education,Entrance exams & results,2,0,0,full
-EDU2,Education,Higher-ed policy,1,1,0,full
+EDU2,Education,Higher-ed policy,2,1,0,full
 EDU3,Education,Study abroad & visas,2,3,0,full
-COL1,College life,Placements & internships,0,1,0,partial
+COL1,College life,Placements & internships,2,1,0,full
 COL2,College life,Campus news & controversies,1,2,0,full
 COL3,College life,Student life & youth trends,0,2,0,partial
 REL1,Relationships,Dating & relationship trends,1,2,0,full
@@ -54,16 +54,16 @@ SOC1,Social life,Viral social debates,4,0,0,full
 SOC2,Social life,Gender debates & rulings,2,0,0,full
 SOC3,Social life,Nightlife & going out,0,4,0,partial
 SOC4,Social life,Food & dining trends,1,3,0,full
-GEN1,General,Top national headlines,7,4,0,full
+GEN1,General,Top national headlines,8,4,0,full
 GEN2,General,Consumer & everyday life,0,4,0,partial
 GEN3,General,Weather & disasters,1,2,0,full
 GEN4,General,Festivals & holidays,1,3,1,full
-GRO1,Growth,Careers & upskilling,0,2,0,partial
+GRO1,Growth,Careers & upskilling,1,2,0,full
 GRO2,Growth,Productivity & self-improvement,0,1,0,partial
 GRO3,Growth,Founders & success stories,2,0,0,full
 HEA1,Health & fitness,Fitness & gym trends,1,1,0,full
 HEA2,Health & fitness,Diet & nutrition news,1,0,0,partial
-HEA3,Health & fitness,Health policy & public health,3,1,0,full
+HEA3,Health & fitness,Health policy & public health,2,1,0,full
 TRA1,Travel,Flights & airports,1,2,0,full
 TRA2,Travel,Trains & roads,0,3,0,partial
 TRA3,Travel,Visas & passports,0,4,0,partial
@@ -73,4 +73,4 @@ FAS2,Fashion & style,Brands & shopping,0,2,0,partial
 FAS3,Fashion & style,Celebrity & red carpet style,2,0,0,full
 BEA1,Beauty & grooming,Beauty industry & launches,1,0,0,partial
 BEA2,Beauty & grooming,Skincare trends & safety,0,1,0,partial
-BEA3,Beauty & grooming,Men's grooming,1,0,0,partial
+BEA3,Beauty & grooming,Men's grooming,0,1,0,partial

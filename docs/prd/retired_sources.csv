@@ -1,0 +1,7 @@
+source_id,name,route_type,fetch_url,reason,retired_on
+S141,Vijaya Karnataka (2),Native publisher RSS/Atom,https://vijaykarnataka.indiatimes.com/rssfeedsdefault.cms,404 on the 28 Oct live test (laptop); the same publisher is followed by S057,2026-10-28
+S142,PIB Bengaluru region (2),Native publisher RSS/Atom,https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1&reg=1&lang=1,Returned 0 items; the same PIB region is followed by S107 (Google News),2026-10-28
+S147,PIB,Native publisher RSS/Atom,https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3,"Entries carry no dates, so the engine can never count it healthy and old releases would look new; PIB is also followed by S011",2026-10-28
+S174,Formula 1 latest,Native publisher RSS/Atom,https://www.formula1.com/en/latest/all.xml,"Entries carry no dates, so the engine can never count it healthy; Sports ""other"" is covered by The Hindu Sport and Indian Express Sports",2026-10-28
+S238,Koimoi Bollywood,Native publisher RSS/Atom,https://www.koimoi.com/category/bollywood-news/feed/,403: the site blocks automated requests; Bollywood has many other feeds,2026-10-28
+S281,GQ India,Native publisher RSS/Atom,https://www.gqindia.com/feed/rss,403: the site blocks automated requests; replaced by S282 (Google News query) so men's grooming keeps a source,2026-10-28

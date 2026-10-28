@@ -208,11 +208,11 @@ def test_cli_import_commands(tmp_path, repo_root):
     db_path = tmp_path / "engine.db"
     runner = CliRunner()
     r = runner.invoke(cli.app, ["import-sources", "--db", str(db_path), "--feeds", str(repo_root / "feeds.csv")])
-    assert r.exit_code == 0 and "281 added" in r.output
+    assert r.exit_code == 0 and "276 added" in r.output
     r = runner.invoke(cli.app, ["import-topics", "--db", str(db_path), "--topics", str(repo_root / "topics.csv")])
     assert r.exit_code == 0 and "151 added" in r.output
     r = runner.invoke(cli.app, ["import-sources", "--db", str(db_path), "--feeds", str(repo_root / "feeds.csv")])
-    assert "0 added, 281 updated" in r.output
+    assert "0 added, 276 updated" in r.output
 
 
 def test_cli_test_feeds_writes_a_report(tmp_path, repo_root, monkeypatch):
@@ -265,7 +265,7 @@ def test_cli_fetch_needs_a_choice_and_imports_on_first_run(tmp_path, repo_root, 
         cli.app, ["fetch", "--source", "s112", "--db", str(db_path), "--feeds", str(repo_root / "feeds.csv")]
     )
     assert r.exit_code == 0, r.output
-    assert "First run: imported 281 sources" in r.output and "imported 151 topics" in r.output
+    assert "First run: imported 276 sources" in r.output and "imported 151 topics" in r.output
     assert "1 skipped" in r.output
 
 
