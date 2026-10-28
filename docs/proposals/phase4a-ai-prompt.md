@@ -1,6 +1,6 @@
 # Proposal 4a: the AI pass instructions for 18 categories and the Daily Picks
 
-*For Zuko, and the founder's explicit yes. Status: proposal only. No dangerous-list file has been changed. The one protected file this would change is `config/prompts/ai_pass.md` (dangerous-list item 5). The complete proposed replacement is `docs/proposals/phase4a/ai_pass.proposed.md`. Part of `docs/prd/PRD_riffi_news_engine.md` Phase 4 (item a); policy: D-017.*
+*Status: **approved by the founder and applied on 28 Oct 2026** ("proposal 4a is approved"); `config/prompts/ai_pass.md` is now the proposed text, byte for byte, and the tests in section 5 are in `tests/test_ai_pass.py`. Zuko's review of this dangerous-list change (item 5) is still to come, on the laptop. The text below is the proposal as approved. The complete replacement was `docs/proposals/phase4a/ai_pass.proposed.md`. Part of `docs/prd/PRD_riffi_news_engine.md` Phase 4 (item a); policy: D-017.*
 
 ## 1. What this does, in plain words
 

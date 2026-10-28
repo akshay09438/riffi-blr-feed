@@ -372,6 +372,64 @@ def test_the_instruction_sheet_names_every_answer_field_and_the_excluded_topics(
     assert str(ai.MAX_TEXT) in text and str(ai.MAX_TOPICS) in text
 
 
+def sheet_text():
+    return (REPO_ROOT / "config" / "prompts" / "ai_pass.md").read_text(encoding="utf-8")
+
+
+def test_the_sheet_names_every_field_and_format_of_the_extra_file():
+    import dataclasses
+
+    from riffi_ingest.filter import facts
+
+    text = sheet_text()
+    for field in dataclasses.fields(facts.Facts):
+        assert f'"{field.name}"' in text, field.name
+    for fmt in facts.FORMATS:
+        assert f'"{fmt}"' in text, fmt
+    assert "extra-NN.json" in text and "ai-facts" in text  # the flow: write both files, then run ai-facts
+
+
+def test_the_sheets_editor_only_table_matches_topics_csv():
+    import csv
+
+    text = sheet_text()
+    table = text.split("## Editor-only subjects", 1)[1].split("## File 2", 1)[0]
+    in_sheet = set(re.findall(r"\b([A-Z]{1,2}\d{2})\b", table))
+    with open(REPO_ROOT / "topics.csv", encoding="utf-8", newline="") as f:
+        rows = list(csv.DictReader(f))
+    marked = {r["topic_id"] for r in rows if r["editor_only"] == "yes"}
+    assert in_sheet == marked  # none missing, none extra: change topics.csv and the sheet together
+    assert in_sheet <= {r["topic_id"] for r in rows}
+
+
+def test_the_sheets_examples_are_accepted_by_the_real_checkers(tmp_path):
+    from riffi_ingest.filter import facts
+
+    blocks = re.findall(r"```json\n(.*?)```", sheet_text(), flags=re.S)
+    answer, extra = (json.loads(b) for b in blocks)
+    ai.check_answer(answer["answers"][0], {answer["answers"][0]["story_id"]}, {"O06"})  # the seven-field format stands
+    path = tmp_path / "x.json"
+    path.write_text(json.dumps({"s": extra["extras"][0]}), encoding="utf-8")
+    loaded, problems = facts.load_facts(path)
+    got = loaded["s"]
+    assert not problems and got.two_sided and got.format == "hot-take reel" and got.daily_life == 16
+
+
+def test_old_seven_field_answers_stay_valid_and_extra_fields_are_still_refused_there():
+    good = {
+        "story_id": "c1",
+        "topic_ids": [],
+        "is_new_development": False,
+        "whats_new": "",
+        "debate_angle": "",
+        "excluded": False,
+        "excluded_reason": "",
+    }
+    assert ai.check_answer(good, {"c1"}, set()).story_id == "c1"
+    with pytest.raises(ai.AnswerRejected):
+        ai.check_answer({**good, "why_care": "extras belong in extra-NN.json, not here"}, {"c1"}, set())
+
+
 # ---- found by the adversarial review (6 Oct 2026): each reproduced, then fixed
 
 
