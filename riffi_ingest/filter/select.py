@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from ..taxonomy import Taxonomy
 from .config import FilterConfig
 from .model import Assessed
+from .similar import near_duplicates
 
 
 @dataclass
@@ -48,9 +49,24 @@ def select(assessed: list[Assessed], taxonomy: Taxonomy, cfg: FilterConfig) -> S
             a.reason = f"content score {a.k} is below the pass mark {bar}" + (
                 " (no AI judgement)" if a.ai_missing else ""
             )
+        elif not a.fresh:
+            a.reason = f"first reported more than {cfg['freshness']['max_age_hours']:g} hours ago"
+        elif a.framing_problem:
+            a.reason = f"not picked: {a.framing_problem}"
         elif a.p < floor_for(a):
             a.reason = f"pick score {a.p} is below {floor_for(a):g}" + (" (no AI judgement)" if a.ai_missing else "")
-    eligible = sorted((a for a in assessed if a.gate1 and a.gate2 and a.p >= floor_for(a)), key=_order)
+    eligible = sorted(
+        (a for a in assessed if a.gate1 and a.gate2 and a.fresh and not a.framing_problem and a.p >= floor_for(a)),
+        key=_order,
+    )
+    dropped = near_duplicates(eligible, cfg)
+    for a in eligible:
+        if a.story.story_id in dropped:
+            keep = dropped[a.story.story_id]
+            a.reason = f"near-duplicate of {keep}, which has more sources or a better score"
+    eligible = [a for a in eligible if a.story.story_id not in dropped]
+    for a in eligible:
+        a.eligible = True
     picks: list[Assessed] = []
     per_cat: Counter = Counter()
     per_topic: Counter = Counter()

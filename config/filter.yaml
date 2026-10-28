@@ -43,8 +43,33 @@ picks:
 
 prefilter:                    # which stories go to the AI pass (an AI pass takes at most 400 stories)
   max_stories: 400
+  min_per_category: 10        # every category with stories gets at least this many (when it has them)
   always_keep: {category: Bangalore, priority: High}
 
 audience:
-  boost_terms: [placement, internship, stipend, hostel, PG, rent, deposit, metro, BMTC, UPI, CAT, GATE, fees, layoffs, appraisal, WFH, concert, IPL, RCB, OTT, sale, skincare, "dating app"]
+  boost_terms: [gym, fitness, workout, FSSAI, "food safety", scam, "credit card", salary, visa, "Vande Bharat", placement, internship, stipend, hostel, PG, rent, deposit, metro, BMTC, UPI, CAT, GATE, fees, layoffs, appraisal, WFH, concert, IPL, RCB, OTT, sale, skincare, "dating app"]
   penalty_terms: [pension, retirement, "senior citizens", "school admission", "board exam", kindergarten]
+
+# Added 28 Oct 2026 after the first real run.
+freshness:
+  max_age_hours: 72           # a story first reported longer ago than this is never picked
+
+similar:                      # near-duplicate stories (different clusters, same news): the one with more sources stays
+  jaccard: 0.6                # headlines sharing this share of their content words are the same story
+  same_day_shared_entities: 2 # same topic, same IST day, and this many shared names / numbers / acronyms
+  same_day_shared_words: 3    # same topic, same IST day, this many shared content words (and jaccard_floor)
+  jaccard_floor: 0.4
+  generic_entities: [bengaluru, bangalore, karnataka, india, indian, delhi, mumbai, supreme, court, high, govt, government, minister, chief, cm, pm, rbi, sebi, news, new, says]
+  generic_words: [bengaluru, karnataka, india, indian, new, says, say, news, today, report, reports, amid, after, over, govt, government, minister]
+
+framing:                      # finance and markets: a debate about the system or the news, never advice (ai_pass.md)
+  advice_categories: [Finance, Stock market]
+  advice_patterns:
+    - '\bbuy now\b(?!\s+pay\s+later)'
+    - '\b(?:buy|sell|invest)\s+(?:today|before|on\s+dips?|the\s+dip)\b'
+    - '\b(?:good|right|best)?\s*time\s+to\s+(?:buy|sell|invest)\b'
+    - '\bshould\s+(?:you|i|we|investors)\s+(?:buy|sell|invest|hold)\b'
+    - '\b(?:buy|sell|hold)\s+or\s+(?:buy|sell|hold)\b'
+    - '\b(?:buy|sell|dump|short)\s+(?:your|more|all|out)\b'
+    - '\b(?:buy|sell)\s+(?:the\s+)?(?:stock|shares?|nifty|sensex|etfs?|gold|crypto|bitcoin)\b'
+    - '\b(?:multibaggers?|stock\s+picks?|target\s+price|buy\s+rating|sell\s+rating|accumulate|book\s+profits?)\b'

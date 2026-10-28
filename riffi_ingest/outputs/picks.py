@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import sqlite3
 import time
 from collections import Counter
@@ -79,7 +80,7 @@ def build(
     cleared = [replace(a, picked=False, reason="", tier="") for a in assessment.assessed if a.safety_state == CLEARED]
     export = select(cleared, taxonomy, cfg)
     selection = select(assessment.assessed, taxonomy, cfg)
-    pre = choose_for_ai(assessment.assessed, taxonomy, cfg)
+    pre = choose_for_ai(assessment.assessed, taxonomy, cfg, now)
     awaiting = sum(1 for s in stories if not s.excluded and not s.ai_checked and s.topic_ids)
     return PicksRun(
         run_id_for(now), w, assessment, selection, export, pre, gate, problems, time.monotonic() - started, awaiting
@@ -234,13 +235,17 @@ def filter_report_md(run: PicksRun, taxonomy: Taxonomy, cfg: FilterConfig) -> st
     lines += [
         "## Per category",
         "",
-        "| Category | Candidates | Passed R | Passed R and K | Picked |",
-        "|---|---|---|---|---|",
+        "| Category | Candidates | Passed relevance | Passed both gates | Reached the pick-score floor | Picked | Top reason not picked |",
+        "|---|---|---|---|---|---|---|",
     ]
     for name in taxonomy.categories:
         grp = [x for x in a.assessed if x.category == name]
+        why = Counter(re.sub(r"\d+(?:\.\d+)?", "N", x.reason) for x in grp if not x.picked and x.reason)
+        top = why.most_common(1)[0] if why else ("", 0)
         lines.append(
-            f"| {name} | {len(grp)} | {sum(x.gate1 for x in grp)} | {sum(x.gate1 and x.gate2 for x in grp)} | {sum(x.picked for x in grp)} |"
+            f"| {name} | {len(grp)} | {sum(x.gate1 for x in grp)} | {sum(x.gate1 and x.gate2 for x in grp)}"
+            f" | {sum(x.eligible for x in grp)} | {sum(x.picked for x in grp)}"
+            f" | {plain(top[0]) + f' ({top[1]})' if top[1] else '-'} |"
         )
     lines += ["", "## Top exclusion reasons (counts only)", ""]
     top = a.excluded.most_common(10)

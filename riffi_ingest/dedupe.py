@@ -148,6 +148,17 @@ def similarity(a: str, b: str) -> float:
     return _similarity(_canon(a), _canon(b))
 
 
+def title_words(title: str) -> frozenset[str]:
+    """The stemmed content words of a headline (stop-words dropped, "Bangalore" = "Bengaluru"): what two headlines
+    are compared on when deciding whether they tell the same story."""
+    return _words(_canon(norm_title(title)))
+
+
+def canon_word(token: str) -> str:
+    """One word in the form title_words uses ("PGs" -> "pg", "sealing" -> "seal")."""
+    return _canon(norm_title(token))
+
+
 def _aware(when: datetime) -> datetime:
     return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
 

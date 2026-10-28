@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from ..taxonomy import Taxonomy
 from .config import FilterConfig
 from .content import content
 from .facts import Facts
+from .framing import advice_problem
 from .model import Assessed, StoryView
 from .relevance import best_topic, relevance, topic_points
 from .safety_state import safety_state
@@ -35,6 +36,8 @@ def assess(
     out = Assessment(total=len(stories))
     w = cfg["picks"]["weights"]
     pass_ok, pass_missing = float(cfg["content"]["pass"]), float(cfg["content"]["pass_ai_missing"])
+    max_age = timedelta(hours=float(cfg["freshness"]["max_age_hours"]))
+    editor_topics = taxonomy.editor_only_topics()
     pass_r, pass_r_missing = float(cfg["relevance"]["pass"]), float(cfg["relevance"]["pass_ai_missing"])
     for story in stories:
         if story.excluded:
@@ -53,6 +56,7 @@ def assess(
             facts=story.facts,
             ai_angle=story.ai_angle,
             topic_has_angles=True,
+            sides_withheld=bool(set(story.all_topic_ids) & editor_topics),
             now=now,
             cfg=cfg,
         )
@@ -71,6 +75,9 @@ def assess(
                 k=k,
                 p=round(float(w["R"]) * r + float(w["K"]) * k, 1),
                 ai_missing=missing,
+                fresh=now - story.started_at <= max_age,
+                framing_problem=advice_problem(top.category, story.facts, cfg),
+                sides_withheld=bool(set(story.all_topic_ids) & editor_topics),
                 gate1=r >= (pass_r_missing if missing else pass_r),
                 gate2=k >= (pass_missing if missing else pass_ok),
                 prefilter=float(topic_points(top, cfg)),

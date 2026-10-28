@@ -41,7 +41,17 @@ class FilterConfig:
                 "hook_max",
                 "visual_max",
             ),
-            "prefilter": ("max_stories",),
+            "prefilter": ("max_stories", "min_per_category"),
+            "freshness": ("max_age_hours",),
+            "similar": (
+                "jaccard",
+                "same_day_shared_entities",
+                "same_day_shared_words",
+                "jaccard_floor",
+                "generic_entities",
+                "generic_words",
+            ),
+            "framing": ("advice_categories", "advice_patterns"),
             "picks": ("target", "min_to_publish", "weights", "tiers", "floor_ai_missing", "max_per_topic", "max_links"),
         }.items():
             block = data.get(section)

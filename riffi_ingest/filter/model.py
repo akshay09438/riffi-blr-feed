@@ -50,6 +50,10 @@ class Assessed:
     ai_missing: bool
     gate1: bool
     gate2: bool
+    fresh: bool = True  # first reported no longer ago than freshness.max_age_hours
+    framing_problem: str = ""  # a finance pick whose wording reads as advice
+    sides_withheld: bool = False  # an editor-only subject: the AI is told not to write the two sides
+    eligible: bool = False  # passed every gate and the pick-score floor, and is not a near-duplicate (set by select)
     picked: bool = False
     tier: str = ""
     reason: str = ""  # why it was not picked, or "picked"

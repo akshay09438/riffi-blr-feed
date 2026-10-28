@@ -33,11 +33,16 @@ def content(
     facts: Facts | None,
     ai_angle: str,
     topic_has_angles: bool,
+    sides_withheld: bool = False,
     now: datetime,
     cfg: FilterConfig,
 ) -> tuple[int, dict[str, int]]:
     c = cfg["content"]
     if facts is not None and facts.two_sided:
+        debate = int(c["debate_two_sided"])
+    elif sides_withheld and ai_angle:
+        # editor-only subjects: the AI is told not to write the two sides, so its own neutral debate angle
+        # (the seven-field answer: "a real trade-off with two sides") earns the two-sided credit instead
         debate = int(c["debate_two_sided"])
     elif (facts is not None and facts.one_sided) or ai_angle:
         debate = int(c["debate_one_sided"])

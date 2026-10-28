@@ -371,12 +371,28 @@ def test_quotas_per_topic_per_category_and_the_target(db, tax, cfg, tmp_path):
     assert any("Only" in n for n in r.selection.notes)  # fewer than 15 passed: said so, nothing padded
 
 
+TRAFFIC = [
+    "Silk Board flyover closed for repairs next week",
+    "Hebbal junction loop opens to vehicles",
+    "Airport road toll collection starts Monday",
+    "Tumakuru road potholes cause three-hour jam",
+    "Outer Ring Road bus priority lane extended",
+    "Whitefield commuters demand a new metro feeder",
+    "Marathahalli bridge widening gets a green signal",
+    "Electronic City elevated expressway toll revised",
+    "KR Puram hanging bridge reopens after months",
+    "Sarjapur road signal timings revised by police",
+    "Bellary road airport traffic advisory for Friday",
+    "Bannerghatta road underpass work enters last phase",
+]
+
+
 def test_a_viral_category_cannot_take_the_whole_list(db, tax, cfg, tmp_path):
     for i in range(12):
         story(
             db,
             f"b{i}",
-            f"Bengaluru traffic story {i}",
+            TRAFFIC[i],
             fetched=NOW - H,
             topics=(("O06", "B03", "O09", "O10")[i % 4],),
             sources=("S011", "S034", "S063"),
@@ -417,9 +433,9 @@ def test_prefilter_keeps_bangalore_high_and_caps_each_category(db, tax, cfg, tmp
         story(db, f"y{i:02d}", f"Scam news {i}", fetched=NOW - H, topics=("P37",), sources=("S011",))
     r, _ = run(db, tax, cfg, tmp_path)
     chosen = r.prefilter.chosen
-    assert sum(a.category == "Bangalore" for a in chosen) == 70  # every High Bangalore story is kept
+    assert sum(a.category == "Bangalore" for a in chosen) == tax.categories["Bangalore"].prefilter_cap == 60
     assert sum(a.category == "Finance" for a in chosen) == tax.categories["Finance"].prefilter_cap == 30
-    assert r.prefilter.left_out == 10
+    assert r.prefilter.left_out == 20  # 10 Bangalore and 10 Finance stories beyond the categories' caps
     small = choose_for_ai(
         r.assessment.assessed, tax, FilterConfig({**cfg.raw, "prefilter": {**cfg["prefilter"], "max_stories": 5}})
     )
@@ -778,12 +794,20 @@ def test_a_reason_from_the_ai_cannot_make_a_link_in_the_report(db, tax, cfg, tmp
     assert not re.search(r"(?<!\\)\]\(", report)  # no unescaped Markdown link
 
 
+LANGUAGE = [
+    "Kannada signboard rule: notices issued to 200 shops",
+    "Local job quota bill returns to the cabinet agenda",
+    "Hindi imposition row flares over bank exam papers",
+    "Migrant workers union meets minister on housing",
+]
+
+
 def test_picks_json_is_selected_among_cleared_stories_only(db, tax, cfg, tmp_path):
     # four editor-only Bangalore-category stories outscore one cleared metro story; they must not use up
     # the category's four places in picks.json
     for i, topic in enumerate(("O14", "O15", "O18", "B21")):
         cid = f"e{i}"
-        story(db, cid, f"Language row number {i}", fetched=NOW - H, topics=(topic,), sources=("S011", "S034", "S063"))
+        story(db, cid, LANGUAGE[i], fetched=NOW - H, topics=(topic,), sources=("S011", "S034", "S063"))
         checked(db, cid)
     story(db, "ok", "Metro feeder buses start", fetched=NOW - 3 * H, topics=("D05",), sources=("S011", "S034"))
     checked(db, "ok")
