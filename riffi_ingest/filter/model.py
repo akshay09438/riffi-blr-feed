@@ -26,6 +26,7 @@ class StoryView:
     sources: list[str]
     links: list[str]
     topic_ids: list[str]  # by the scoring rule: the AI's tags while its verdict is current, else the keyword pass's
+    all_topic_ids: list[str]  # every tag of either method; only the safety state reads it
     ai_checked: bool  # an AI verdict that is current (or an exclusion)
     excluded: bool
     excluded_reason: str
@@ -65,11 +66,23 @@ def load_stories(conn: sqlite3.Connection, w: queries.Window, max_links: int = 3
         f" (v.cluster_id IS NOT NULL AND {AI_CHECKED_SQL}) AS ai_checked"
         " FROM touched JOIN story_clusters c ON c.cluster_id = touched.cluster_id"
         " LEFT JOIN ai_verdicts v ON v.cluster_id = c.cluster_id ORDER BY c.cluster_id LIMIT ?",
-        (start, end, STORY_CAP),
+        (start, end, STORY_CAP + 1),
     ).fetchall()
+    if len(rows) > STORY_CAP:
+        raise ValueError(
+            f"the window holds more than {STORY_CAP:,} stories; refusing to cut the list silently."
+            " Rebuild a shorter window or raise STORY_CAP in riffi_ingest/filter/model.py"
+        )
     ids = [r["cluster_id"] for r in rows]
     names = {r["source_id"]: r["name"] for r in conn.execute("SELECT source_id, name FROM sources")}
     topics = queries.story_topics(conn, ids)
+    every: dict[str, set[str]] = {i: set() for i in ids}
+    if ids:
+        for r in conn.execute(
+            "SELECT cluster_id, topic_id FROM item_topics WHERE cluster_id IN (SELECT value FROM json_each(?))",
+            (json.dumps(ids),),
+        ):
+            every[r["cluster_id"]].add(r["topic_id"])
     links: dict[str, list[str]] = {i: [] for i in ids}
     if ids:
         for r in conn.execute(
@@ -92,6 +105,7 @@ def load_stories(conn: sqlite3.Connection, w: queries.Window, max_links: int = 3
                 sources=[names.get(s, s) for s in source_ids],
                 links=links[r["cluster_id"]],
                 topic_ids=sorted({t["topic_id"] for t in topics[r["cluster_id"]]}),
+                all_topic_ids=sorted(every[r["cluster_id"]]),
                 ai_checked=bool(r["ai_checked"]),
                 excluded=bool(r["excluded"]),
                 excluded_reason=r["excluded_reason"] or "",

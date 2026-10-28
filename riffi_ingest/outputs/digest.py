@@ -110,8 +110,8 @@ def csv_safe(text: str) -> str:
 
 
 def _link(headline: str, url: str) -> str:
-    text = cell(headline).replace("[", "\\[").replace("]", "\\]")
-    if not url:
+    text = plain(headline)  # a headline comes from the open web: no link, HTML or Markdown can come through it
+    if not url or not url.lower().startswith(("http://", "https://")):
         return text
     safe = url.replace(" ", "%20").replace("|", "%7C").replace("(", "%28").replace(")", "%29")
     return f"[{text}]({safe})"

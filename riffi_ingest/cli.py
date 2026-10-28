@@ -742,7 +742,10 @@ def picks(date: str = DayOption, out: Path = OutputsOption, db: Path = DbOption)
     w = queries.window_for(now, day)
     folder = Path(out) / w.day.isoformat()
     # a past day is judged as of the end of its window, so the same stored stories always give the same picks
-    run = picks_out.build(conn, w, taxonomy, cfg, folder, now=now if day is None else w.end)
+    try:
+        run = picks_out.build(conn, w, taxonomy, cfg, folder, now=now if day is None else w.end)
+    except ValueError as exc:
+        _fail(str(exc))
     picks_out.write_picks(run, folder, taxonomy, cfg)
     sel, a = run.selection, run.assessment
     typer.echo(

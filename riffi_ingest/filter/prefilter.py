@@ -35,7 +35,7 @@ def choose_for_ai(assessed: list[Assessed], taxonomy: Taxonomy, cfg: FilterConfi
     per_cat: dict[str, int] = {}
     chosen: list[Assessed] = []
     always = [a for a in ranked if a.category == keep.get("category") and a.topic.priority == keep.get("priority")]
-    for a in always:
+    for a in always[:cap_total]:  # the AI pass takes at most max_stories, even for the stories always kept
         chosen.append(a)
         per_cat[a.category] = per_cat.get(a.category, 0) + 1
     taken = {a.story.story_id for a in chosen}

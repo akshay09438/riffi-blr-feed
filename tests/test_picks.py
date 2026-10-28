@@ -201,7 +201,7 @@ def test_content_score_parts(cfg):
 def sview(topic_ids, ai_checked=True):
     from riffi_ingest.filter.model import StoryView
 
-    return StoryView("c-1", "h", NOW, NOW, 1, [], [], topic_ids, ai_checked, False, "", "", "")
+    return StoryView("c-1", "h", NOW, NOW, 1, [], [], topic_ids, list(topic_ids), ai_checked, False, "", "", "")
 
 
 def test_safety_state_is_fail_closed(tax):
@@ -390,8 +390,9 @@ def test_tiers_follow_the_pick_score(db, tax, cfg, tmp_path):
     r, _ = run(db, tax, cfg, tmp_path)
     assert r.selection.picks
     for a in r.selection.picks:
-        assert a.tier == ("High" if a.p >= 75 else "Medium")
+        assert a.tier == ("High" if a.p >= 75 else "Medium" if a.p >= 60 else "Preview")
         assert a.p >= (50 if a.ai_missing else 60)  # picks.floor_ai_missing / tiers.Medium
+        assert (a.tier == "Preview") <= a.ai_missing  # only a story with no AI judgement can be a Preview
     full = {
         "daily_life": 20,
         "culture": 15,
@@ -422,7 +423,7 @@ def test_prefilter_keeps_bangalore_high_and_caps_each_category(db, tax, cfg, tmp
     small = choose_for_ai(
         r.assessment.assessed, tax, FilterConfig({**cfg.raw, "prefilter": {**cfg["prefilter"], "max_stories": 5}})
     )
-    assert len(small.chosen) == 70  # always-keep wins over the total cap, by design
+    assert len(small.chosen) == 5  # the AI pass takes at most max_stories, even for the stories always kept
 
 
 # ---- outputs
@@ -707,3 +708,141 @@ def test_ai_facts_command_feeds_the_picks(db, tmp_path):
         cli.app, ["ai-facts", str(tmp_path / "nope"), "--db", str(db_path), "--out", str(tmp_path / "reports")]
     )
     assert r.exit_code != 0 and "not a folder written by ai-batch" in r.output
+
+
+# ---- found by the independent review (28 Oct 2026): each reproduced, then fixed
+
+import sys  # noqa: E402
+import types  # noqa: E402
+
+from riffi_ingest.outputs.digest import _link  # noqa: E402
+
+
+def test_a_stub_or_broken_safety_module_never_opens_the_gate(monkeypatch):
+    name = "riffi_ingest.safety.lexicon"
+    stub = types.ModuleType(name)
+    monkeypatch.setitem(sys.modules, name, stub)
+    assert safety_state.gate0_shipped() is False  # an empty file is not a safety filter
+    stub.gate0_ready = lambda: "yes"
+    assert safety_state.gate0_shipped() is False  # exactly True, nothing else
+    stub.gate0_ready = lambda: (_ for _ in ()).throw(RuntimeError("config unreadable"))
+    assert safety_state.gate0_shipped() is False
+    stub.gate0_ready = lambda: True
+    assert safety_state.gate0_shipped() is True
+
+
+def test_an_editor_only_keyword_tag_survives_the_ais_different_tags(db, tax, cfg, tmp_path):
+    story(
+        db,
+        "L",
+        "Leader says metro will reach airport",
+        fetched=NOW - H,
+        topics=("O02",),
+        sources=("S011", "S034", "S063"),
+    )
+    checked(db, "L")  # the AI confirmed O02 ...
+    db.execute("DELETE FROM item_topics WHERE cluster_id = 'L' AND match_method = 'llm'")
+    db.execute(
+        "INSERT INTO item_topics (cluster_id, topic_id, match_method, tagged_at) VALUES ('L', 'D05', 'llm', ?)",
+        (utc_iso(NOW),),
+    )
+    db.commit()  # ... no: it chose a generic metro topic instead
+    stories = {s.story_id: s for s in load_stories(db, queries.window_for(NOW))}
+    assert stories["L"].topic_ids == ["D05"] and "O02" in stories["L"].all_topic_ids
+    assert safety_state.safety_state(stories["L"], tax.categories["Bangalore"], tax, gate0=True) == "editor_only"
+
+
+def test_headlines_cannot_smuggle_links_or_markup_into_markdown():
+    out = _link(r"a\](http://evil.example/x) b", "http://ok.example/")
+    assert "(http://evil.example" not in out.replace("[.]", ".") or "\\]" in out or "evil[.]example" in out
+    assert "http://evil.example" not in out
+    out = _link("&lt;img src=x onerror=alert(1)&gt; https://evil.example **b**", "https://ok.example/")
+    assert "https://evil.example" not in out and "**b**" not in out
+    assert _link("Plain headline", "javascript:alert(1)") == "Plain headline"  # only http(s) links
+    assert _link("Plain headline", "") == "Plain headline"
+    assert _link("Metro fares", "https://ok.example/a b").endswith("(https://ok.example/a%20b)")
+
+
+def test_a_reason_from_the_ai_cannot_make_a_link_in_the_report(db, tax, cfg, tmp_path):
+    day(db)
+    add_exclusion(db, "m3", reason="[click](http://evil.example/z)")
+    r, folder = run(db, tax, cfg, tmp_path)
+    picks_out.write_picks(r, folder, tax, cfg)
+    report = (folder / "filter_report.md").read_text(encoding="utf-8")
+    assert "http://evil.example" not in report
+    import re
+
+    assert not re.search(r"(?<!\\)\]\(", report)  # no unescaped Markdown link
+
+
+def test_picks_json_is_selected_among_cleared_stories_only(db, tax, cfg, tmp_path):
+    # four editor-only Bangalore-category stories outscore one cleared metro story; they must not use up
+    # the category's four places in picks.json
+    for i, topic in enumerate(("O14", "O15", "O18", "B21")):
+        cid = f"e{i}"
+        story(db, cid, f"Language row number {i}", fetched=NOW - H, topics=(topic,), sources=("S011", "S034", "S063"))
+        checked(db, cid)
+    story(db, "ok", "Metro feeder buses start", fetched=NOW - 3 * H, topics=("D05",), sources=("S011", "S034"))
+    checked(db, "ok")
+    from riffi_ingest.taxonomy import CategoryRule
+
+    three = Taxonomy({**tax.categories, "Bangalore": CategoryRule("Bangalore", 3, 3, 60, False)}, tax.needs, tax.topics)
+    r, folder = run(db, three, cfg, tmp_path, gate0=True)
+    editor = [a for a in r.selection.picks if a.safety_state == "editor_only"]
+    assert len(editor) == 3 and "ok" not in {
+        a.story.story_id for a in r.selection.picks
+    }  # the editor's list is full ...
+    assert [a.story.story_id for a in r.export.picks] == ["ok"]  # ... but picks.json still gets the cleared one
+    picks_out.write_picks(r, folder, three, cfg)
+    exported = json.loads((folder / "picks.json").read_text(encoding="utf-8"))["picks"]
+    assert [p["story_id"] for p in exported] == ["ok"] and exported[0]["rank"] == 1
+
+
+def test_what_goes_to_the_seed_agent_is_one_plain_line_with_web_links_only(db, tax, cfg, tmp_path):
+    story(
+        db,
+        "k",
+        "ಬೆಂಗಳೂರು ಮೆಟ್ರೋ ದರ ಏರಿಕೆ " + "x" * 600 + "\x00\x07\nsecond line",
+        fetched=NOW - H,
+        topics=("D05",),
+        sources=("S011", "S034", "S063"),
+        url="file:///etc/passwd",
+    )
+    checked(db, "k")
+    r, folder = run(db, tax, cfg, tmp_path, gate0=True)
+    picks_out.write_picks(r, folder, tax, cfg)
+    row = json.loads((folder / "picks.json").read_text(encoding="utf-8"))["picks"][0]
+    assert "\n" not in row["headline"] and "\x00" not in row["headline"] and len(row["headline"]) <= 300
+    assert row["headline"].startswith("ಬೆಂಗಳೂರು") and "file:" not in row["links"]
+
+
+def test_an_empty_window_gives_empty_files_not_a_crash(db, tax, cfg, tmp_path):
+    r, folder = run(db, tax, cfg, tmp_path)
+    picks_out.write_picks(r, folder, tax, cfg)
+    assert "No story passed every gate" in (folder / "picks.md").read_text(encoding="utf-8")
+    assert json.loads((folder / "picks.json").read_text(encoding="utf-8"))["picks"] == []
+
+
+def test_a_window_over_the_story_cap_is_refused_not_cut(db, monkeypatch):
+    day(db)
+    monkeypatch.setattr("riffi_ingest.filter.model.STORY_CAP", 3)
+    with pytest.raises(ValueError, match="more than 3 stories"):
+        load_stories(db, queries.window_for(NOW))
+
+
+def test_every_setting_the_filter_reads_is_checked_up_front(tmp_path):
+    import yaml
+
+    good = yaml.safe_load(Paths().filter.read_text(encoding="utf-8"))
+    for section, key in (
+        ("relevance", "ai_min"),
+        ("content", "hook_max"),
+        ("prefilter", "max_stories"),
+        ("content", "sources_2"),
+    ):
+        broken = json.loads(json.dumps(good))
+        del broken[section][key]
+        path = tmp_path / "f.yaml"
+        path.write_text(yaml.safe_dump(broken), encoding="utf-8")
+        with pytest.raises(ValueError, match=key):
+            FilterConfig.load(path)

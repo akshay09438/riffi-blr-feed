@@ -12,14 +12,14 @@ import json
 import sqlite3
 import time
 from collections import Counter
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
 
 from ..fetchers.parse import IST
 from ..filter.assess import Assessment, assess
 from ..filter.config import FilterConfig
-from ..filter.facts import load_facts
+from ..filter.facts import load_facts, one_line
 from ..filter.model import Assessed, load_stories
 from ..filter.prefilter import Prefilter, choose_for_ai
 from ..filter.safety_state import CLEARED, gate0_shipped
@@ -37,6 +37,7 @@ CANDIDATE_FIELDS = (
     "gate2_pass", "ai_missing", "picked", "reason", "sources", "first_seen",
 )  # fmt: skip
 SIDECAR = "story_facts_v2.json"
+MAX_HEADLINE = 300  # a headline is web text; what goes to the seed agent is cut to one plain line
 
 
 @dataclass
@@ -45,6 +46,7 @@ class PicksRun:
     window: queries.Window
     assessment: Assessment
     selection: Selection
+    export: Selection  # the same selection made among cleared stories only: what picks.json holds
     prefilter: Prefilter
     gate0: bool
     problems: list[str]
@@ -72,11 +74,15 @@ def build(
     stories = load_stories(conn, w, int(cfg["picks"]["max_links"]))
     facts, problems = load_facts(folder / SIDECAR)
     assessment = assess(stories, facts, taxonomy, cfg, now=now, gate0=gate)
+    # Cleared stories are also selected on their own, so stories that cannot be exported (editor-only, pending)
+    # never use up a category's quota in picks.json; picks.md shows the editor's whole list.
+    cleared = [replace(a, picked=False, reason="", tier="") for a in assessment.assessed if a.safety_state == CLEARED]
+    export = select(cleared, taxonomy, cfg)
     selection = select(assessment.assessed, taxonomy, cfg)
     pre = choose_for_ai(assessment.assessed, taxonomy, cfg)
     awaiting = sum(1 for s in stories if not s.excluded and not s.ai_checked and s.topic_ids)
     return PicksRun(
-        run_id_for(now), w, assessment, selection, pre, gate, problems, time.monotonic() - started, awaiting
+        run_id_for(now), w, assessment, selection, export, pre, gate, problems, time.monotonic() - started, awaiting
     )
 
 
@@ -93,7 +99,7 @@ def pick_row(run_id: str, rank: int, a: Assessed) -> dict:
         "need_id": a.need_id,
         "topic_id": a.topic.topic_id,
         "story_id": a.story.story_id,
-        "headline": a.story.headline,
+        "headline": one_line(a.story.headline, MAX_HEADLINE),
         "why_care": (f.why_care if f and f.why_care else a.story.whats_new),
         "side_a": f.side_a if f else "",
         "side_b": f.side_b if f else "",
@@ -106,7 +112,7 @@ def pick_row(run_id: str, rank: int, a: Assessed) -> dict:
         "safety_state": a.safety_state,
         "ai_missing": "yes" if a.ai_missing else "no",
         "sources": "; ".join(a.story.sources),
-        "links": " ".join(a.story.links),
+        "links": " ".join(u for u in a.story.links if u.lower().startswith(("http://", "https://"))),
         "first_seen": a.story.started_at.astimezone(IST).isoformat(timespec="minutes"),
     }
 
@@ -215,7 +221,9 @@ def filter_report_md(run: PicksRun, taxonomy: Taxonomy, cfg: FilterConfig) -> st
         "- Safety states of the picks: "
         + (", ".join(f"{n} {k}" for k, n in sorted(Counter(p.safety_state for p in sel.picks).items())) or "none")
         + ".",
-        f"- Safety word-list filter built: {'yes' if run.gate0 else 'NO (nothing can be cleared for the seed agent)'}.",
+        f"- Safety word-list filter ready: {'yes' if run.gate0 else 'NO (nothing can be cleared for the seed agent)'}."
+        f" picks.json holds {len(run.export.picks)} cleared picks (selected among cleared stories only, so"
+        " editor-only stories never use up their places).",
         f"- AI pass: {run.awaiting_ai} tagged stories still wait for the AI pass;"
         f" {sum(not x.ai_missing for x in a.assessed)} of {len(a.assessed)} candidates have the AI's extra judgements"
         f" (`{SIDECAR}`); the others are scored from signals only and marked ai_missing.",
@@ -236,10 +244,10 @@ def filter_report_md(run: PicksRun, taxonomy: Taxonomy, cfg: FilterConfig) -> st
         )
     lines += ["", "## Top exclusion reasons (counts only)", ""]
     top = a.excluded.most_common(10)
-    lines += [f"- {cell(reason)}: {n}" for reason, n in top] or ["None."]
+    lines += [f"- {plain(reason)}: {n}" for reason, n in top] or ["None."]
     reasons = Counter(x.reason for x in a.assessed if not x.picked and x.reason)
     lines += ["", "## Why candidates were not picked", ""]
-    lines += [f"- {cell(r)}: {n}" for r, n in reasons.most_common(8)] or ["None."]
+    lines += [f"- {plain(r)}: {n}" for r, n in reasons.most_common(8)] or ["None."]
     chosen_missing = [x for x in run.prefilter.chosen if not x.story.ai_checked]
     lines += [
         "",
@@ -266,7 +274,7 @@ def write_picks(run: PicksRun, folder: Path, taxonomy: Taxonomy, cfg: FilterConf
     }
     run.files["picks.md"].write_text(picks_md(run, taxonomy), encoding="utf-8")
     _write_csv(run.files["picks.csv"], PICK_FIELDS, rows)
-    exported = [r for r, a in zip(rows, picks, strict=True) if a.safety_state == CLEARED]
+    exported = [pick_row(run.run_id, i, a) for i, a in enumerate(run.export.picks, 1)]
     payload = {"run_id": run.run_id, "generated_for": run.window.day.isoformat(), "picks": exported}
     run.files["picks.json"].write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     ordered = sorted(run.assessment.assessed, key=lambda x: (-x.p, x.story.story_id))

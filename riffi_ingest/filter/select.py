@@ -25,7 +25,9 @@ def _order(a: Assessed):
 
 def _tier(p: float, cfg: FilterConfig) -> str:
     t = cfg["picks"]["tiers"]
-    return "High" if p >= t["High"] else "Medium"  # only picks get a tier, and every pick cleared its floor
+    if p >= t["High"]:
+        return "High"
+    return "Medium" if p >= t["Medium"] else "Preview"  # Preview: only a story with no AI judgement can be here
 
 
 def select(assessed: list[Assessed], taxonomy: Taxonomy, cfg: FilterConfig) -> Selection:

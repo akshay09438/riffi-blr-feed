@@ -587,3 +587,10 @@ DELETE FROM ai_verdicts WHERE batch_id LIKE 'lexicon-%' AND whats_new = '';
 | Speed | Patterns are compiled once per run; 3,000 stories a day is small |
 | The AI never finds a story the lexicon already excluded | By design; those stories are also listed in `safety-scan`'s CSV and in `fetch`'s summary |
 | `picks.json` could be built without this check | Phase 3's export function calls `safety_state` and writes only `cleared`; a test asserts that nothing else can be exported |
+
+
+## 11. The contract the Daily Picks rely on (added 28 Oct 2026, after the independent review)
+
+`riffi_ingest/filter/safety_state.py` decides whether any story can be `cleared` (the only state that reaches `picks.json`). It will not open the gate for the mere existence of `riffi_ingest/safety/lexicon.py`. The module must define a function `gate0_ready()` that returns exactly `True` when, and only when, the word lists are loaded and enabled (`config/exclusions.yaml` has `enabled: true`, parses, and passes its own checks). Anything else (the function missing, an error, `False`, any other value) keeps every pick out of `picks.json`. Please implement it that way, and add a test that an unreadable or disabled `exclusions.yaml` makes `gate0_ready()` return `False`.
+
+The picks filter also reads the stories' tags of both methods (keyword and AI) for the editor-only topics, and expects the word-list result for each story in the sidecar described in section 5.4 as an extra input once 4c lands; until then the AI verdict (`excluded`) is the only exclusion signal it sees.

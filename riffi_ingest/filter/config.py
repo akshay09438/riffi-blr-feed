@@ -25,9 +25,23 @@ class FilterConfig:
                 "need_match",
                 "geography",
                 "ai_max",
+                "ai_min",
+                "routine_penalty",
                 "fallback_audience",
             ),
-            "content": ("pass", "pass_ai_missing", "debate_two_sided", "debate_one_sided", "fresh_24h", "fresh_48h"),
+            "content": (
+                "pass",
+                "pass_ai_missing",
+                "debate_two_sided",
+                "debate_one_sided",
+                "fresh_24h",
+                "fresh_48h",
+                "sources_3plus",
+                "sources_2",
+                "hook_max",
+                "visual_max",
+            ),
+            "prefilter": ("max_stories",),
             "picks": ("target", "min_to_publish", "weights", "tiers", "floor_ai_missing", "max_per_topic", "max_links"),
         }.items():
             block = data.get(section)
@@ -36,6 +50,16 @@ class FilterConfig:
             for key in keys:
                 if key not in block:
                     raise ValueError(f"filter.yaml: '{section}.{key}' is missing")
+        for path, keys in {
+            ("relevance", "priority"): ("High", "Medium", "Low"),
+            ("relevance", "ai_max"): ("daily_life", "culture", "audience_fit"),
+            ("relevance", "ai_min"): ("audience_fit",),
+            ("relevance", "fallback_audience"): ("boost", "penalty"),
+            ("picks", "weights"): ("R", "K"),
+        }.items():
+            block = data[path[0]][path[1]]
+            if not isinstance(block, dict) or any(k not in block for k in keys):
+                raise ValueError(f"filter.yaml: '{'.'.join(path)}' needs {', '.join(keys)}")
         if not {"High", "Medium"} <= set(data["picks"]["tiers"]):
             raise ValueError("filter.yaml: picks.tiers needs High and Medium")
         if data["picks"]["tiers"]["High"] < data["picks"]["tiers"]["Medium"]:

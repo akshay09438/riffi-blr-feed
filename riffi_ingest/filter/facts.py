@@ -58,6 +58,9 @@ def _text(value, limit: int) -> str:
     return " ".join(kept.split())[:limit]
 
 
+one_line = _text  # the one-line, plain-character cleaner, for text that goes to the seed agent
+
+
 def _int(value, low: int, high: int) -> int:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return 0
