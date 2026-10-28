@@ -23,6 +23,7 @@ from pathlib import Path
 from ..db.connection import from_iso
 from ..fetchers.parse import IST
 from ..health import PAGE_MONITOR, PAGE_STALE_AFTER, STALE_AFTER
+from ..taxonomy import needs_in_notes
 from . import queries
 from .digest import at_text, cell, day_text
 
@@ -30,7 +31,9 @@ FAILING_IN_A_ROW = 3  # BRIEF.md: flagged for replacement after 3 consecutive fa
 USEFUL_WINDOW = queries.QUIET_AFTER  # BRIEF.md "Useful": 0 topic-tagged items in 7 days fails
 X_ROUTE = "X/Instagram via RSS.app"
 MANUAL_ROUTE = "Manual"
-HEALTH_FIELDS = ("source_id", "name", "last_status", "last_ok_at", "newest_item_at", "fields_present")
+HEALTH_FIELDS = (
+    "source_id", "name", "last_status", "last_ok_at", "newest_item_at", "fields_present", "category", "need_ids",
+)  # fmt: skip
 
 # Each active source sits in exactly one of these, in this order of precedence.
 FAILING, FAILED, STALE, SKIPPED, NEVER, MANUAL, WORKING = (
@@ -195,6 +198,8 @@ def csv_row(row: sqlite3.Row) -> dict:
         "last_ok_at": ist_text(row["last_ok_at"]),
         "newest_item_at": ist_text(row["newest_item_at"]),
         "fields_present": row["fields_present"] or "",
+        "category": row["category"] or "",
+        "need_ids": "; ".join(needs_in_notes(row["notes"])),
     }
 
 

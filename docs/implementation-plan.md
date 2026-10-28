@@ -33,7 +33,7 @@ Plan: `docs/prd/PRD_riffi_news_engine.md`. Founder's order: Phases 1, 2, 3; then
 | 0 Decision | Done 28 Oct: D-017 approved and in `DECISIONS.md`; the CLAUDE.md edits are for Zuko in `docs/proposals/phase0-d017.md` |
 | 1 Sources | Done 28 Oct: `feeds.csv` 131 -> 276 (6 new ones retired after the live test, 1 added), 18 categories, needs in `notes`. Laptop (fresh database): `test-feeds` 144/150, `fetch --all` 22.6 min, health 89% (about 91% once the retired ones are out; to confirm after `import-sources` + `report`). Report: `docs/proposals/phase1-sources-report.md` |
 | 2 Taxonomy and topics | Done 28 Oct (founder approved the proposal): 181 topics (151 + 30), all in the 18 categories, each with its needs; 21 editor-only; `categories.yaml` and `taxonomy.py`. **Still to do on the laptop:** `import-topics`, then a `fetch --all` so the new topics tag |
-| 3 Filter (non-protected parts) | Not started |
+| 3 Filter (non-protected parts) | Built and tested 28 Oct (cloud, 521 tests): `riffi_ingest/filter/`, `outputs/picks.py`, `config/filter.yaml`, commands `picks` and `news-24h`, digest and health CSV by category. **Still to do on the laptop:** the dry run on a real 24-hour fetch (acceptance: 15 or more picks across 10 or more categories needs the AI's extra judgements, which need proposal 4a). Details: `docs/technical-spec.md`, "The Daily Picks filter" |
 | 4c Safety filter proposal | Written 28 Oct, waiting for Zuko: `docs/proposals/phase4c-safety-filter.md` |
 | 4a, 4b, 4d | 4a (AI prompt) next; 4b and 4d wait |
 | 5, 6 | After approval; after launch |

@@ -46,6 +46,7 @@ class TopicInfo:
     editor_only: bool
     priority: str = ""
     geography: str = ""
+    title: str = ""
 
 
 def split_ids(text: str) -> tuple[str, ...]:
@@ -96,6 +97,7 @@ class Taxonomy:
                 editor_only=(r.get("editor_only") or "").strip().lower() == "yes",
                 priority=(r.get("priority") or "").strip(),
                 geography=(r.get("geography") or "").strip(),
+                title=(r.get("topic") or "").strip(),
             )
             for r in _read(Path(topics_csv))
         }

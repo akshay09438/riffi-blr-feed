@@ -41,6 +41,10 @@ class Paths:
     blocklist: Path = PROJECT_ROOT / "blocklist.csv"
     keywords: Path = PROJECT_ROOT / "config" / "topic_keywords.yaml"
     scoring: Path = PROJECT_ROOT / "config" / "scoring.yaml"
+    filter: Path = PROJECT_ROOT / "config" / "filter.yaml"
+    categories: Path = PROJECT_ROOT / "config" / "categories.yaml"
+    needs: Path = PROJECT_ROOT / "needs.csv"
+    topics: Path = PROJECT_ROOT / "topics.csv"
 
 
 @dataclass

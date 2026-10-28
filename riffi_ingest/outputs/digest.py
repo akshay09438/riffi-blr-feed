@@ -16,6 +16,7 @@ from __future__ import annotations
 import csv
 import re
 import sqlite3
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
@@ -23,6 +24,7 @@ from pathlib import Path
 from ..db.connection import from_iso
 from ..fetchers.parse import IST
 from ..scoring import Scorer
+from ..taxonomy import Taxonomy
 from . import queries
 
 CSV_CAP = 2000  # digest.csv lists at most this many stories (a day holds a few thousand at most)
@@ -42,7 +44,7 @@ DOMAIN_RE = re.compile(
 LOWER_DOMAIN_RE = re.compile(r"\b([a-z0-9-]+)\.([a-z]{2,})\b")
 CSV_FIELDS = (
     "rank", "score", "label", "topics", "source_count", "sources", "headline", "url", "sensitive", "ai_checked",
-    "whats_new", "debate_angle",
+    "whats_new", "debate_angle", "category",
 )  # fmt: skip
 
 
@@ -62,6 +64,7 @@ class Story:
     angle: str = ""  # the best topic's general debate angles (topics.csv), never this story's own
     whats_new: str = ""  # the AI pass's, once it has checked the story
     ai_angle: str = ""  # the AI pass's debate angle for this story; shown instead of the topic's
+    category: str = ""  # one of the 18 (D-017), from the best topic; "" when no taxonomy was given
 
 
 @dataclass
@@ -230,6 +233,24 @@ def _top_section(stories: list[Story], top: int, c: queries.Counts) -> list[str]
     return lines + [""]
 
 
+def _category_section(stories: list[Story], category_names: list[str]) -> list[str]:
+    """Counts per Riffi category (D-017) of the stories listed above Drop, with each one's best headline."""
+    lines = ["## Stories by category", ""]
+    if not category_names:
+        return []
+    lines += ["| Category | Stories | High | Medium | Low | Best story |", "|---|---:|---:|---:|---:|---|"]
+    for name in category_names:
+        group = [s for s in stories if s.category == name]
+        if not group:
+            continue
+        n = Counter(s.label for s in group)
+        best = group[0]  # stories arrive best first
+        lines.append(
+            f"| {cell(name)} | {len(group)} | {n['High']} | {n['Medium']} | {n['Low']} | {_link(best.headline, best.url)} |"
+        )
+    return lines + [""]
+
+
 def _moved_section(rows: list[sqlite3.Row]) -> list[str]:
     lines = ["## Topics with new developments", ""]
     if not rows:
@@ -271,10 +292,11 @@ def markdown(
     *,
     top: int,
     scorer: Scorer,
+    categories: list[str] | None = None,
 ) -> str:
     lines = _head(w, c, scorer)
     if c.items:
-        lines += _top_section(stories, top, c) + _moved_section(moved)
+        lines += _top_section(stories, top, c) + _category_section(stories, categories or []) + _moved_section(moved)
     lines += _quiet_section(quiet, w.end, history)
     return "\n".join(lines).rstrip() + "\n"
 
@@ -293,15 +315,25 @@ def csv_row(s: Story) -> dict:
         "ai_checked": "yes" if s.ai_checked else "no",
         "whats_new": csv_safe(_whats_new_text(s)),
         "debate_angle": csv_safe(_angle_text(s)),
+        "category": s.category,
     }
 
 
 def write_digest(
-    conn: sqlite3.Connection, w: queries.Window, folder: Path, *, top: int, scorer: Scorer
+    conn: sqlite3.Connection,
+    w: queries.Window,
+    folder: Path,
+    *,
+    top: int,
+    scorer: Scorer,
+    taxonomy: Taxonomy | None = None,
 ) -> DigestResult:
     """Write digest.md and digest.csv into `folder`, replacing any earlier copy (a rerun overwrites, D-012)."""
     c = queries.counts(conn, w)
     stories = load_stories(conn, w, scorer)
+    if taxonomy is not None:
+        for s in stories:
+            s.category = taxonomy.category_of_topic(s.angle_topic) or ""
     text = markdown(
         w,
         c,
@@ -311,6 +343,7 @@ def write_digest(
         queries.history_start(conn),
         top=top,
         scorer=scorer,
+        categories=list(taxonomy.categories) if taxonomy is not None else None,
     )
     folder.mkdir(parents=True, exist_ok=True)
     md_path, csv_path = folder / "digest.md", folder / "digest.csv"

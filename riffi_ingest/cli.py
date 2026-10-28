@@ -14,6 +14,8 @@
     digest            the day's files in reports/YYYY-MM-DD/: digest.md and digest.csv (ranked stories, topics that
                       moved, quiet High-priority topics) plus the health report; --date regenerates a past day
     report            the health report only: health.md and sources_health.csv
+    picks             the Daily Picks (D-017): picks.md / picks.csv / picks.json, candidates.csv, filter_report.md
+    news-24h          "the news of the last 24 hours": fetch, write the AI batches, digest and picks in one go
 
 Every command has --help.
 """
@@ -41,6 +43,8 @@ from .fetchers.feeds import fetch_sources, plan
 from .fetchers.gnews import ONLINE_CAP_PER_RUN
 from .fetchers.http import DOMAIN_INTERVAL, PoliteClient, domain_key
 from .fetchers.parse import IST
+from .filter.config import FilterConfig
+from .outputs import picks as picks_out
 from .outputs import queries
 from .outputs.digest import CSV_CAP, day_text, write_digest
 from .outputs.health_report import write_health
@@ -51,6 +55,7 @@ from .scheduler import Schedule, ScheduleError, due
 from .scoring import Scorer
 from .sources import Source, load_sources
 from .tagging import llm_batches
+from .taxonomy import Taxonomy
 
 app = typer.Typer(help="Riffi news ingestion engine.", no_args_is_help=True, add_completion=False)
 
@@ -633,6 +638,16 @@ def _write_health_files(conn, db_path: Path, schedule: Path, folder: Path, now: 
     typer.echo(f"  {h.md_path}\n  {h.csv_path}")
 
 
+def _taxonomy() -> Taxonomy | None:
+    """The categories, needs and topics, or None when a file cannot be read (the digest then has no category
+    columns; `picks` refuses to run without them)."""
+    p = Paths()
+    try:
+        return Taxonomy.load(p.categories, p.needs, p.topics)
+    except (OSError, ValueError, KeyError):
+        return None
+
+
 @app.command("digest")
 def digest(
     date: str = DayOption,
@@ -656,7 +671,7 @@ def digest(
         )
     w = queries.window_for(now, day)
     folder = Path(out) / w.day.isoformat()
-    d = write_digest(conn, w, folder, top=top, scorer=Scorer.load(Paths().scoring))
+    d = write_digest(conn, w, folder, top=top, scorer=Scorer.load(Paths().scoring), taxonomy=_taxonomy())
     c = d.counts
     typer.echo(
         f"Digest for {day_text(w.day)}: {c.items} items fetched, {c.stories} stories ({c.new_stories} new);"
@@ -667,6 +682,70 @@ def digest(
         typer.echo("No articles were fetched in this window. Run a fetch first: python -m riffi_ingest fetch --all")
     typer.echo(f"  {d.md_path}\n  {d.csv_path}")
     _write_health_files(conn, db_path, schedule, folder, now, w.day)
+
+
+@app.command("picks")
+def picks(date: str = DayOption, out: Path = OutputsOption, db: Path = DbOption) -> None:
+    """The Daily Picks (D-017) in <out>/YYYY-MM-DD/: picks.md (for the content team), picks.csv, picks.json (only
+    picks cleared for the seed agent), candidates.csv (every story that reached the gates and why it was not
+    picked) and filter_report.md. Reads the stored stories, never fetches and never changes the database.
+    --date YYYY-MM-DD rebuilds a past day. The AI pass's extra judgements are read from story_facts_v2.json in
+    the same folder when it exists; stories without them are scored from signals only and marked ai_missing."""
+    now = datetime.now(timezone.utc)
+    day = _report_day(date, now)
+    _, conn = _open_existing(db)
+    if not queries.has_items(conn):
+        _fail("the database has no articles yet. Run: python -m riffi_ingest fetch --all")
+    p = Paths()
+    try:
+        cfg = FilterConfig.load(p.filter)
+        taxonomy = Taxonomy.load(p.categories, p.needs, p.topics)
+    except (OSError, ValueError, KeyError) as exc:
+        _fail(f"cannot read the filter settings: {exc}")
+    problems = taxonomy.validate()
+    if problems:
+        _fail("categories, needs and topics disagree: " + "; ".join(problems[:5]))
+    w = queries.window_for(now, day)
+    folder = Path(out) / w.day.isoformat()
+    # a past day is judged as of the end of its window, so the same stored stories always give the same picks
+    run = picks_out.build(conn, w, taxonomy, cfg, folder, now=now if day is None else w.end)
+    picks_out.write_picks(run, folder, taxonomy, cfg)
+    sel, a = run.selection, run.assessment
+    typer.echo(
+        f"Picks for {day_text(w.day)}: {len(sel.picks)} of {a.total} stories "
+        f"({len(a.assessed)} reached the gates, {sum(a.excluded.values())} excluded as communal or religious)."
+    )
+    if not run.gate0:
+        typer.echo(
+            "  The safety word-list filter is not built yet: picks.json stays empty; every pick is for the editor."
+        )
+    for note in sel.notes:
+        typer.echo(f"  {note}")
+    for problem in run.problems[:5]:
+        typer.echo(f"  story_facts_v2.json: {problem}")
+    for path in run.files.values():
+        typer.echo(f"  {path}")
+
+
+@app.command("news-24h")
+def news_24h(
+    skip_fetch: bool = typer.Option(False, "--skip-fetch", help="Do not fetch: use the stories already stored."),
+    out: Path = OutputsOption,
+    top: int = TopOption,
+    db: Path = DbOption,
+    feeds: Path = FeedsOption,
+    topics: Path = TopicsOption,
+    schedule: Path = ScheduleOption,
+) -> None:
+    """ "Give me the news of the last 24 hours" (D-016, D-017) in one command: fetch every source, write the stories
+    that wait into AI batches, then the digest and the Daily Picks from what is stored. The AI pass itself is a
+    Claude Code session: answer the batches, run ai-apply on the folder, then run `picks` again."""
+    if not skip_fetch:
+        fetch(all_sources=True, source=[], due_only=False, db=db, feeds=feeds, topics=topics, schedule=schedule)
+    ai_batch(hours=24, max_stories=llm_batches.MAX_STORIES, out=AiOutOption.default, db=db)
+    digest(date=None, out=out, top=top, db=db, schedule=schedule)
+    picks(date=None, out=out, db=db)
+    typer.echo("After the AI pass (answer the batches, then ai-apply <folder>), run: python -m riffi_ingest picks")
 
 
 @app.command("report")

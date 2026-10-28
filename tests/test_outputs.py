@@ -368,10 +368,13 @@ def test_health_markdown_and_csv(db, tmp_path):
     assert "History starts" in text  # under 7 days of history, "not useful" says so
     with open(result.csv_path, encoding="utf-8-sig", newline="") as f:
         lines = list(csv.reader(f))
-    assert lines[0] == ["source_id", "name", "last_status", "last_ok_at", "newest_item_at", "fields_present"]
+    assert lines[0] == [
+        "source_id", "name", "last_status", "last_ok_at", "newest_item_at", "fields_present", "category", "need_ids",
+    ]  # fmt: skip
     assert lines[1][0] == "S001" and [r[0] for r in lines[1:]] == sorted(r[0] for r in lines[1:])
     s011 = next(r for r in lines if r[0] == "S011")
-    assert s011[2:] == ["ok", "2026-10-06 13:30", "2026-10-06 13:00", "title,link,date,summary"]  # IST times
+    assert s011[2:6] == ["ok", "2026-10-06 13:30", "2026-10-06 13:00", "title,link,date,summary"]  # IST times
+    assert s011[6:] == ["Politics", "POL1"]  # category and the needs from the notes (D-017)
     assert len(lines) - 1 == db.execute("SELECT COUNT(*) FROM sources WHERE active = 1").fetchone()[0]
 
 

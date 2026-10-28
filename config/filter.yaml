@@ -1,0 +1,50 @@
+# The daily-picks filter (D-017, PRD section 6.3 and 8.5). Team-editable: tune weekly from the editor's feedback.
+# A story must pass Gate 0 (safety), Gate 1 (relevance R) and Gate 2 (content-ability K); then the selection
+# keeps the best ones under the category quotas in config/categories.yaml.
+#
+# These geography numbers are for Gate 1 only. The older keyword score (config/scoring.yaml, Bengaluru = 25)
+# is unchanged (D-017).
+
+relevance:
+  pass: 50
+  pass_ai_missing: 40         # without the AI's points a national story can reach at most 43, so its bar is lower
+  priority: {High: 25, Medium: 15, Low: 5}   # the story's best topic (topics.csv priority)
+  need_match: 10                             # the best topic serves at least one information need
+  geography: {Bengaluru: 20, Karnataka: 15, South India: 8, Pan-India: 8, International: 4}
+  geography_aliases: {Bangalore: Bengaluru, Tamil Nadu: South India}
+  routine_penalty: -15                       # routine official activity with nothing changing for the user
+  ai_max: {daily_life: 20, culture: 15, audience_fit: 10}   # audience_fit may also go down to -15
+  ai_min: {audience_fit: -15}
+  # Used only when the AI gave no judgement for a story: a headline with a boost term adds the first number, a
+  # penalty term the second (audience.boost_terms / penalty_terms below).
+  fallback_audience: {boost: 5, penalty: -10}
+  routine_terms: [condolence, condoles, "pays tributes", "reviews progress", "chairs meeting", "lays foundation", inaugurates, "greets on", "wishes on", "birth anniversary", "death anniversary"]
+
+content:
+  pass: 45
+  pass_ai_missing: 35         # a story with no AI judgement cannot earn the AI points, so its bar is lower
+  debate_two_sided: 35
+  debate_one_sided: 15
+  fresh_24h: 15
+  fresh_48h: 8
+  sources_3plus: 15
+  sources_2: 8
+  hook_max: 20
+  visual_max: 15
+
+picks:
+  target: 25
+  min_to_publish: 15          # fewer than this pass: publish what passed and say why (never pad)
+  weights: {R: 0.55, K: 0.45}
+  tiers: {High: 75, Medium: 60}   # P at or above the Medium number is picked; below it is not
+  floor_ai_missing: 50        # the same bar for a story with no AI judgement, which cannot earn those points
+  max_per_topic: 2
+  max_links: 3
+
+prefilter:                    # which stories go to the AI pass (an AI pass takes at most 400 stories)
+  max_stories: 400
+  always_keep: {category: Bangalore, priority: High}
+
+audience:
+  boost_terms: [placement, internship, stipend, hostel, PG, rent, deposit, metro, BMTC, UPI, CAT, GATE, fees, layoffs, appraisal, WFH, concert, IPL, RCB, OTT, sale, skincare, "dating app"]
+  penalty_terms: [pension, retirement, "senior citizens", "school admission", "board exam", kindergarten]

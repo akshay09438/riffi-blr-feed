@@ -178,7 +178,7 @@ def source_health(conn: sqlite3.Connection) -> list[sqlite3.Row]:
     """Every active source's health columns (kept up to date by each fetch), in source_id order."""
     return conn.execute(
         "SELECT source_id, name, route_type, last_status, last_ok_at, newest_item_at, fields_present,"
-        " consecutive_failures FROM sources WHERE active = 1 ORDER BY source_id"
+        " consecutive_failures, category, notes FROM sources WHERE active = 1 ORDER BY source_id"
     ).fetchall()
 
 
