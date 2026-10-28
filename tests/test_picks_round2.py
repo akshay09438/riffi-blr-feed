@@ -194,6 +194,9 @@ def test_looser_matches_need_the_same_topic_and_the_same_day(db, tax, cfg, tmp_p
         ("side_a", "Good time to invest in gold"),
         ("hook", "Stock pick: this multibagger will double"),
         ("side_b", "Hold or sell? Hold"),
+        ("hook", "Chase gains or hold? What the Jio listing means"),
+        ("side_a", "Should retail investors hold on to Jio shares"),
+        ("side_b", "Can Indian investors get a slice of the Anthropic IPO"),
     ],
 )
 def test_finance_picks_whose_sides_or_hook_read_as_advice_are_rejected(db, tax, cfg, tmp_path, field, text):

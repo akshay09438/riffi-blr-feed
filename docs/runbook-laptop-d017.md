@@ -5,7 +5,7 @@
 ## A. Once, to bring the laptop up to date
 
 1. `git checkout main-nb68vk` then `git pull origin main-nb68vk`.
-2. Run the checks: `.venv\Scripts\python.exe -m pytest -q tests` (expect **583 passed, 2 xfailed**) and `-m ruff check .`.
+2. Run the checks: `.venv\Scripts\python.exe -m pytest -q tests` (expect **586 passed, 2 xfailed**) and `-m ruff check .`.
 3. Back up the database: copy `data\engine.db` with the SQLite backup method to `data\engine-backup-<today>.db`; check the table counts match.
 4. `python -m riffi_ingest import-sources` (expect: 1 added, the 6 retired sources marked inactive) and `import-topics` (expect: 151 updated, 30 added).
 5. `python -m riffi_ingest report`, and tell the founder the non-X **health pass rate** (target 90%; it was 89% before the retirements).

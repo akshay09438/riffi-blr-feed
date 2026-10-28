@@ -72,4 +72,8 @@ framing:                      # finance and markets: a debate about the system o
     - '\b(?:buy|sell|hold)\s+or\s+(?:buy|sell|hold)\b'
     - '\b(?:buy|sell|dump|short)\s+(?:your|more|all|out)\b'
     - '\b(?:buy|sell)\s+(?:the\s+)?(?:stock|shares?|nifty|sensex|etfs?|gold|crypto|bitcoin)\b'
+    - '\b(?:chase|book)\s+(?:the\s+)?(?:gains|profits?|rally)\b'
+    - '\bshould\s+(?:\w+\s+){0,2}investors?\s+(?:buy|sell|invest|hold)\b'
+    - '\b(?:can|how\s+can)\s+(?:\w+\s+){0,2}investors?\s+(?:get|buy|invest)\b'
+    - '\b(?:hold\s+on\s+to|or\s+hold)\b'
     - '\b(?:multibaggers?|stock\s+picks?|target\s+price|buy\s+rating|sell\s+rating|accumulate|book\s+profits?)\b'
