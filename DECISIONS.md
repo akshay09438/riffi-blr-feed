@@ -4,6 +4,29 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-017 · Scope widened to 18 content categories for Riffi's launch audience (28 Oct 2026, founder)
+
+The engine now covers the 18 Riffi content categories (Bangalore, Politics, Sports, Entertainment, Tech/AI, Corporate, Finance, Stock market, Education, College life, Relationships, Social life, General, Growth, Health & fitness, Travel, Fashion & style, Beauty & grooming), not only Bengaluru city news. The audience is English-speaking, tier-1 urban Indians aged 18-28 (college students and young professionals), Bengaluru-first. Plan: `docs/prd/PRD_riffi_news_engine.md`.
+
+- **One audience, no multi-city design.** Bengaluru keeps a scoring boost and a minimum number of daily picks. Nothing is built per city.
+- **Sources and topics widen.** About 300 sources (131 today plus new ones from `docs/prd/new_sources.csv`, added in Phase 1) and the topic list grows so every information need in `needs.csv` has at least one topic (Phase 2, with the founder approving the new topics first). Khel Now stays out: it is on `blocklist.csv`.
+- **The output narrows.** Besides the full audit digest, the engine produces a short daily shortlist ("Daily Picks", about 25 stories) that passed a safety gate, a relevance gate and a content-ability gate. This is the output the content team and the seed agent use.
+- **Supersedes D-002** on "Bengaluru only", "131 sources" and the item-volume estimate, for sources and topics. The new estimate is about 8,000 to 18,000 new items a day (about 1,500 to 3,000 stories). Retention (raw payloads 30 days; summaries and the ground-truth log kept forever) and "3-10 people plus one AI agent" are unchanged.
+- **Two levels of safety.** A story is either *tracked (editor only)* or *eligible for picks and the seed agent*. The brief's "sensitive but allowed" subjects stay tracked, and the PRD's stricter never-list applies only to picks and `picks.json`:
+  - **Communal or religious flashpoints:** excluded everywhere, sticky (unchanged from the brief).
+  - **Other religion stories:** tracked, editor only. Festivals are eligible for picks only as logistics (holidays, traffic advisories, closures, sales, city events), never religious content.
+  - **Caste survey and reservation:** tracked, editor only, never picks.
+  - **Kannada vs Hindi, locals vs migrants:** tracked, editor only, never picks.
+  - **Politics:** policy-impact stories (fares, GST, rules, budgets, civic decisions) are eligible for picks. Party-vs-party stories and for/against a named leader are tracked, editor only. The 30 Politics topics stay; leader and party topics are marked `editor_only`.
+  - **The rest of the PRD never-list** (named private individuals, sexual content, self-harm, crime victims and abuse, tragedies with deaths, illness and medical advice, body shaming) is kept out of picks.
+- **Scoring is unchanged.** `config/scoring.yaml` keeps Bengaluru = 25. The PRD's geography numbers apply only to the new relevance gate in `config/filter.yaml`.
+- **Safety first.** Until the safety filter (Gate 0) is built, approved by Zuko and passes its test set, Politics, Social life and General picks are editor only and never exported to the seed agent.
+- **Does not change:** D-004 (browser-like fetching, Google News risk accepted), D-005 (AI tagging on the founder's plan, no API key), D-006, D-007, D-008 (Google News every 2 h, 1 request per 2 s per domain), D-009 (timer off, runs only on request), D-016 (`/api/stories` not before the safety filter). The engine still never posts, replies or republishes.
+- **Protected files stay protected.** Every change to a dangerous-list file is written as a proposal in `docs/proposals/` and waits for the founder. The `CLAUDE.md` edits are in `docs/proposals/phase0-d017.md`, for Zuko.
+- **Order of work (founder, 28 Oct):** Phases 1, 2, 3; then the safety filter (4c) and the AI prompt (4a) as proposals for Zuko as early as possible; 4b and 4d (database) can wait, with a JSON sidecar meanwhile; Phase 6 (feedback and tuning) runs after launch.
+
+---
+
 ## D-016 · The AI pass runs when the founder asks for the news; the exclusions filter comes later (6 Oct 2026, founder)
 
 Answers open question 2 (when the Claude Code tagging pass runs). The founder: "when I say, for the last 24 hours it should fetch".

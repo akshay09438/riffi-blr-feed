@@ -1,0 +1,237 @@
+source,feed_url,feed_type,test_status_28oct,categories,need_ids,already_in_existing_engine,origin
+Citizen Matters,https://bengaluru.citizenmatters.in/feed,native,live,Bangalore,BLR1; BLR3,no,sheet:A/A1
+The Hindu – Bengaluru,https://www.thehindu.com/news/cities/bangalore/feeder/default.rss,native,live,Bangalore,BLR1; BLR2,no,sheet:A/A2
+Deccan Herald (via Google News),https://news.google.com/rss/search?q=site:deccanherald.com+bengaluru+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR1,no,sheet:A/A5
+Times of India – Bengaluru,https://timesofindia.indiatimes.com/rssfeeds/-2128833038.cms,native,untested,Bangalore,BLR1,no,sheet:A/A6
+Greater Bengaluru Authority,https://news.google.com/rss/search?q=(%22Greater+Bengaluru+Authority%22+OR+GBA+Bengaluru)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR1,no,sheet:A/E4
+Google News query: GBA elections,https://news.google.com/rss/search?q=%22GBA%22+(election+OR+polls)+Bengaluru&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore; Politics,BLR1; POL2,yes,sheet:B/S077
+Hindustan Times Bengaluru,https://www.hindustantimes.com/feeds/rss/cities/bengaluru-news/rssfeed.xml,native,live,Bangalore; Social life,BLR1; SOC1,yes,sheet:B/S067
+OneIndia Bengaluru,https://news.google.com/rss/search?q=site:oneindia.com+Bengaluru&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR1,no,sheet:C/70
+Google News,https://news.google.com/rss/search?q=(%22Namma+Metro%22+OR+BMRCL+OR+%22tunnel+road%22+OR+%22Silk+Board%22+OR+ORR)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR2,no,sheet:A/G1
+Google News query: Pink Line,https://news.google.com/rss/search?q=%22Pink+Line%22+%22Namma+Metro%22&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR3,yes,sheet:B/S087
+Google News query: Second airport,https://news.google.com/rss/search?q=Bengaluru+second+airport&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore; Travel,BLR3; TRA1,yes,sheet:B/S089
+Google News,https://news.google.com/rss/search?q=Bengaluru+(auto+fare+OR+Rapido+OR+%22Namma+Yatri%22+OR+bike+taxi+OR+safety)+when:2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR4,no,sheet:A/G11
+Google News query: Bike taxi,https://news.google.com/rss/search?q=bike+taxi+Supreme+Court+Karnataka&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR4,yes,sheet:B/S090
+Medianama,https://news.google.com/rss/search?q=site:medianama.com+Karnataka&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR4,yes,sheet:B/S062
+Google News,https://news.google.com/rss/search?q=Bengaluru+(BWSSB+OR+%22water+crisis%22+OR+flooding+OR+lake)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR5,no,sheet:A/G4
+Google News,https://news.google.com/rss/search?q=Bengaluru+(rain+OR+IMD+OR+%22yellow+alert%22)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore; General,BLR5; GEN3,no,sheet:A/G12
+NewsKarnataka,https://news.google.com/rss/search?q=site:newskarnataka.com+Bengaluru&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR5,no,sheet:C/69
+Google News,https://news.google.com/rss/search?q=Bengaluru+(rent+OR+landlord+OR+%22real+estate%22+OR+khata)+when:2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR6,no,sheet:A/G2
+Google News query: Bengaluru rent reports,https://news.google.com/rss/search?q=Bengaluru+rent+(Anarock+OR+NoBroker+OR+Magicbricks+OR+%22Housing.com%22)&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR6,yes,sheet:B/S114
+Google News query: Bengaluru gigs & comedy (rolling),https://news.google.com/rss/search?q=Bengaluru+(concert+OR+gig+OR+comedy+OR+%22tickets%22)&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore; Entertainment,BLR7; ENT4,yes,sheet:B/S094
+Google News,https://news.google.com/rss/search?q=Bengaluru+(pub+OR+excise+OR+nightlife+OR+%221+am%22)+when:3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore; Social life,BLR7; SOC3,no,sheet:A/G10
+Bengaluru Tech Summit,https://news.google.com/rss/search?q=%22Bengaluru+Tech+Summit%22&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR7,yes,sheet:B/S053
+The Hindu – Karnataka,https://www.thehindu.com/news/national/karnataka/feeder/default.rss,native,live,Bangalore; Politics,BLR8; POL3,no,sheet:A/A3
+Karnataka govt portals,https://news.google.com/rss/search?q=(site:karnataka.gov.in+OR+%22Karnataka+government%22+scheme)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR8,no,sheet:A/E3
+South First,https://thesouthfirst.com/feed/,native,live,Bangalore; Politics,BLR8; POL3,no,sheet:A/A9
+Vijaya Karnataka,https://vijaykarnataka.indiatimes.com/rssfeedsdefault.cms,native,untested,Bangalore,BLR8,no,sheet:A/A12
+Google News,https://news.google.com/rss/search?q=Kannada+(signboard+OR+language+OR+%22Kannada+first%22)+Bengaluru+when:2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR8,no,sheet:A/G9
+PIB Bengaluru region,https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1&reg=1&lang=1,native,live,Bangalore,BLR8,yes,sheet:B/S107
+The Hindu – National,https://www.thehindu.com/news/national/feeder/default.rss,native,live,General; Politics,GEN1; GEN3; POL1; POL4,no,sheet:A/B1
+Indian Express – India,https://indianexpress.com/section/india/feed/,native,live,General; Politics,GEN1; POL1,no,sheet:A/B3
+ThePrint (native),https://theprint.in/category/india/feed/,native,live,Politics,POL1,no,sheet:A/B4
+Scroll,https://feeds.feedburner.com/ScrollinArticles.rss,native,live,Politics,POL1,no,sheet:A/B6
+PIB,https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3,native,live,Finance; Health & fitness; Politics,FIN1; HEA3; POL1,no,sheet:A/E1
+Swarajya,https://prod-qt-images.s3.amazonaws.com/production/swarajya/feed.xml,native,live,Politics,POL1,no,sheet:A/B8
+The Wire,https://news.google.com/rss/search?q=site:thewire.in+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL1,no,sheet:A/B7
+Google News – EC,https://news.google.com/rss/search?q=(%22Gyanesh+Kumar%22+OR+%22Election+Commission%22+OR+SIR)+Karnataka+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL2,no,sheet:A/B13
+Google News query: Karnataka Council election,https://news.google.com/rss/search?q=Karnataka+Legislative+Council+election&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL2,yes,sheet:B/S079
+Google News – Karnataka leaders,https://news.google.com/rss/search?q=(Siddaramaiah+OR+%22DK+Shivakumar%22+OR+Vijayendra+OR+%22Karnataka+cabinet%22)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL3,no,sheet:A/B10
+The News Minute,https://news.google.com/rss/search?q=site:thenewsminute.com+(Bengaluru+OR+Karnataka)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL3,no,sheet:A/A7
+LiveLaw,https://news.google.com/rss/search?q=site:livelaw.in+Karnataka&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL4,yes,sheet:B/S019
+Bar & Bench,https://news.google.com/rss/search?q=site:barandbench.com+Karnataka&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL4,yes,sheet:B/S020
+The Hindu – Business,https://www.thehindu.com/business/feeder/default.rss,native,live,Finance; Politics,FIN2; POL5,no,sheet:A/E5
+RBI press releases,https://rbi.org.in/pressreleases_rss.xml,native,live,Finance; Politics,FIN1; FIN4; POL5,no,sheet:A/D6
+Google News – tax,https://news.google.com/rss/search?q=(%22income+tax%22+OR+CBDT+OR+%22GST+council%22)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Finance; Politics,FIN1; POL5,no,sheet:A/E7
+ESPNcricinfo,https://www.espncricinfo.com/rss/content/story/feeds/0.xml,native,live,Sports,SPO1; SPO2,yes,sheet:B/S034
+Google News query: IPL retention,https://news.google.com/rss/search?q=IPL+2027+retention&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Sports,SPO2,yes,sheet:B/S098
+PTI,https://news.google.com/rss/search?q=site:ptinews.com+(Karnataka+OR+Bengaluru)&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,General,GEN1,yes,sheet:B/S104
+ANI,https://news.google.com/rss/search?q=site:aninews.in+Karnataka+OR+Bengaluru&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,General,GEN1,yes,sheet:B/S071
+Hindustan Times,https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml,native,live,General,GEN1,no,sheet:C/66
+Google News,https://news.google.com/rss/search?q=(Zepto+OR+Blinkit+OR+Instamart+OR+%22quick+commerce%22+OR+%22gig+workers%22)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,General; Social life,GEN2; SOC4,no,sheet:A/G13
+Google News query: gig workers,https://news.google.com/rss/search?q=gig+workers+(Karnataka+OR+Bengaluru+OR+quick+commerce)&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,General,GEN2,yes,sheet:B/S130
+Google News query: Karnataka holidays,https://news.google.com/rss/search?q=Karnataka+government+holiday+list+2026&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,General,GEN4,yes,sheet:B/S096
+Hindustan Times Bengaluru traffic GN,https://news.google.com/rss/search?q=Bengaluru+traffic+advisory+OR+%22road+closure%22+OR+pothole+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR2,no,new
+GN Namma Metro BMRCL BMTC,https://news.google.com/rss/search?q=%22Namma+Metro%22+OR+BMRCL+OR+BMTC+OR+%22suburban+rail%22+Bengaluru+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR3,no,new
+GN Bengaluru auto cab fares,https://news.google.com/rss/search?q=Bengaluru+%28auto+fare+OR+%22Namma+Yatri%22+OR+Rapido+OR+Ola+OR+Uber%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR4,no,new
+GN BESCOM power cuts,https://news.google.com/rss/search?q=BESCOM+%22power+cut%22+OR+outage+Bengaluru+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR5,no,new
+GN IMD Karnataka alert,https://news.google.com/rss/search?q=IMD+Bengaluru+OR+Karnataka+%28alert+OR+rain+OR+%22yellow+alert%22%29+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR5,no,new
+GN Karnataka RERA tenancy,https://news.google.com/rss/search?q=%22K-RERA%22+OR+%22Karnataka+RERA%22+OR+%22rent+control%22+Karnataka+when%3A7d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR6,no,new
+GN Bengaluru events weekend,https://news.google.com/rss/search?q=Bengaluru+%28concert+OR+fest+OR+%22this+weekend%22+OR+events%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR7,no,new
+GN Karnataka cabinet decisions,https://news.google.com/rss/search?q=%22Karnataka+cabinet%22+OR+%22Karnataka+government%22+scheme+OR+decision+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Bangalore,BLR8,no,new
+Indian Express Political Pulse,https://indianexpress.com/section/political-pulse/feed/,native,live,Politics,POL1,no,new
+Mint Politics,https://www.livemint.com/rss/politics,native,live,Politics,POL1,no,new
+GN elections India,https://news.google.com/rss/search?q=%22Election+Commission%22+OR+%22assembly+election%22+OR+bypoll+India+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL2,no,new
+Deccan Herald (main),https://prod-qt-images.s3.amazonaws.com/production/deccanherald/feed.xml,native,live,Politics,POL3,no,new
+LiveLaw native,https://www.livelaw.in/category/top-stories/google_feeds.xml,native,live,Politics,POL4,no,new
+GN Karnataka High Court,https://news.google.com/rss/search?q=%22Karnataka+High+Court%22+OR+%22Supreme+Court%22+verdict+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL4,no,new
+Mint Economy,https://www.livemint.com/rss/economy,native,live,Politics,POL5,no,new
+GN inflation GST jobs data,https://news.google.com/rss/search?q=India+%28CPI+inflation+OR+%22GST+collection%22+OR+PLFS+OR+%22repo+rate%22%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Politics,POL5,no,new
+Factly,https://factly.in/feed/,native,live,Politics,POL6,no,new
+BOOM native,https://www.boomlive.in/feed,native,live,Politics,POL6,no,new
+Alt News native,https://www.altnews.in/feed/,native,live,Politics,POL6,no,new
+The Hindu Cricket,https://www.thehindu.com/sport/cricket/feeder/default.rss,native,live,Sports,SPO1,no,new
+Indian Express Cricket,https://indianexpress.com/section/sports/cricket/feed/,native,live,Sports,SPO1,no,new
+TOI Cricket,https://timesofindia.indiatimes.com/rssfeeds/54829575.cms,native,untested,Sports,SPO1,no,new
+GN BCCI selection,https://news.google.com/rss/search?q=BCCI+squad+OR+selection+OR+%22Team+India%22+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Sports,SPO1,no,new
+GN RCB,https://news.google.com/rss/search?q=%22Royal+Challengers%22+OR+RCB+IPL+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Sports,SPO2,no,new
+The Hindu Football,https://www.thehindu.com/sport/football/feeder/default.rss,native,live,Sports,SPO3,no,new
+Khel Now,https://khelnow.com/feed,native,live,Sports,SPO3,no,new
+BBC Sport Football,https://feeds.bbci.co.uk/sport/football/rss.xml,native,live,Sports,SPO3,no,new
+GN Bengaluru FC ISL,https://news.google.com/rss/search?q=%22Bengaluru+FC%22+OR+ISL+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Sports,SPO3,no,new
+The Hindu Sport,https://www.thehindu.com/sport/feeder/default.rss,native,live,Sports,SPO4,no,new
+Indian Express Sports,https://indianexpress.com/section/sports/feed/,native,live,Sports,SPO4,no,new
+Formula 1 latest,https://www.formula1.com/en/latest/all.xml,native,live,Sports,SPO4,no,new
+GN chess badminton kabaddi,https://news.google.com/rss/search?q=India+%28chess+OR+badminton+OR+kabaddi+OR+%22Neeraj+Chopra%22+OR+Olympics%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Sports,SPO4,no,new
+TOI Top Stories,https://timesofindia.indiatimes.com/rssfeedstopstories.cms,native,untested,General,GEN1,no,new
+NDTV Top Stories,https://feeds.feedburner.com/ndtvnews-top-stories,native,live,General,GEN1,no,new
+India Today Top Stories,https://www.indiatoday.in/rss/1206578,native,live,General,GEN1,no,new
+GN consumer rights India,https://news.google.com/rss/search?q=%22consumer+commission%22+OR+%22consumer+rights%22+OR+%22new+rules+from%22+India+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,General,GEN2,no,new
+GN quick commerce,https://news.google.com/rss/search?q=Blinkit+OR+Zepto+OR+%22Swiggy+Instamart%22+OR+%22quick+commerce%22+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,General,GEN2,no,new
+GN IMD alerts India,https://news.google.com/rss/search?q=IMD+%28alert+OR+cyclone+OR+heatwave+OR+%22heavy+rain%22%29+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,General,GEN3,no,new
+GN bank holidays festivals,https://news.google.com/rss/search?q=%22bank+holiday%22+OR+%22public+holiday%22+OR+festival+India+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,General,GEN4,no,new
+HT Festivals (lifestyle),https://www.hindustantimes.com/feeds/rss/lifestyle/festivals/rssfeed.xml,native,live,General,GEN4,no,new
+MediaNama,https://www.medianama.com/feed/,native,live,Tech/AI,TEC1; TEC4,no,sheet:A/C6
+Rest of World,https://restofworld.org/feed/latest,native,live,Tech/AI,TEC1,no,sheet:A/C7
+Analytics India Magazine,https://analyticsindiamag.com/feed/,native,live,Tech/AI,TEC1,no,new
+TechCrunch AI,https://techcrunch.com/category/artificial-intelligence/feed/,native,live,Tech/AI,TEC1,no,new
+Google News: AI India,https://news.google.com/rss/search?q=%28%22AI+model%22+OR+OpenAI+OR+Gemini+OR+Anthropic+OR+%22IndiaAI+Mission%22+OR+Sarvam%29+India+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Tech/AI,TEC1,no,new
+Inc42,https://inc42.com/feed/,native,live,Growth; Tech/AI,GRO3; TEC2,no,sheet:A/C1
+Entrackr,https://entrackr.com/rss,native,live,Tech/AI,TEC2,no,sheet:A/C2
+YourStory,https://yourstory.com/feed,native,live,Growth; Tech/AI,GRO3; TEC2,no,sheet:A/C3
+The Ken / The Morning Context,https://news.google.com/rss/search?q=(site:the-ken.com+OR+site:themorningcontext.com)+when:3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Tech/AI,TEC2,no,sheet:A/C8
+Google News – layoffs,https://news.google.com/rss/search?q=(layoffs+OR+%22lays+off%22)+(Bengaluru+OR+startup)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Corporate; Tech/AI,COR1; TEC2,no,sheet:A/C9
+Google News – startup IPOs,https://news.google.com/rss/search?q=(DRHP+OR+IPO)+(startup+OR+Zepto+OR+PhonePe+OR+Meesho+OR+Swiggy)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Stock market; Tech/AI,STK2; TEC2,no,sheet:A/C10
+ET Startups (native),https://economictimes.indiatimes.com/tech/startups/rssfeeds/78570540.cms,native,untested,Tech/AI,TEC2,no,new
+Gadgets 360,https://feeds.feedburner.com/gadgets360-latest,native,live,Tech/AI,TEC3,no,new
+Indian Express Tech,https://indianexpress.com/section/technology/feed/,native,live,Tech/AI,TEC3,no,new
+ET Tech,https://economictimes.indiatimes.com/tech/rssfeeds/13357270.cms,native,untested,Corporate; Tech/AI,COR4; TEC4,no,sheet:A/C4
+The Verge,https://www.theverge.com/rss/index.xml,native,live,Tech/AI,TEC4,no,new
+Google News: outages/app rules,https://news.google.com/rss/search?q=%28outage+OR+%22down+for+users%22+OR+DPDP+OR+MeitY+OR+%22app+ban%22%29+India+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Tech/AI,TEC4,no,new
+Google News,https://news.google.com/rss/search?q=(AI+jobs+OR+GCC+OR+%22global+capability%22)+India+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Corporate; Growth; Tech/AI,COR4; GRO1; TEC5,no,sheet:A/G6
+ET HRWorld,https://hr.economictimes.indiatimes.com/rss/topstories,native,untested,College life; Corporate; Growth; Tech/AI,COL1; COR1; COR2; COR3; GRO1; TEC5,no,new
+Google News: AI layoffs India,https://news.google.com/rss/search?q=%28%22AI%22+%28layoffs+OR+%22job+cuts%22+OR+hiring+OR+reskilling%29%29+%28India+OR+Indian+IT%29+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Tech/AI,TEC5,no,new
+ET Jobs,https://economictimes.indiatimes.com/jobs/rssfeeds/107115.cms,native,untested,Corporate,COR1,no,new
+Google News: IT hiring,https://news.google.com/rss/search?q=%28%22campus+hiring%22+OR+%22hiring+freeze%22+OR+fresher+OR+onboarding%29+%28TCS+OR+Infosys+OR+Wipro+OR+HCLTech+OR+Cognizant%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Corporate,COR1,no,new
+Google News,https://news.google.com/rss/search?q=(%22return+to+office%22+OR+%22work+from+office%22+OR+%2270-hour%22)+India+when:2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Corporate,COR2,no,sheet:A/G7
+Google News: labour codes,https://news.google.com/rss/search?q=%28%22labour+code%22+OR+%22labour+codes%22+OR+%22working+hours%22+OR+%22right+to+disconnect%22%29+India+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Corporate,COR2,no,new
+Google News: salary hikes,https://news.google.com/rss/search?q=%28%22salary+hike%22+OR+appraisal+OR+%22variable+pay%22+OR+bonus%29+%28India+OR+IT%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Corporate,COR3,no,new
+Google News – IT Q2 results,https://news.google.com/rss/search?q=(%22Q2+results%22+OR+%22net+profit%22)+(Infosys+OR+Wipro+OR+TCS+OR+HCLTech)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Corporate,COR4,no,sheet:A/D11
+Mint Companies,https://www.livemint.com/rss/companies,native,live,Corporate,COR4,no,new
+Google News: GCC openings,https://news.google.com/rss/search?q=%28%22global+capability+centre%22+OR+GCC%29+%28opens+OR+launches+OR+Bengaluru%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Corporate,COR4,no,new
+Mint / Moneycontrol personal finance,https://news.google.com/rss/search?q=(site:livemint.com+OR+site:moneycontrol.com)+(%22income+tax%22+OR+ITR+OR+%22F%26O%22)&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Finance,FIN1,no,sheet:C/86
+RBI notifications,https://www.rbi.org.in/notifications_rss.xml,native,live,Finance,FIN1; FIN3,no,sheet:A/D7
+Mint Money,https://www.livemint.com/rss/money,native,live,Finance,FIN1; FIN3,no,new
+ET Wealth,https://economictimes.indiatimes.com/wealth/rssfeeds/837555174.cms,native,untested,Finance,FIN1,no,new
+Google News: UPI/NPCI rules,https://news.google.com/rss/search?q=%28UPI+OR+NPCI%29+%28rule+OR+limit+OR+change%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Finance,FIN1,no,new
+ET Economy,https://economictimes.indiatimes.com/news/economy/rssfeeds/1373380680.cms,native,untested,Finance,FIN2,no,new
+Google News: prices,https://news.google.com/rss/search?q=%28%22petrol+price%22+OR+%22LPG+price%22+OR+%22gold+price%22+OR+%22CPI+inflation%22%29+India+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Finance,FIN2,no,new
+Google News: cards & loans,https://news.google.com/rss/search?q=%28%22credit+card%22+%28rule+OR+fee+OR+change%29+OR+BNPL+OR+%22home+loan+rate%22+OR+%22repo-linked%22%29+India+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Finance,FIN3,no,new
+Google News: scams,https://news.google.com/rss/search?q=%28%22digital+arrest%22+OR+%22cyber+fraud%22+OR+scam+OR+%22UPI+fraud%22%29+%28Bengaluru+OR+India%29+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Finance,FIN4,no,new
+Google News: consumer rulings,https://news.google.com/rss/search?q=%28%22consumer+commission%22+OR+%22consumer+court%22%29+%28orders+OR+directs%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Finance,FIN4,no,new
+ET Markets,https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms,native,untested,Stock market,STK1,no,sheet:A/D1
+Mint – Markets,https://www.livemint.com/rss/markets,native,live,Stock market,STK1,no,sheet:A/D2
+Moneycontrol (via Google News),https://news.google.com/rss/search?q=site:moneycontrol.com+(Sensex+OR+Nifty+OR+IPO)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Stock market,STK1,no,sheet:A/D4
+Google News – flows & movers,https://news.google.com/rss/search?q=(FII+OR+FPI+OR+%22top+gainers%22+OR+%22top+losers%22)+Nifty+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Stock market,STK1,no,sheet:A/D10
+SEBI,https://www.sebi.gov.in/sebirss.xml,native,live,Stock market,STK2; STK3,no,sheet:A/D5
+ET IPOs,https://economictimes.indiatimes.com/markets/ipos/fpos/rssfeeds/14655708.cms,native,untested,Stock market,STK2,no,new
+Google News: IPO listings,https://news.google.com/rss/search?q=IPO+%28listing+OR+subscription+OR+GMP%29+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Stock market,STK2,no,new
+NSE circulars,https://nsearchives.nseindia.com/content/RSS/Circulars.xml,native,live,Stock market,STK3,no,sheet:A/D8
+BSE notices,https://www.bseindia.com/data/xml/notices.xml,native,live,Stock market,STK3,no,sheet:A/D9
+Google News: SEBI F&O,https://news.google.com/rss/search?q=SEBI+%28%22F%26O%22+OR+derivatives+OR+%22retail+traders%22+OR+consultation%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Stock market,STK3,no,new
+ET Mutual Funds,https://economictimes.indiatimes.com/mf/rssfeeds/359241701.cms,native,untested,Stock market,STK4,no,new
+Google News: SIP/AMFI,https://news.google.com/rss/search?q=%28AMFI+OR+%22SIP+inflows%22+OR+%22mutual+fund%22+SEBI%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Stock market,STK4,no,new
+ET Crypto,https://economictimes.indiatimes.com/markets/cryptocurrency/rssfeeds/82519373.cms,native,untested,Stock market,STK5,no,new
+CoinDesk,https://www.coindesk.com/arc/outboundfeeds/rss/,native,live,Stock market,STK5,no,new
+Google News: India crypto rules,https://news.google.com/rss/search?q=crypto+%28India+OR+TDS+OR+%22discussion+paper%22+OR+WazirX+OR+CoinDCX%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Stock market,STK5,no,new
+Google News,https://news.google.com/rss/search?q=(NEET+OR+%22paper+leak%22+OR+NTA)+when:1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Education,EDU1,no,sheet:A/G14
+Indian Express Education,https://indianexpress.com/section/education/feed/,native,live,Education,EDU1; EDU2,no,new
+The Hindu Education,https://www.thehindu.com/education/feeder/default.rss,native,live,College life; Education,COL2; EDU1,no,new
+Google News: entrance exams,https://news.google.com/rss/search?q=%28CAT+OR+GATE+OR+%22NEET+PG%22+OR+CUET+OR+JEE%29+%28result+OR+%22answer+key%22+OR+admit+OR+exam%29+when%3A1d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Education,EDU1,no,new
+ET Education,https://education.economictimes.indiatimes.com/rss/topstories,native,untested,College life; Education,COL1; EDU2,no,new
+Google News: UGC/NEP/NIRF,https://news.google.com/rss/search?q=%28UGC+OR+NEP+OR+NIRF+OR+AICTE+OR+%22fee+hike%22%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Education,EDU2,no,new
+Google News query: H-1B,https://news.google.com/rss/search?q=H-1B+(India+OR+Indian)&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Education; Travel,EDU3; TRA3,yes,sheet:B/S127
+ICEF Monitor,https://monitor.icef.com/feed/,native,live,Education,EDU3,no,new
+The PIE News,https://thepienews.com/feed/,native,live,Education,EDU3,no,new
+Google News: student visas,https://news.google.com/rss/search?q=%28%22student+visa%22+OR+F-1+OR+OPT+OR+%22study+permit%22%29+Indian+students+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Education,EDU3,no,new
+Google News: placements,https://news.google.com/rss/search?q=%28placement+OR+%22highest+package%22+OR+internship%29+%28IIT+OR+IIM+OR+NIT+OR+college%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,College life,COL1,no,new
+EdexLive (Google News),https://news.google.com/rss/search?q=site%3Aedexlive.com+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,College life,COL2,no,new
+Google News: campus Bengaluru,https://news.google.com/rss/search?q=%28college+OR+university+OR+campus+OR+hostel%29+%28Bengaluru+OR+Karnataka%29+%28students+OR+fest+OR+rule%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,College life,COL2,no,new
+Google News: Gen Z India,https://news.google.com/rss/search?q=%28%22Gen+Z%22+OR+youth+OR+students%29+India+%28survey+OR+report+OR+spending%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,College life,COL3,no,new
+Google News: PG/hostel,https://news.google.com/rss/search?q=%28%22PG%22+OR+%22paying+guest%22+OR+hostel%29+Bengaluru+students+when%3A7d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,College life,COL3,no,new
+Google News: skills reports,https://news.google.com/rss/search?q=%28skills+report+OR+%22most+in-demand+skills%22+OR+upskilling+OR+LinkedIn+report%29+India+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Growth,GRO1,no,new
+Google News: productivity research,https://news.google.com/rss/search?q=%28productivity+OR+habits+OR+burnout+OR+%22study+finds%22%29+%28young+OR+Gen+Z+OR+workers%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Growth,GRO2,no,new
+Google News: founder stories,https://news.google.com/rss/search?q=%28founder+OR+%22started+with%22%29+%28journey+OR+story+OR+%22how+I%22%29+India+startup+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Growth,GRO3,no,new
+Bollywood Hungama,https://www.bollywoodhungama.com/feed/,native,live,Entertainment,ENT1,no,new
+Bollywood Hungama,https://news.google.com/rss/search?q=site:bollywoodhungama.com+release+date&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT1,yes,sheet:B/S046
+Indian Express Bollywood,https://indianexpress.com/section/entertainment/bollywood/feed/,native,live,Entertainment,ENT1,no,new
+HT Entertainment,https://www.hindustantimes.com/feeds/rss/entertainment/rssfeed.xml,native,live,Entertainment,ENT1,no,new
+Filmfare,https://www.filmfare.com/feeds/feeds.xml,native,untested,Entertainment,ENT1,no,new
+Koimoi Bollywood,https://www.koimoi.com/category/bollywood-news/feed/,native,live,Entertainment,ENT1,no,new
+Google News: box office,https://news.google.com/rss/search?q=%22box+office%22+%28Bollywood+OR+Hindi+film%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT1,no,new
+Cinema Express Kannada,https://news.google.com/rss/search?q=site:cinemaexpress.com+kannada&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT2,yes,sheet:B/S120
+Google News query: Bigg Boss Kannada,https://news.google.com/rss/search?q=%22Bigg+Boss+Kannada%22&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT2; ENT5,yes,sheet:B/S093
+HT Tamil cinema,https://www.hindustantimes.com/feeds/rss/entertainment/tamil-cinema/rssfeed.xml,native,live,Entertainment,ENT2,no,new
+HT Telugu cinema,https://www.hindustantimes.com/feeds/rss/entertainment/telugu-cinema/rssfeed.xml,native,live,Entertainment,ENT2,no,new
+The Hindu Movies,https://www.thehindu.com/entertainment/movies/feeder/default.rss,native,live,Entertainment,ENT2,no,new
+Google News: Sandalwood/Tollywood/Kollywood,https://news.google.com/rss/search?q=%28Sandalwood+OR+Tollywood+OR+Kollywood+OR+%22Kannada+film%22%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT2,no,new
+Indian Express Web Series,https://indianexpress.com/section/entertainment/web-series/feed/,native,live,Entertainment,ENT3,no,new
+HT Web Series,https://www.hindustantimes.com/feeds/rss/entertainment/web-series/rssfeed.xml,native,live,Entertainment,ENT3,no,new
+Google News: OTT releases,https://news.google.com/rss/search?q=%28Netflix+OR+%22Prime+Video%22+OR+JioHotstar+OR+SonyLIV%29+India+release+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT3,no,new
+Google News query: Bigg Boss 20,https://news.google.com/rss/search?q=%22Bigg+Boss+20%22&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT3; ENT5,yes,sheet:B/S128
+Rolling Stone India,https://rollingstoneindia.com/feed/,native,live,Entertainment,ENT4,no,new
+The Hindu Music,https://www.thehindu.com/entertainment/music/feeder/default.rss,native,live,Entertainment,ENT4,no,new
+Google News: India concert tickets,https://news.google.com/rss/search?q=India+concert+tour+tickets+%28BookMyShow+OR+District%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT4,no,new
+HT Trending,https://www.hindustantimes.com/feeds/rss/trending/rssfeed.xml,native,live,Entertainment; Relationships; Social life,ENT5; REL3; SOC1,no,new
+Indian Express Trending,https://indianexpress.com/section/trending/feed/,native,live,Entertainment,ENT5,no,new
+Google News: influencer controversy,https://news.google.com/rss/search?q=%28influencer+OR+YouTuber%29+India+%28controversy+OR+backlash+OR+FIR%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT5,no,new
+Google News: BGMI/esports,https://news.google.com/rss/search?q=%28BGMI+OR+esports+OR+%22Krafton+India%22%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT6,no,new
+Google News: gaming launches India,https://news.google.com/rss/search?q=%28PS5+OR+Xbox+OR+%22GTA+6%22+OR+%22game+launch%22%29+India+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Entertainment,ENT6,no,new
+HT Relationships,https://www.hindustantimes.com/feeds/rss/lifestyle/relationships/rssfeed.xml,native,live,Relationships,REL1,no,new
+Google News: dating apps India,https://news.google.com/rss/search?q=%28%22dating+app%22+OR+Hinge+OR+Bumble+OR+Tinder%29+India+%28survey+OR+report+OR+trend%29+when%3A7d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Relationships,REL1,no,new
+Google News: marriage/divorce rulings,https://news.google.com/rss/search?q=%28divorce+OR+%22live-in%22+OR+marriage+OR+alimony%29+%28%22High+Court%22+OR+%22Supreme+Court%22%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Relationships,REL2,no,new
+Google News: LiveLaw family law,https://news.google.com/rss/search?q=site%3Alivelaw.in+%28marriage+OR+divorce+OR+%22live-in%22+OR+maintenance%29&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Relationships,REL2,no,new
+Google News: UCC,https://news.google.com/rss/search?q=%22Uniform+Civil+Code%22+when%3A7d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Relationships,REL2,no,new
+Google News: viral relationship posts,https://news.google.com/rss/search?q=viral+%28boyfriend+OR+girlfriend+OR+husband+OR+wife+OR+marriage%29+post+India+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Relationships,REL3,no,new
+HT Lifestyle,https://www.hindustantimes.com/feeds/rss/lifestyle/rssfeed.xml,native,live,Relationships,REL3,no,new
+NDTV Offbeat,https://feeds.feedburner.com/ndtvnews-offbeat-news,native,live,Social life,SOC1,no,new
+Google News: civic sense viral,https://news.google.com/rss/search?q=viral+%28%22civic+sense%22+OR+etiquette+OR+%22netizens%22%29+India+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Social life,SOC1,no,new
+SheThePeople,https://www.shethepeople.tv/rss,native,live,Social life,SOC2,no,new
+Feminism In India,https://feminisminindia.com/feed/,native,live,Social life,SOC2,no,new
+Google News: gender rulings,https://news.google.com/rss/search?q=%28women+OR+gender+OR+%22menstrual+leave%22+OR+POSH%29+%28court+OR+policy+OR+ruling%29+India+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Social life,SOC2,no,new
+Google News: alcohol policy,https://news.google.com/rss/search?q=%28excise+OR+%22liquor+price%22+OR+%22dry+day%22+OR+%22drinking+age%22%29+%28Karnataka+OR+India%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Social life,SOC3,no,new
+Google News query: Bengaluru food,https://news.google.com/rss/search?q=Bengaluru+(restaurant+OR+cafe+OR+darshini+OR+biryani)&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Social life,SOC4,yes,sheet:B/S124
+Indian Express Food & Wine,https://indianexpress.com/section/lifestyle/food-wine/feed/,native,live,Social life,SOC4,no,new
+Google News: Swiggy/Zomato,https://news.google.com/rss/search?q=%28Swiggy+OR+Zomato+OR+%22food+delivery%22%29+%28fee+OR+price+OR+policy%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Social life,SOC4,no,new
+Indian Express Fitness,https://indianexpress.com/section/lifestyle/fitness/feed/,native,live,Health & fitness,HEA1,no,new
+Google News: marathons/gym trends,https://news.google.com/rss/search?q=%28marathon+OR+%22TCS+World+10K%22+OR+gym+OR+%22fitness+trend%22%29+%28Bengaluru+OR+India%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Health & fitness,HEA1,no,new
+Google News: FSSAI,https://news.google.com/rss/search?q=FSSAI+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Health & fitness,HEA2,no,new
+Google News: supplements/food safety,https://news.google.com/rss/search?q=%28supplement+OR+protein+OR+adulteration+OR+%22food+safety%22%29+India+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Health & fitness,HEA2,no,new
+HT Health,https://www.hindustantimes.com/feeds/rss/lifestyle/health/rssfeed.xml,native,live,Health & fitness,HEA2,no,new
+The Hindu Health,https://www.thehindu.com/sci-tech/health/feeder/default.rss,native,live,Health & fitness,HEA3,no,new
+Indian Express Health,https://indianexpress.com/section/lifestyle/health/feed/,native,live,Health & fitness,HEA3,no,new
+Google News query: Delhi AQI,https://news.google.com/rss/search?q=Delhi+AQI&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Health & fitness,HEA3,yes,sheet:B/S129
+Google News: outbreaks Karnataka,https://news.google.com/rss/search?q=%28dengue+OR+outbreak+OR+%22health+department%22%29+%28Karnataka+OR+Bengaluru%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Health & fitness,HEA3,no,new
+Live From A Lounge,https://livefromalounge.com/feed/,native,live,Travel,TRA1,no,new
+Google News: airlines/DGCA,https://news.google.com/rss/search?q=%28IndiGo+OR+%22Air+India%22+OR+DGCA+OR+airfare%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Travel,TRA1,no,new
+Google News: Indian Railways,https://news.google.com/rss/search?q=%28%22Vande+Bharat%22+OR+%22Indian+Railways%22+OR+IRCTC%29+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Travel,TRA2,no,new
+Google News: tolls/highways,https://news.google.com/rss/search?q=%28toll+OR+FASTag+OR+NHAI+OR+expressway%29+India+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Travel,TRA2,no,new
+PIB via Google News (Railways),https://news.google.com/rss/search?q=site%3Apib.gov.in+railways&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Travel,TRA2,no,new
+Google News: visa/passport rules,https://news.google.com/rss/search?q=%28visa+OR+passport+OR+%22e-visa%22+OR+Schengen%29+Indians+rule+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Travel,TRA3,no,new
+Conde Nast Traveller India,https://www.cntraveller.in/feed/rss,native,live,Travel,TRA4,no,new
+The Hindu Travel,https://www.thehindu.com/life-and-style/travel/feeder/default.rss,native,live,Travel,TRA4,no,new
+Google News: tourism rules/permits,https://news.google.com/rss/search?q=%28tourism+OR+tourists%29+%28permit+OR+ban+OR+%22entry+fee%22+OR+rules%29+India+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Travel,TRA4,no,new
+Vogue India,https://www.vogue.in/feed/rss,native,live,Beauty & grooming; Fashion & style,BEA1; FAS1; FAS3,no,new
+Fibre2Fashion,https://feeds.feedburner.com/fibre2fashion,native,live,Fashion & style,FAS1,no,new
+The Hindu Fashion,https://www.thehindu.com/life-and-style/fashion/feeder/default.rss,native,live,Fashion & style,FAS1,no,new
+Google News: fashion week India,https://news.google.com/rss/search?q=%28%22Lakme+Fashion+Week%22+OR+%22India+Couture+Week%22+OR+%22fashion+week%22%29+India+when%3A7d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Fashion & style,FAS1,no,new
+Google News: fashion retail,https://news.google.com/rss/search?q=%28Myntra+OR+Ajio+OR+Zudio+OR+%22Nykaa+Fashion%22+OR+Meesho%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Fashion & style,FAS2,no,new
+Google News: quick commerce fashion,https://news.google.com/rss/search?q=%28%22quick+commerce%22+OR+%2210-minute%22%29+fashion+OR+apparel&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Fashion & style,FAS2,no,new
+Entrackr,https://news.google.com/rss/search?q=site:entrackr.com&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Fashion & style,FAS2,yes,sheet:B/S117
+HT Fashion,https://www.hindustantimes.com/feeds/rss/lifestyle/fashion/rssfeed.xml,native,live,Fashion & style,FAS3,no,new
+Google News: celebrity looks,https://news.google.com/rss/search?q=%28Pinkvilla+OR+%22red+carpet%22+OR+airport+look%29+actress+outfit+when%3A2d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Fashion & style,FAS3,no,new
+Google News: Nykaa/beauty brands,https://news.google.com/rss/search?q=%28Nykaa+OR+Purplle+OR+%22Sugar+Cosmetics%22+OR+%22Minimalist%22+OR+Mamaearth%29+when%3A3d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Beauty & grooming,BEA1,no,new
+Google News: ELLE/Femina beauty,https://news.google.com/rss/search?q=%28site%3Aelle.in+OR+site%3Afemina.in%29+beauty&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Beauty & grooming,BEA1,no,new
+Google News: cosmetic bans/safety,https://news.google.com/rss/search?q=%28CDSCO+OR+%22cosmetic+ban%22+OR+sunscreen+OR+%22skincare+ingredient%22%29+India+when%3A7d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Beauty & grooming,BEA2,no,new
+GQ India,https://www.gqindia.com/feed/rss,native,live,Beauty & grooming,BEA3,no,new
+Google News: mens grooming India,https://news.google.com/rss/search?q=%28%22men%27s+grooming%22+OR+%22Beardo%22+OR+%22Bombay+Shaving%22+OR+%22The+Man+Company%22%29+when%3A7d&hl=en-IN&gl=IN&ceid=IN:en,google_news,live,Beauty & grooming,BEA3,no,new

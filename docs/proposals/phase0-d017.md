@@ -1,6 +1,6 @@
-# Phase 0: draft D-017 (not yet approved)
+# Phase 0: D-017 (APPROVED 28 Oct 2026; now in DECISIONS.md) and the CLAUDE.md edits for Zuko
 
-*Status: draft for the founder. Nothing in `DECISIONS.md`, `CLAUDE.md`, `.zuko/config.json` or any other file has been changed. This file only holds the proposal. On approval, the D-017 text below goes into `DECISIONS.md` (not on the dangerous list), and the CLAUDE.md change goes to Zuko (dangerous list item 10).*
+*Status, 28 Oct 2026: the founder approved D-017 and the CLAUDE.md edits in section 2. D-017 is now in `DECISIONS.md` and carries the founder's two-level safety rule (section 3A below is superseded by it: see D-017 and the amended Gate 0 in `docs/prd/PRD_riffi_news_engine.md`). The CLAUDE.md edits are **for Zuko to apply**; Claude sessions must not edit `CLAUDE.md`, `AGENTS.md` or `.zuko/config.json` (dangerous list item 10). The text in section 1 is the first draft; the approved wording is the one in `DECISIONS.md`.*
 
 Source: `PRD_riffi_news_engine.md` section 10, Phase 0. I read the PRD, `needs.csv`, `new_sources.csv`, `DECISIONS.md`, `CLAUDE.md` and `BRIEF.md`.
 
@@ -34,6 +34,8 @@ The PRD asks for "the one-line CLAUDE.md change". In practice one line is not en
 | Product DNA, "Non-goals" | "Bengaluru only in phase 1; no multi-city design." | "One audience; no multi-city design. Bengaluru-first within 18 categories (D-017)." |
 | Product DNA, "Expected scale" | "131 sources, 151 topics; about 3,000-8,000 new items a day (about 200,000 in month one)" | "about 300 sources; about 8,000-18,000 new items a day (about 240,000-540,000 in month one)"; keep the pruning and indexing sentences |
 | The `config` JSON block: `summary`, `product.audience`, `product.nonGoals`, `product.scale` | same wording as above | the same changes, kept in agreement with the prose |
+| Part B "Jobs it does" third bullet and "Key flows" (and the same in the JSON block) | "drop communal and religious flashpoints entirely ... flag sensitive-but-allowed topics" | add: "Two levels (D-017): tracked (editor only) vs eligible for picks / the seed agent. Communal or religious flashpoints are excluded everywhere; other religion, caste and reservation, Kannada vs Hindi, locals vs migrants and party-vs-leader politics are editor only; only cleared picks reach the seed agent." |
+| Part B "Key flows" | the flows end at the ranked digest | add one flow: "news-24h -> Daily Picks (picks.md/csv/json) through safety, relevance and content-ability gates (D-017)" |
 | `.zuko/config.json` | generated from that block | regenerate after the above, never hand-edit |
 
 Also: the "Known input gaps" list and the `docs/technical-spec.md` / `BRIEF.md` counts (131, 151) go stale. Those are not on the dangerous list, so they are updated in the same changes that alter the counts (Phases 1-2), as working rule 8 requires.

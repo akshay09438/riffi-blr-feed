@@ -24,6 +24,20 @@
 | - | First run: test-feeds over all 131, failures with fixes, top 30 stories | Done 5 Oct 2026 on the laptop: `test-feeds` 96 passed / 35 failed; `fetch --all` 115 ok, 11 errors, 5 skipped, 2,177 new items, 2,065 stories (3 High, 610 Medium, 348 Low, 1,104 Drop). Re-run the evening of 5 Oct with the cloud fixes: `fetch --all` 127 ok, 3 not modified, 1 skipped (manual), 0 errors; 194 new items; Google refusals 0; 91 of 105 non-X sources passing health (87%, target 90%). Follow-ups in `docs/zuko-handoff.md` |
 | - | README + .env.example | README written (4 Oct 2026; the timer's runbook added 5 Oct); .env.example not yet (it matches the dangerous `**/.env.*` glob, so it waits for a founder OK) |
 
+## D-017: widening to 18 content categories (from 28 Oct 2026)
+
+Plan: `docs/prd/PRD_riffi_news_engine.md`. Founder's order: Phases 1, 2, 3; then the safety filter (4c) and the AI prompt (4a) as proposals for Zuko; 4b and 4d (database) can wait, with a JSON sidecar meanwhile; Phase 6 after launch.
+
+| Phase | Status |
+|---|---|
+| 0 Decision | Done 28 Oct: D-017 approved and in `DECISIONS.md`; the CLAUDE.md edits are for Zuko in `docs/proposals/phase0-d017.md` |
+| 1 Sources | Offline part done 28 Oct (cloud): `feeds.csv` 131 -> 281, 18 categories, needs in `notes`, tests updated. **Still to do on the laptop:** `import-sources`, `test-feeds` on S132 to S281, a timed full run, health rate. Report: `docs/proposals/phase1-sources-report.md` |
+| 2 Taxonomy and topics | Not started |
+| 3 Filter (non-protected parts) | Not started |
+| 4c Safety filter proposal | Written 28 Oct, waiting for Zuko: `docs/proposals/phase4c-safety-filter.md` |
+| 4a, 4b, 4d | 4a (AI prompt) next; 4b and 4d wait |
+| 5, 6 | After approval; after launch |
+
 ## Open questions
 
 1. ~~**What the 07:00 digest does when the AI pass has not run**~~ Resolved 5 Oct 2026 (D-012), as built: keyword topics and keyword-only labels, each story marked "awaiting AI pass" and the digest's first line saying how many stories wait and that their scores leave out up to 25 points; "what's new" reads "awaiting AI pass"; the debate angle is the topic's general one from `topics.csv`, marked "topic angle, not this story". Background (D-005): the "new development" (15) and "debate angle" (10) points come from the AI.

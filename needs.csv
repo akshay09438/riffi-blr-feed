@@ -1,0 +1,76 @@
+category,need_id,need,what counts
+Bangalore,BLR1,Civic body & city govt decisions,GBA/BBMP orders; property tax; ward issues; garbage
+Bangalore,BLR2,Traffic & roads,traffic advisories; potholes; flyovers; tunnel road; road closures
+Bangalore,BLR3,Metro & public transport,Namma Metro lines/fares/delays; BMTC; suburban rail; airport
+Bangalore,BLR4,Autos cabs & bike taxis,fare changes; bike taxi rules; Namma Yatri/Ola/Uber/Rapido
+Bangalore,BLR5,Water power & weather,BESCOM cuts; BWSSB water; rain/flood alerts; IMD
+Bangalore,BLR6,Rent housing & real estate,rents; deposits; RERA; tenancy rules
+Bangalore,BLR7,Events & going out,concerts; fests; pubs rules; city events
+Bangalore,BLR8,Karnataka state govt & policy,cabinet decisions; state schemes; language/jobs policy
+Politics,POL1,National govt & Parliament,cabinet; bills; sessions; ministries
+Politics,POL2,Elections,ECI; state polls; results
+Politics,POL3,Karnataka politics,state govt; opposition; CM
+Politics,POL4,Courts & legal rulings,SC/HC judgments
+Politics,POL5,Economy & policy,budget; GST; RBI; inflation; jobs data
+Politics,POL6,Fact-checks,claims checked
+Sports,SPO1,Cricket (India & international),matches; selection; BCCI
+Sports,SPO2,IPL & RCB,auction; matches; franchise news
+Sports,SPO3,Football,ISL; Bengaluru FC; Indian team; global big leagues
+Sports,SPO4,Other sports & Olympics,badminton; chess; athletics; F1; kabaddi
+Entertainment,ENT1,Bollywood & Indian film,releases; box office; controversies
+Entertainment,ENT2,South & Kannada cinema,Sandalwood; Tollywood; Kollywood
+Entertainment,ENT3,OTT & series,Netflix/Prime/Hotstar/JioCinema releases
+Entertainment,ENT4,Music & concerts,albums; tours; ticketing
+Entertainment,ENT5,Creators & internet culture,influencer controversies; viral trends; reality TV
+Entertainment,ENT6,Gaming,BGMI; esports; launches
+Tech/AI,TEC1,AI news & tools,model launches; AI policy; AI in India
+Tech/AI,TEC2,Indian startups & funding,funding; layoffs; shutdowns; IPOs
+Tech/AI,TEC3,Gadgets & launches,phones; laptops; prices
+Tech/AI,TEC4,Big tech & apps,app changes; outages; privacy; digital rules
+Tech/AI,TEC5,AI & jobs,AI layoffs; skills; hiring trends
+Corporate,COR1,Layoffs & hiring,IT layoffs; hiring freezes; campus hiring
+Corporate,COR2,Workplace policy,RTO/WFH; work hours; labour codes
+Corporate,COR3,Pay & appraisals,hike surveys; variable pay; bonuses
+Corporate,COR4,Company news (IT & GCCs),Infosys/TCS/Wipro results; GCC openings
+Finance,FIN1,Personal finance rules,tax changes; ITR; UPI/bank rules; RBI rate
+Finance,FIN2,Prices & cost of living,fuel; LPG; inflation; gold price
+Finance,FIN3,Credit loans & cards,card rule changes; BNPL; loan rates
+Finance,FIN4,Consumer & money scams,frauds; scams; consumer rulings
+Stock market,STK1,Market moves,Sensex/Nifty daily; big movers
+Stock market,STK2,IPOs,upcoming/listings
+Stock market,STK3,SEBI & F&O rules,regulation; F&O data
+Stock market,STK4,Mutual funds & SIPs,flows; new rules
+Stock market,STK5,Crypto,India crypto rules; prices
+Education,EDU1,Entrance exams & results,CAT; GATE; NEET-PG; CUET; paper leaks
+Education,EDU2,Higher-ed policy,UGC; NEP; NIRF rankings; fees
+Education,EDU3,Study abroad & visas,US/UK/Canada/Australia student visas
+College life,COL1,Placements & internships,placement season; packages; internships
+College life,COL2,Campus news & controversies,college rules; fests; protests (non-political)
+College life,COL3,Student life & youth trends,student surveys; hostel/PG; youth spending
+Relationships,REL1,Dating & relationship trends,dating app news; surveys; trends
+Relationships,REL2,Marriage & family laws,marriage law; divorce; live-in rulings
+Relationships,REL3,Viral relationship debates,viral posts/columns
+Social life,SOC1,Viral social debates,viral posts; etiquette; civic sense
+Social life,SOC2,Gender debates & rulings,gender policy; viral debates
+Social life,SOC3,Nightlife & going out,pub/club rules; alcohol policy
+Social life,SOC4,Food & dining trends,restaurant trends; delivery apps; food prices
+General,GEN1,Top national headlines,breaking India news
+General,GEN2,Consumer & everyday life,consumer rights; quick commerce; daily-life changes
+General,GEN3,Weather & disasters,IMD alerts; floods; heat
+General,GEN4,Festivals & holidays,holiday lists; festival news
+Growth,GRO1,Careers & upskilling,career trends; skills reports
+Growth,GRO2,Productivity & self-improvement,trends; books; research
+Growth,GRO3,Founders & success stories,founder interviews; startup lessons
+Health & fitness,HEA1,Fitness & gym trends,fitness trends; marathons
+Health & fitness,HEA2,Diet & nutrition news,food safety; FSSAI; supplements
+Health & fitness,HEA3,Health policy & public health,air quality; outbreaks; health rules
+Travel,TRA1,Flights & airports,airline fares; rules; disruptions
+Travel,TRA2,Trains & roads,railway changes; Vande Bharat; tolls
+Travel,TRA3,Visas & passports,visa rule changes
+Travel,TRA4,Destinations & tourism,tourism rules; trends; permits
+Fashion & style,FAS1,Fashion industry & trends,launches; fashion weeks; trends
+Fashion & style,FAS2,Brands & shopping,sales; brand news; fast fashion; quick commerce fashion
+Fashion & style,FAS3,Celebrity & red carpet style,viral looks
+Beauty & grooming,BEA1,Beauty industry & launches,launches; Nykaa etc
+Beauty & grooming,BEA2,Skincare trends & safety,trends; bans; ingredient news
+Beauty & grooming,BEA3,Men's grooming,launches; trends
