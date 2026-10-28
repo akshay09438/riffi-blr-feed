@@ -347,7 +347,7 @@ def test_ai_batch_then_ai_apply_from_the_command_line(tmp_path, repo_root):
     r = runner.invoke(cli.app, ["ai-batch", "--db", str(db_path), "--out", str(tmp_path / "ai")])
     assert r.exit_code == 0, r.output
     assert "1 stories in 1 batch" in r.output and "config/prompts/ai_pass.md" in r.output
-    folder = Path(re.search(r"Folder: (\S+)", r.output).group(1))
+    folder = Path(re.search(r"Folder: (.+?)\s*$", r.output, re.MULTILINE).group(1))  # the path may hold spaces
     batch = json.loads((folder / "batch-01.json").read_text(encoding="utf-8"))
     (folder / batch["answer_file"]).write_text(
         json.dumps({"batch_id": batch["batch_id"], "answers": [answer("t")]}), encoding="utf-8"
