@@ -93,7 +93,7 @@ def repo_root_module():
 
 def test_every_topic_in_topics_csv_has_5_to_15_keywords(real, repo_root_module):
     assert check_against_topics_csv(real, repo_root_module / "topics.csv") == []
-    assert len(real.topics) == 151
+    assert len(real.topics) == 181
     for t in real.topics:
         assert 5 <= len(t.keywords) <= 15, t.topic_id
         assert t.label and len(t.label) <= 60, t.topic_id
@@ -108,6 +108,15 @@ def test_every_topic_in_topics_csv_has_5_to_15_keywords(real, repo_root_module):
         ("Infosys asks employees to return to office three days a week", "B16"),
         ("Water tariff hike: BWSSB to raise rates from November", "O12"),
         ("ಬೆಂಗಳೂರಿನಲ್ಲಿ ಭಾರಿ ಮಳೆ, ಶಾಲೆಗಳಿಗೆ ರಜೆ", "O11"),
+        # topics added for the 18 categories (D-017)
+        ("Gold rate today in Mumbai", "P35"),
+        ("BESCOM announces power cut in Whitefield on Sunday", "B45"),
+        ("OpenAI launches new ChatGPT model for Indian users", "P32"),
+        ("IIT Bombay placements: highest package crosses Rs 2 crore", "P42"),
+        ("CAT 2026 admit card released by IIM", "P40"),
+        ("Digital arrest scam: RBI warns customers", "P37"),
+        ("Vande Bharat sleeper train to start on Bengaluru route", "P48"),
+        ("Nykaa shares jump after quarterly beauty launch", "P52"),
     ],
 )
 def test_real_keywords_catch_typical_headlines(real, headline, topic):
@@ -116,7 +125,8 @@ def test_real_keywords_catch_typical_headlines(real, headline, topic):
 
 def test_real_keywords_leave_unrelated_news_alone(real):
     for headline in (
-        "Gold rate today in Mumbai",
+        "Regional bus strike hits Nagpur commuters",
+        "Local school wins district football trophy",
         "Tenant eviction rules tightened in Delhi",
         "Stock markets close flat",
     ):

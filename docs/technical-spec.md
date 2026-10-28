@@ -89,7 +89,7 @@ tests/
 
 ## Tagging, keyword pass (as built, 4 Oct 2026)
 
-- `config/topic_keywords.yaml` - team-editable: for each of the 151 topics a label and 5-15 plain keyword phrases (1,904 in all, drafted by Claude from each topic's title and debate angles on 4 Oct 2026), optional `local: true` (64 topics) and optional `exclude` phrases; plus the `local_context` list of place and body names. The header explains the rules for editors.
+- `config/topic_keywords.yaml` - team-editable: for each of the 181 topics a label and 5-15 plain keyword phrases (2,261 in all, drafted by Claude from each topic's title and debate angles: 151 on 4 Oct 2026, 30 on 28 Oct for D-017), optional `local: true` (65 topics) and optional `exclude` phrases; plus the `local_context` list of place and body names. The header explains the rules for editors.
 - `tagging/keywords.py` - `KeywordTagger.load(path)`; `tag(text)` / `tag_texts([...])` return `TagResult(topics={topic_id: [matched keywords]}, local, unmatched_local)`. Matching is case-insensitive; English keywords match whole words only; Kannada keywords match at a word start (suffixes allowed; `\b` does not work in Kannada script); keywords are plain text, never regexes; the longest keyword at a position is reported. A story is tagged from all its members' titles and summaries at once. `local: true` topics need a `local_context` name somewhere in the story; `exclude` vetoes. This pass favours recall - the AI pass (step 4, part 2) confirms or rejects candidates. `unmatched_local` = names Bengaluru/Karnataka but matches no topic (BRIEF.md: weekly human review). `check_against_topics_csv` lists topics.csv ids without keywords and vice versa (a test keeps it empty).
 
 ## AI pass (as built, 6 Oct 2026; D-005, D-016)
@@ -189,3 +189,10 @@ One SQLite file, `<project>/data/engine.db` (or `RIFFI_DB_PATH`), anchored on th
 ## Code reused from the panel project
 
 Copied (never imported) from `C:\Users\Akshay\Projects\Riffi feeds` per D-006. The module-by-module map is in `docs/implementation-plan.md`.
+
+## Categories, needs and topics (D-017, as built 28 Oct 2026)
+
+- Hierarchy: category (18) -> need (75, `needs.csv`) -> topic (181, `topics.csv`) -> story -> pick. `config/categories.yaml` holds the category names and the daily quotas (min / max picks, AI-pass cap per category, and whether the category is editor-only until the safety filter exists).
+- `topics.csv` has three columns beyond the brief's: `need_ids` (";"-separated), `editor_only` ("yes" for caste and reservation, language and locals-vs-migrants, leaders and parties, and the cases D-017 added) and `old_category`. The importer reads columns by name, so the database and scoring are unchanged; the database's `topics.category` now holds the new category.
+- A source's needs are in its `notes` in `feeds.csv` ("needs: BLR1; BLR3"). Retired sources are listed in `docs/prd/retired_sources.csv`.
+- `riffi_ingest/taxonomy.py`: `Taxonomy.load(categories_yaml, needs_csv, topics_csv)`; `category_of_topic`, `needs_of_topic`, `topics_for_need`, `editor_only_topics`; `validate(feeds_csv)` returns plain-sentence problems (a need with no topic or no source, an unknown category or need). A test keeps it empty.

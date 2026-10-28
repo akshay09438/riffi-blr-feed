@@ -641,3 +641,123 @@ topics:
     label: "Dowry, live-in relationships, splitting the bill"
     keywords: ["dowry", "dowry death", "dowry harassment", "live-in", "live-in relationship", "live-in relationships", "live-in registration", "UCC", "Uniform Civil Code", "split the bill", "splitting the bill", "household chores", "ವರದಕ್ಷಿಣೆ"]
     local: false
+  B45:
+    label: "Power cuts, BESCOM tariffs and rooftop solar"
+    keywords: ["BESCOM", "power cut", "power cuts", "load shedding", "power outage", "electricity tariff", "KERC tariff", "rooftop solar", "solar rooftop", "ಬೆಸ್ಕಾಂ", "ವಿದ್ಯುತ್ ಕಡಿತ"]
+    local: true
+  P27:
+    label: "Court rulings that change daily life"
+    keywords: ["Supreme Court verdict", "Supreme Court rules", "High Court verdict", "High Court orders", "court directs", "SC directs", "HC directs", "landmark judgment", "Karnataka High Court"]
+    local: false
+  P28:
+    label: "Viral claims, fact-checked"
+    keywords: ["fact check", "fact-check", "factcheck", "fake news", "misleading claim", "viral claim", "debunked", "fact checked", "deepfake"]
+    local: false
+  P29:
+    label: "Beyond cricket: Olympics, chess, badminton, F1, kabaddi"
+    keywords: ["Neeraj Chopra", "Olympics", "Asian Games", "Commonwealth Games", "Gukesh", "Praggnanandhaa", "chess", "badminton", "PV Sindhu", "Formula 1", "F1 Grand Prix", "Pro Kabaddi", "Satwik", "Chirag Shetty"]
+    local: false
+  P30:
+    label: "Football for Indians: ISL, Europe, national team"
+    keywords: ["ISL", "Indian Super League", "Sunil Chhetri", "Premier League", "La Liga", "Champions League", "Messi", "Ronaldo", "Manchester United", "Real Madrid", "Barcelona", "Indian football team", "FIFA"]
+    local: false
+  P31:
+    label: "Gaming and esports: BGMI, game launches, bans"
+    keywords: ["BGMI", "Krafton", "esports", "e-sports", "Free Fire", "Valorant", "PS5", "PlayStation", "Xbox", "GTA 6", "online gaming ban", "real-money gaming", "Nintendo", "Steam"]
+    local: false
+  P32:
+    label: "AI tools and model launches (ChatGPT, Gemini, Indian AI)"
+    keywords: ["ChatGPT", "OpenAI", "Gemini", "Anthropic", "Claude", "Sarvam", "IndiaAI Mission", "AI model", "AI chatbot", "generative AI", "Grok", "DeepSeek", "Copilot", "AI tool", "AI launch"]
+    local: false
+  P33:
+    label: "Phone and laptop launches and price wars"
+    keywords: ["iPhone", "Samsung Galaxy", "OnePlus", "Nothing Phone", "Pixel", "Redmi", "Realme", "smartphone launch", "phone launch", "laptop launch", "MacBook", "price cut", "Flipkart sale", "Amazon sale"]
+    local: false
+  P34:
+    label: "App outages, privacy and new digital rules"
+    keywords: ["outage", "down for users", "UPI down", "WhatsApp down", "Instagram down", "DPDP", "data protection", "MeitY", "app ban", "privacy policy", "data breach", "Aadhaar", "Digilocker", "IT Rules"]
+    local: false
+  P35:
+    label: "Everyday prices: petrol, LPG, gold, inflation"
+    keywords: ["petrol price", "diesel price", "LPG price", "cylinder price", "gold price", "gold rate", "silver price", "CPI inflation", "retail inflation", "price hike", "cost of living", "fuel price"]
+    local: false
+  P36:
+    label: "Credit cards, EMIs, BNPL and loan rates"
+    keywords: ["credit card", "credit cards", "BNPL", "buy now pay later", "EMI", "home loan rate", "personal loan", "CIBIL", "credit score", "repo-linked", "loan rate", "card fee", "interest rate cut"]
+    local: false
+  P37:
+    label: "Scams and frauds: digital arrest, UPI fraud, fake apps"
+    keywords: ["digital arrest", "cyber fraud", "UPI fraud", "online scam", "phishing", "fake app", "investment scam", "cyber crime", "scam alert", "RBI fraud", "fraud alert", "SIM swap", "sextortion"]
+    local: false
+  P38:
+    label: "Sensex, Nifty and big market moves"
+    keywords: ["Sensex", "Nifty", "stock market", "market crash", "market rally", "record high", "top gainers", "top losers", "FII", "FPI", "bull run", "sell-off", "Dalal Street"]
+    local: false
+  P39:
+    label: "Mutual funds and SIPs for beginners"
+    keywords: ["SIP", "SIP inflows", "mutual fund", "mutual funds", "AMFI", "index fund", "NFO", "expense ratio", "SEBI mutual fund", "systematic investment"]
+    local: false
+  P40:
+    label: "Entrance exams, results and paper leaks (CAT, GATE, JEE)"
+    keywords: ["CAT", "GATE", "NEET PG", "NEET-PG", "CUET", "JEE", "paper leak", "NTA", "answer key", "admit card", "exam result", "exam date", "entrance exam", "KCET"]
+    local: false
+  P41:
+    label: "Colleges, UGC rules, fees and rankings"
+    keywords: ["UGC", "AICTE", "NIRF", "NEP", "fee hike", "college fees", "foreign university campus", "four-year degree", "university ranking", "deemed university", "FYUP"]
+    local: false
+  P42:
+    label: "Campus placements, packages and internships"
+    keywords: ["placement", "placements", "highest package", "campus hiring", "internship", "stipend", "offer letter", "campus recruitment", "IIT placements", "IIM placements", "fresher hiring", "pre-placement offer"]
+    local: false
+  P43:
+    label: "Campus rules, fests and controversies (non-political)"
+    keywords: ["campus", "hostel curfew", "attendance rule", "college fest", "dress code", "college rule", "student council", "university rule", "hostel rules", "fest ban"]
+    local: false
+  P44:
+    label: "Union Budget, Census and big national announcements"
+    keywords: ["Union Budget", "Budget 2027", "Census", "Union Cabinet approves", "new law comes into effect", "comes into force", "from 1 November", "from 1 December", "new rules from", "GST Council"]
+    local: false
+  P45:
+    label: "Productivity, habits and self-improvement research"
+    keywords: ["productivity", "study finds", "habits", "self-improvement", "deep work", "morning routine", "time management", "focus", "reading habit", "burnout study"]
+    local: false
+  P46:
+    label: "Founder journeys and success stories"
+    keywords: ["founder", "founders", "founder story", "how I built", "startup journey", "started with", "bootstrapped", "unicorn", "shutdown lessons", "Shark Tank India", "side hustle"]
+    local: false
+  P47:
+    label: "Food safety, FSSAI and what is in your food"
+    keywords: ["FSSAI", "food safety", "adulteration", "food recall", "banned ingredient", "nutrition label", "protein powder", "supplement", "food colour ban", "packaged food", "junk food"]
+    local: false
+  P48:
+    label: "Trains and roads: Vande Bharat, tatkal, tolls, FASTag"
+    keywords: ["Vande Bharat", "Indian Railways", "IRCTC", "tatkal", "railway fare", "train ticket", "waiting list", "FASTag", "toll", "NHAI", "expressway", "railway new rule", "Amrit Bharat"]
+    local: false
+  P49:
+    label: "Fashion weeks, trends and what is in"
+    keywords: ["fashion week", "Lakme Fashion Week", "India Couture Week", "fashion trend", "streetwear", "thrift", "sneakers", "ethnic wear", "Gen Z fashion", "capsule wardrobe", "runway"]
+    local: false
+  P50:
+    label: "Brands and shopping: Myntra, Zudio, sales, quick fashion"
+    keywords: ["Myntra", "Ajio", "Zudio", "H&M", "Zara", "Nykaa Fashion", "Meesho", "Shein", "Big Billion Days", "End of Reason Sale", "Flipkart sale", "quick commerce fashion", "Lenskart"]
+    local: false
+  P51:
+    label: "Celebrity looks and red carpet style"
+    keywords: ["red carpet", "Met Gala", "airport look", "celebrity outfit", "styled by", "Cannes look", "viral look", "designer outfit", "wedding look", "best dressed"]
+    local: false
+  P52:
+    label: "Beauty brands and launches: Nykaa, Mamaearth, Sugar"
+    keywords: ["Nykaa", "Purplle", "Sugar Cosmetics", "Mamaearth", "Minimalist", "Lakme", "beauty brand", "beauty launch", "D2C beauty", "skincare brand", "Sephora India"]
+    local: false
+  P53:
+    label: "Skincare trends, ingredient bans and safety"
+    keywords: ["skincare", "sunscreen", "SPF", "retinol", "niacinamide", "cosmetic ban", "CDSCO", "ingredient ban", "skincare trend", "K-beauty", "serum", "dermatologist-approved"]
+    local: false
+  P54:
+    label: "Men's grooming and skincare"
+    keywords: ["men's grooming", "Beardo", "Bombay Shaving Company", "The Man Company", "beard care", "beard oil", "trimmer", "men skincare", "Ustraa", "grooming brand"]
+    local: false
+  P55:
+    label: "OTT releases and what to watch"
+    keywords: ["Netflix", "Prime Video", "JioHotstar", "SonyLIV", "Zee5", "web series", "OTT release", "streaming", "season 2", "season 3", "trailer", "OTT debut", "OTT platform"]
+    local: false

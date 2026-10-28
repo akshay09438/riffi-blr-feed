@@ -104,15 +104,35 @@ def test_exactly_five_x_rows_are_priority_feeds(repo_root):
     assert priority == ["S001", "S024", "S026", "S028", "S035"]
 
 
-def test_topics_has_151_topics_split_as_briefed(repo_root):
+def test_topics_has_181_topics_151_briefed_plus_30_for_d017(repo_root):
     topics = read(repo_root, "topics.csv")
-    assert len(topics) == 151
-    assert len({r["topic_id"] for r in topics}) == 151
+    assert len(topics) == 181
+    assert len({r["topic_id"] for r in topics}) == 181
     kinds = Counter(r["topic_id"][0] for r in topics)
     assert kinds["D"] == 36
     assert kinds["O"] == 28
-    assert len(topics) - kinds["D"] - kinds["O"] == 87  # evergreen: B, K, SI, P
+    assert len(topics) - kinds["D"] - kinds["O"] == 117  # evergreen: B, K, SI, P (87 briefed + 30 added, D-017)
     assert {r["priority"] for r in topics} == {"High", "Medium", "Low"}
+
+
+def test_every_topic_has_one_of_the_18_categories_and_known_needs(repo_root):
+    topics = read(repo_root, "topics.csv")
+    needs = {r["need_id"] for r in read(repo_root, "needs.csv")}
+    for r in topics:
+        assert r["category"] in CATEGORIES, (r["topic_id"], r["category"])
+        ids = [x.strip() for x in r["need_ids"].split(";") if x.strip()]
+        assert ids and set(ids) <= needs, (r["topic_id"], r["need_ids"])
+        assert r["editor_only"] in ("", "yes")
+        assert r["old_category"]  # the label before D-017, kept for the record
+
+
+def test_d017_editor_only_topics_are_marked(repo_root):
+    marked = {r["topic_id"] for r in read(repo_root, "topics.csv") if r["editor_only"] == "yes"}
+    # caste/reservation, language and locals-vs-migrants, leaders and parties, and the cases D-017 added
+    assert marked == {
+        "O02", "O03", "O04", "O05", "O14", "O15", "O18", "O23", "O26", "O27",
+        "B21", "B22", "B43", "B44", "K03", "K04", "K05", "P05", "P15", "P24", "SI03",
+    }  # fmt: skip
 
 
 def test_blocklist_has_its_columns(repo_root):

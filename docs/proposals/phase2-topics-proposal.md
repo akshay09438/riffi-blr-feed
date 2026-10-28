@@ -1,6 +1,6 @@
 # Phase 2: categories, needs and topics (D-017): proposal for the founder
 
-*Status: **waiting for your yes (PRD step T5).** Nothing in `topics.csv` or `config/topic_keywords.yaml` has been changed. What is built and pushed: `config/categories.yaml` (the 18 categories with the daily quotas) and `riffi_ingest/taxonomy.py` with its tests. What needs your yes: the changes to the topic list below.*
+*Status: **approved by the founder and applied on 28 Oct 2026.** `topics.csv` and `config/topic_keywords.yaml` now hold the changes below (three labels were shortened to fit the 60-character limit). The text that follows is the proposal as approved.*
 
 ## 1. What I built (no approval needed)
 

@@ -102,8 +102,14 @@ def test_parsing_helpers():
     assert needs_in_notes("no needs here") == ()
 
 
-def test_the_real_files_agree_on_categories_and_sources(repo_root):
+def test_the_real_files_agree_on_categories_needs_topics_and_sources(repo_root):
     tax = Taxonomy.load(repo_root / "config" / "categories.yaml", repo_root / "needs.csv", repo_root / "topics.csv")
-    assert len(tax.categories) == 18 and len(tax.needs) == 75
-    only_source_problems = [p for p in tax.validate(repo_root / "feeds.csv") if p.endswith("has no source")]
-    assert only_source_problems == []
+    assert len(tax.categories) == 18 and len(tax.needs) == 75 and len(tax.topics) == 181
+    assert tax.validate(repo_root / "feeds.csv") == []  # every need has a topic and a source
+
+
+def test_editor_only_topics_never_serve_a_need_alone(repo_root):
+    tax = Taxonomy.load(repo_root / "config" / "categories.yaml", repo_root / "needs.csv", repo_root / "topics.csv")
+    only = tax.editor_only_topics()
+    for need in tax.needs:
+        assert set(tax.topics_for_need(need)) - only, need
