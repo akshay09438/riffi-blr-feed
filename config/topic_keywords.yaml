@@ -761,3 +761,11 @@ topics:
     label: "OTT releases and what to watch"
     keywords: ["Netflix", "Prime Video", "JioHotstar", "SonyLIV", "Zee5", "web series", "OTT release", "streaming", "season 2", "season 3", "trailer", "OTT debut", "OTT platform"]
     local: false
+  P56:
+    label: "Fitness, gym and running trends"
+    keywords: ["gym", "gyms", "gym membership", "fitness trend", "fitness trends", "workout", "home workout", "strength training", "pickleball", "padel", "half marathon", "marathon", "run club", "fitness tracker"]
+    local: false
+  P57:
+    label: "Diet and nutrition trends"
+    keywords: ["diet trend", "diet trends", "intermittent fasting", "keto", "high-protein", "protein intake", "millets", "ultra-processed", "sugar intake", "sugar tax", "calorie", "calories", "healthy eating", "superfood", "nutrition trend"]
+    local: false

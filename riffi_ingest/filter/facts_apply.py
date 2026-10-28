@@ -9,6 +9,10 @@ here are the same in spirit: the folder must be one the engine wrote (the databa
 stories a batch may touch), a story the AI pass excluded gets no extras, every number is clamped and every
 text cut to one plain line (`facts.clean`), and the file is size-limited. The result is merged into
 `<out>/<date>/story_facts_v2.json`, a later judgement replacing an earlier one for the same story.
+
+A folder written by `extras-batch` has no database record (that table is the protected AI pass's); its allow-list is
+a record file `<records_dir>/<folder name>.json` kept outside the batch folder, and it counts only if it names this
+very folder path. The batch files hold the same story ids, but they are never trusted: the session writes there.
 """
 
 from __future__ import annotations
@@ -55,22 +59,37 @@ def _read(path: Path, batch_id: str, stories: int) -> list:
     return data["extras"]
 
 
-def apply_extras(conn: sqlite3.Connection, folder: Path, sidecar: Path) -> ExtraResult:
-    result = ExtraResult()
+def _allowed_batches(
+    conn: sqlite3.Connection, folder: Path, records_dir: Path | None
+) -> list[tuple[str, str, set[str]]]:
+    """(batch id, extra file name, story ids a file may name) for a folder the engine wrote: an ai-batch folder
+    from the database's own record, or an extras-batch folder from its record file."""
     batches = llm_batches.batches_in(conn, folder)
-    if not batches:
-        raise LookupError(f"{folder} is not a folder written by ai-batch for this database")
+    if batches:
+        return [(b["batch_id"], extra_name(b["answer_file"]), set(json.loads(b["stories"]))) for b in batches]
+    if records_dir is not None:
+        record = Path(records_dir) / f"{Path(folder).name}.json"
+        try:
+            data = json.loads(record.read_text(encoding="utf-8"))
+            if Path(data["folder"]) == Path(folder).resolve():
+                return [(b["batch_id"], b["extra_file"], set(b["stories"])) for b in data["batches"]]
+        except (OSError, ValueError, KeyError, TypeError):
+            pass
+    raise LookupError(f"{folder} is not a folder written by ai-batch or extras-batch for this database")
+
+
+def apply_extras(conn: sqlite3.Connection, folder: Path, sidecar: Path, records_dir: Path | None = None) -> ExtraResult:
+    result = ExtraResult()
+    batches = _allowed_batches(conn, folder, records_dir)
     excluded = {r[0] for r in conn.execute("SELECT cluster_id FROM ai_verdicts WHERE excluded = 1")}
     merged = {sid: asdict(f) for sid, f in load_facts(sidecar)[0].items()}
-    for entry in batches:
-        name = extra_name(entry["answer_file"])
+    for batch_id, name, seen in batches:
         path = Path(folder) / name
         if not path.is_file():
             result.files_missing.append(name)
             continue
-        seen = set(json.loads(entry["stories"]))
         try:
-            extras = _read(path, entry["batch_id"], len(seen))
+            extras = _read(path, batch_id, len(seen))
         except ValueError as exc:
             result.rejected.append((name, "", f"file rejected: {exc}"))
             continue

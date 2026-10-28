@@ -104,14 +104,14 @@ def test_exactly_five_x_rows_are_priority_feeds(repo_root):
     assert priority == ["S001", "S024", "S026", "S028", "S035"]
 
 
-def test_topics_has_181_topics_151_briefed_plus_30_for_d017(repo_root):
+def test_topics_has_183_topics_151_briefed_plus_32_for_d017(repo_root):
     topics = read(repo_root, "topics.csv")
-    assert len(topics) == 181
-    assert len({r["topic_id"] for r in topics}) == 181
+    assert len(topics) == 183
+    assert len({r["topic_id"] for r in topics}) == 183
     kinds = Counter(r["topic_id"][0] for r in topics)
     assert kinds["D"] == 36
     assert kinds["O"] == 28
-    assert len(topics) - kinds["D"] - kinds["O"] == 117  # evergreen: B, K, SI, P (87 briefed + 30 added, D-017)
+    assert len(topics) - kinds["D"] - kinds["O"] == 119  # evergreen: B, K, SI, P (87 briefed + 32 added, D-017)
     assert {r["priority"] for r in topics} == {"High", "Medium", "Low"}
 
 

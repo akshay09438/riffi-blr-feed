@@ -14,6 +14,7 @@
     digest            the day's files in reports/YYYY-MM-DD/: digest.md and digest.csv (ranked stories, topics that
                       moved, quiet High-priority topics) plus the health report; --date regenerates a past day
     report            the health report only: health.md and sources_health.csv
+    extras-batch      batches of the best stories (already AI-judged ones too) for the AI pass's extra judgements
     ai-facts          store the AI pass's extra judgements (why care, two sides, hook) for the picks
     picks             the Daily Picks (D-017): picks.md / picks.csv / picks.json, candidates.csv, filter_report.md
     news-24h          "the news of the last 24 hours": fetch, write the AI batches, digest and picks in one go
@@ -45,6 +46,7 @@ from .fetchers.gnews import ONLINE_CAP_PER_RUN
 from .fetchers.http import DOMAIN_INTERVAL, PoliteClient, domain_key
 from .fetchers.parse import IST
 from .filter.config import FilterConfig
+from .filter.extras_batch import write_extras_batches
 from .filter.facts_apply import SIDECAR, apply_extras
 from .outputs import picks as picks_out
 from .outputs import queries
@@ -481,6 +483,14 @@ def stories(
 
 
 AiOutOption = typer.Option(PROJECT_ROOT / "data" / "ai", "--out", help="Batch folders go in <out>/<IST time>/.")
+RecordsOption = typer.Option(
+    PROJECT_ROOT / "data" / "ai-records",
+    "--records",
+    help="Where extras-batch keeps its record of what each batch holds.",
+)
+BatchesOption = typer.Option(
+    PROJECT_ROOT / "data" / "ai", "--batches", help="Batch folders go in <batches>/<IST time>-extras/."
+)
 AiOutDirOption = typer.Option(
     PROJECT_ROOT / "data" / "ai", "--ai-out", help="AI batch folders go in <ai-out>/<IST time>/."
 )
@@ -689,14 +699,75 @@ def digest(
     _write_health_files(conn, db_path, schedule, folder, now, w.day)
 
 
+def _run_extras(conn, out: Path, batches: Path, records: Path, max_stories: int | None, again: bool, now) -> None:
+    """Shared by extras-batch and news-24h: write the batches and say what they hold."""
+    p = Paths()
+    try:
+        cfg = FilterConfig.load(p.filter)
+        taxonomy = Taxonomy.load(p.categories, p.needs, p.topics)
+    except (OSError, ValueError, KeyError) as exc:
+        _fail(f"cannot read the filter settings: {exc}")
+    w = queries.window_for(now, None)
+    sidecar = Path(out) / w.day.isoformat() / SIDECAR
+    try:
+        run = write_extras_batches(
+            conn, w, taxonomy, cfg, batches, records, now=now, sidecar=sidecar, max_stories=max_stories, again=again
+        )
+    except ValueError as exc:
+        _fail(str(exc))
+    if not run.stories:
+        typer.echo(
+            f"Nothing needs extra judgements: {run.skipped_done} fresh stories already have them."
+            if run.skipped_done
+            else "No fresh tagged stories in the last 24 hours."
+        )
+        return
+    typer.echo(
+        f"{run.stories} stories in {len(run.batches)} extras batch{'es' if len(run.batches) != 1 else ''}. Folder: {run.folder}"
+    )
+    counts = ", ".join(f"{c} {n}" for c, n in sorted(run.per_category.items(), key=lambda t: (-t[1], t[0])))
+    typer.echo(f"  By category: {counts}.")
+    if run.skipped_done:
+        typer.echo(f"  {run.skipped_done} fresh stories already have extras and are not repeated (--again to include).")
+    if run.waiting_for_answers:
+        typer.echo(f"  {run.waiting_for_answers} of them still need the ordinary AI answer: run ai-batch for those.")
+    typer.echo(
+        f"  Next: write only extra-NN.json for each batch by following {llm_batches.INSTRUCTIONS},"
+        f" then: python -m riffi_ingest ai-facts {run.folder}"
+    )
+
+
+@app.command("extras-batch")
+def extras_batch(
+    out: Path = OutputsOption,
+    batches: Path = BatchesOption,
+    records: Path = RecordsOption,
+    max_stories: int = typer.Option(None, "--max", help="At most this many stories [default: prefilter.max_stories]."),
+    again: bool = typer.Option(False, "--again", help="Include stories that already have extras today."),
+    db: Path = DbOption,
+) -> None:
+    """Write batches of the best stories of the last 24 hours for the AI pass's extra judgements (why the reader
+    cares, the two sides, a hook, a format), chosen the way the Daily Picks need them: every category gets its
+    best stories, Bangalore High first, stories the AI already judged included, stories excluded or older than 72 h
+    left out. The session writes extra-NN.json only; `ai-facts <folder>` stores them. Changes nothing in the
+    database."""
+    if max_stories is not None and max_stories < 1:
+        _fail("--max must be at least 1")
+    _, conn = _open_existing(db)
+    if not queries.has_items(conn):
+        _fail("the database has no articles yet. Run: python -m riffi_ingest fetch --all")
+    _run_extras(conn, out, batches, records, max_stories, again, datetime.now(timezone.utc))
+
+
 @app.command("ai-facts")
 def ai_facts(
     folder: Path = AiFolderArgument,
     date: str = DayOption,
     out: Path = OutputsOption,
     db: Path = DbOption,
+    records: Path = RecordsOption,
 ) -> None:
-    """After `ai-apply`: read the `extra-NN.json` files the AI session wrote beside the answer files (why the
+    """After `ai-apply` (or after answering an `extras-batch` folder): read the `extra-NN.json` files the AI session wrote beside the answer files (why the
     user cares, the two sides, a hook, a format) and merge them into <out>/YYYY-MM-DD/story_facts_v2.json, the
     file `picks` reads. Checks the folder, the batch ids and the story ids, skips stories the AI pass excluded,
     and cleans every number and text. Safe to run again: a later judgement replaces an earlier one."""
@@ -705,7 +776,7 @@ def ai_facts(
     _, conn = _open_existing(db)
     sidecar = Path(out) / day.isoformat() / SIDECAR
     try:
-        r = apply_extras(conn, folder, sidecar)
+        r = apply_extras(conn, folder, sidecar, records_dir=records)
     except LookupError as exc:
         _fail(str(exc))
     except ValueError as exc:
@@ -777,6 +848,7 @@ def news_24h(
     topics: Path = TopicsOption,
     schedule: Path = ScheduleOption,
     ai_out: Path = AiOutDirOption,
+    records: Path = RecordsOption,
 ) -> None:
     """ "Give me the news of the last 24 hours" (D-016, D-017) in one command: fetch every source, write the stories
     that wait into AI batches, then the digest and the Daily Picks from what is stored. The AI pass itself is a
@@ -784,6 +856,8 @@ def news_24h(
     if not skip_fetch:
         fetch(all_sources=True, source=[], due_only=False, db=db, feeds=feeds, topics=topics, schedule=schedule)
     ai_batch(hours=24, max_stories=llm_batches.MAX_STORIES, out=ai_out, db=db)
+    _, conn = _open_existing(db)
+    _run_extras(conn, out, ai_out, records, None, False, datetime.now(timezone.utc))
     digest(date=None, out=out, top=top, db=db, schedule=schedule)
     picks(date=None, out=out, db=db)
     typer.echo("After the AI pass (answer the batches, then ai-apply <folder>), run: python -m riffi_ingest picks")

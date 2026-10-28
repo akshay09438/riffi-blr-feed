@@ -93,7 +93,7 @@ def repo_root_module():
 
 def test_every_topic_in_topics_csv_has_5_to_15_keywords(real, repo_root_module):
     assert check_against_topics_csv(real, repo_root_module / "topics.csv") == []
-    assert len(real.topics) == 181
+    assert len(real.topics) == 183
     for t in real.topics:
         assert 5 <= len(t.keywords) <= 15, t.topic_id
         assert t.label and len(t.label) <= 60, t.topic_id

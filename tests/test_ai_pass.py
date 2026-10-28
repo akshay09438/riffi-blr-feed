@@ -153,7 +153,7 @@ def test_a_batch_carries_the_story_its_reports_its_keyword_topics_and_the_instru
     assert len(s["reports"]) == ai.MAX_REPORTS and len(s["reports"][0]["summary"]) <= ai.SUMMARY_CHARS
     assert set(s["reports"][0]) == {"source", "title", "summary"}
     topics = json.loads((run.folder / "topics.json").read_text(encoding="utf-8"))
-    assert len(topics) == 181 and {"id", "topic", "geography", "priority"} <= set(topics[0])
+    assert len(topics) == 183 and {"id", "topic", "geography", "priority"} <= set(topics[0])
     # what the engine keeps for itself is not in the files the AI session reads
     assert "reports_seen" not in json.dumps(batch)
 
@@ -387,6 +387,16 @@ def test_the_sheet_names_every_field_and_format_of_the_extra_file():
     for fmt in facts.FORMATS:
         assert f'"{fmt}"' in text, fmt
     assert "extra-NN.json" in text and "ai-facts" in text  # the flow: write both files, then run ai-facts
+
+
+def test_the_sheet_routes_extras_folders_and_frames_finance_as_debate_never_advice():
+    text = " ".join(sheet_text().split())
+    assert (
+        "Finance and markets: frame as a debate about the system or the news (fair? overhyped? who loses?), "
+        "never as buy/sell/hold advice."
+    ) in text
+    assert "extras-batch" in text and '"kind": "extras"' in text and "`extra_file`" in text
+    assert "write **only** `extra-NN.json`" in text
 
 
 def test_the_sheets_editor_only_table_matches_topics_csv():

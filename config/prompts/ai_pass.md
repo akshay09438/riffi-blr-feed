@@ -22,16 +22,20 @@ Your answers rank the stories the content team and the seed-account agent see. T
 ## How to run it
 
 1. The founder asked for "the news of the last 24 hours" (D-016). After `fetch --all`, run
-   `python -m riffi_ingest ai-batch` (or `news-24h`). It prints a folder, for example `data/ai/2026-10-06-071500/`.
+   `python -m riffi_ingest ai-batch` and `python -m riffi_ingest extras-batch` (or `news-24h`, which runs both). Each
+   prints a folder, for example `data/ai/2026-10-06-071500/` (stories to answer and judge) and
+   `data/ai/2026-10-06-071500-extras/` (the best stories of every category, including ones already answered, for
+   the extra judgements only). A batch file of the second kind says `"kind": "extras"`.
 2. In that folder, read `topics.json` once: every topic you may answer with (`id`, `topic`, `geography`,
    `priority`, `why_people_talk`).
-3. For each `batch-NN.json`, read its stories and write **two** files in the same folder:
-   `answer-NN.json` (the file named in its `answer_file`; the seven fields below) and `extra-NN.json` (the same
-   number; the extra judgements below). One entry per story in each, in any order.
+3. For each `batch-NN.json` of an `ai-batch` folder, write `answer-NN.json` (the file named in its `answer_file`; the
+   seven fields below), one entry per story, in any order. For each `batch-NN.json` of an `extras-batch` folder
+   (`"kind": "extras"`), write **only** `extra-NN.json` (the file named in its `extra_file`; the extra judgements
+   below). In an `ai-batch` folder also write `extra-NN.json` when no extras folder was printed.
 4. Run `python -m riffi_ingest ai-apply <folder>`. It checks every answer and reports any it rejected, with
    the reason. Fix those answers in the same file and run `ai-apply` again (it is safe to repeat).
-5. Run `python -m riffi_ingest ai-facts <folder>`. It stores the extra judgements for the picks. Fix and repeat in
-   the same way if it rejects any.
+5. Run `python -m riffi_ingest ai-facts <folder>` for every folder that has extra files. It stores the extra
+   judgements for the picks. Fix and repeat in the same way if it rejects any.
 6. Then `python -m riffi_ingest picks` (and `digest`).
 
 Write only the answer and extra files. Never edit a batch file or `topics.json`, never change the database by
@@ -153,6 +157,9 @@ extras for excluded stories), one entry:
   neutrally ("Fair, the metro needs money to grow." / "Unfair, it pushes people back to cars."). Leave both `""`
   when there is no real two-sided debate, **always** for editor-only subjects and for anything you excluded.
   Never write a side that insults, targets a community, or backs a party or a named person.
+  **Finance and markets: frame as a debate about the system or the news (fair? overhyped? who loses?), never as
+  buy/sell/hold advice.** No "buy now", "time to invest", "should you buy" or stock tips in a side, a hook or a
+  reason; the engine refuses a finance pick whose wording reads as advice.
 - `"hook"`: at most 15 words, the first line of a 30-second video or post: a surprising number, a contrast or a
   "wait, what" fact. `""` when there is none.
 - `"hook_score"`: 0 to 20. How strong that hook is.

@@ -104,7 +104,7 @@ def test_parsing_helpers():
 
 def test_the_real_files_agree_on_categories_needs_topics_and_sources(repo_root):
     tax = Taxonomy.load(repo_root / "config" / "categories.yaml", repo_root / "needs.csv", repo_root / "topics.csv")
-    assert len(tax.categories) == 18 and len(tax.needs) == 75 and len(tax.topics) == 181
+    assert len(tax.categories) == 18 and len(tax.needs) == 75 and len(tax.topics) == 183
     assert tax.validate(repo_root / "feeds.csv") == []  # every need has a topic and a source
 
 

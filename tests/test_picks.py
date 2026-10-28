@@ -556,9 +556,21 @@ def test_news_24h_without_fetching_writes_batches_digest_and_picks(db, tmp_path)
     day(db, datetime.now(timezone.utc))
     path = tmp_path / "engine.db"
     ai = tmp_path / "ai"
-    args = ["news-24h", "--skip-fetch", "--db", str(path), "--out", str(tmp_path / "reports"), "--ai-out", str(ai)]
+    args = [
+        "news-24h",
+        "--skip-fetch",
+        "--db",
+        str(path),
+        "--out",
+        str(tmp_path / "reports"),
+        "--ai-out",
+        str(ai),
+        "--records",
+        str(tmp_path / "records"),
+    ]
     r = runner.invoke(cli.app, args)
     assert r.exit_code == 0, r.output
+    assert any(p.name.endswith("-extras") for p in ai.iterdir())  # the extras batch is written too
     assert ai.is_dir() and any(ai.iterdir())  # the AI batches go where --ai-out says, never into the project's data/
     assert "Digest for" in r.output and "Picks for" in r.output and "run: python -m riffi_ingest picks" in r.output
     folder = next((tmp_path / "reports").iterdir())

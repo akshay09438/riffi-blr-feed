@@ -363,3 +363,94 @@ def test_every_category_with_stories_gets_its_minimum_in_the_ai_prefilter(db, ta
     assert all(per.get(c, 0) >= 10 for c in others)  # minimum per category
     assert per["Bangalore"] <= tax.categories["Bangalore"].prefilter_cap == 60
     assert all(per[c] <= tax.categories[c].prefilter_cap for c in per)
+
+
+# ---- 3. Health & fitness (and every other category) must be able to pass relevance
+
+
+def test_every_need_has_a_topic_strong_enough_to_pass_relevance_with_a_modest_ai_judgement(tax, cfg):
+    """The base points of a topic (priority + need + geography) must leave room for a normal AI judgement:
+    a Pan-India Medium topic starts at 33, so a story needs 17 from the AI's three scores to reach 50.
+    A Low-priority topic starts at 23 and almost never gets there, so each need needs a stronger one."""
+    from riffi_ingest.filter.relevance import relevance
+
+    def base(t):
+        parts = relevance("x", t, None, cfg)[1]
+        return parts["priority"] + parts["need_match"] + parts["geography"]
+
+    weak = [
+        need
+        for need in tax.needs
+        if max((base(tax.topics[t]) for t in tax.topics_for_need(need) if not tax.topics[t].editor_only), default=0)
+        < 33
+    ]
+    assert weak == []
+
+
+def test_fitness_gym_and_diet_trend_stories_get_a_topic_and_illness_stories_do_not_need_one(repo_root):
+    from riffi_ingest.tagging.keywords import KeywordTagger
+
+    tagger = KeywordTagger.load(repo_root / "config" / "topic_keywords.yaml")
+    assert "P56" in tagger.tag("Gym memberships get costlier as strength training boom hits Indian cities").topics
+    assert "P56" in tagger.tag("Home workout trend: why pickleball and padel are replacing the treadmill").topics
+    assert "P57" in tagger.tag("Intermittent fasting and keto: the diet trends young Indians are following").topics
+    assert "P47" in tagger.tag("FSSAI orders recall of packaged food over banned colour").topics
+    assert not {"P56", "P57"} & set(tagger.tag("Dengue cases rise in Karnataka as hospitals report shortage").topics)
+
+
+def test_the_new_health_topics_are_allowed_subjects_with_the_safety_note(repo_root):
+    import csv
+
+    with open(repo_root / "topics.csv", encoding="utf-8", newline="") as f:
+        rows = {r["topic_id"]: r for r in csv.DictReader(f)}
+    for tid in ("P56", "P57"):
+        r = rows[tid]
+        assert r["category"] == "Health & fitness" and r["editor_only"] == "" and r["priority"] in ("High", "Medium")
+        assert "medical" in r["sensitive_note"].lower() and "illness" in r["sensitive_note"].lower()
+    assert rows["P47"]["priority"] == "High" and rows["P38"]["priority"] == "High"
+    for tid in ("P45", "P49", "P51", "P52", "P54"):
+        assert rows[tid]["priority"] == "Medium"  # was Low: out of reach of the relevance bar
+
+
+@pytest.mark.parametrize(
+    "a,b",
+    [
+        (
+            "Namma Metro Pink Line opening date announced",
+            "Namma Metro fare hike from Monday: what changes for commuters",
+        ),
+        ("RBI keeps repo rate unchanged at 5.25 percent", "RBI tightens rules on buy now pay later apps"),
+        ("Bengaluru FC beat Mumbai City 2-1 at Kanteerava", "Bengaluru FC sign a new striker from Spain"),
+        ("Karnataka cabinet approves new rent control rules", "Karnataka cabinet clears Rs 900 crore for lake revival"),
+        ("Zomato Q2 profit jumps 40 percent", "Swiggy Q2 loss narrows to Rs 625 crore"),
+    ],
+)
+def test_distinct_stories_on_one_topic_and_day_are_not_called_duplicates(cfg, a, b):
+    from datetime import datetime, timezone
+
+    from riffi_ingest.filter.model import Assessed, StoryView
+    from riffi_ingest.filter.similar import same_story
+    from riffi_ingest.taxonomy import TopicInfo
+
+    topic = TopicInfo("T1", "Bangalore", ("BLR3",), False, "High", "Bengaluru", "t")
+
+    def mk(i, h):
+        s = StoryView(
+            i,
+            h,
+            datetime(2026, 10, 6, 5, tzinfo=timezone.utc),
+            NOW,
+            2,
+            [],
+            [],
+            ["T1"],
+            ["T1"],
+            False,
+            False,
+            "",
+            "",
+            "",
+        )
+        return Assessed(s, topic, "Bangalore", "BLR3", "pending", {}, {}, 60, 60, 60.0, True, True, True)
+
+    assert not same_story(mk("a", a), mk("b", b), cfg)
