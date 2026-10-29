@@ -4,6 +4,12 @@ Where the team has decided something the brief (`BRIEF.md`) does not say, or say
 
 ---
 
+## D-019 · The fetch timer is on; the AI pass and picks stay on request (30 Oct 2026, founder)
+
+Supersedes D-009 for fetching only. A check of the 29-30 Oct runs (two fetches about 18 h apart) found about 18 of 257 feeds completely replaced between fetches: their RSS window holds only the last 1-12 hours (The Hindu 60 items, under 1 h; ThePrint and India Today about 1-2 h; Deccan Herald, TV9 Kannada, MediaNama 6-7 h; ET Markets, Mint, BSE, Prajavani Telegram 8-10 h). A once-a-day fetch silently misses most of their stories.
+- **Fetching:** the Windows Task Scheduler task from `scripts/schedule-windows.ps1` (D-008) runs `fetch --due` every 30 minutes, so each source is fetched on its own `config/schedule.yaml` interval with the same politeness limits. It runs only while the laptop is on and the founder is logged in; a missed run starts as soon as it can.
+- **Unchanged:** the AI pass, `digest` and `picks` still run once a day on request (D-016). Turn the timer off with `scripts\schedule-windows.ps1 -Remove`.
+
 ## D-018 · Public figures stay eligible; the Uniform Civil Code is editor-only, not excluded (28 Oct 2026, founder)
 
 Decided after the first real run's report. Both refine D-017.
