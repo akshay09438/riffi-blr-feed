@@ -176,14 +176,14 @@ def test_one_bad_source_does_not_stop_the_others(monkeypatch):
 
 def test_every_row_in_feeds_csv_gets_a_plan(repo_root):
     sources = load_sources(repo_root / "feeds.csv")
-    assert len(sources) == 276
+    assert len(sources) == 273
     plans = {s.source_id: plan(s) for s in sources}
     fetchable = [sid for sid, (url, _, _) in plans.items() if url]
     on_backup = [sid for sid, (url, backup, _) in plans.items() if url and backup]
     assert len(on_backup) == 25  # every X/Instagram row has a backup since S108 got one (5 Oct 2026)
     assert (
-        sum(1 for s in sources if s.route_type == feeds.PAGE_MONITOR and plans[s.source_id][0]) == 17
-    )  # S007, S015, S041 moved to Google News (D-013), then S008 and S009 (D-015)
+        sum(1 for s in sources if s.route_type == feeds.PAGE_MONITOR and plans[s.source_id][0]) == 16
+    )  # S007, S015, S041 moved to Google News (D-013), then S008 and S009 (D-015); S131 retired 29 Oct
     assert [sid for sid, (url, _, _) in plans.items() if not url] == ["S112"]  # only the manual source
     assert all(plans[sid][0].startswith("https://") for sid in fetchable)
     assert sum(s.priority_x_feed for s in sources) == 5

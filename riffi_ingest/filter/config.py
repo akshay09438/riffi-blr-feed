@@ -52,6 +52,7 @@ class FilterConfig:
                 "generic_words",
             ),
             "framing": ("advice_categories", "advice_patterns"),
+            "pick_sources": ("exclude_hosts", "exclude_url_patterns"),
             "picks": ("target", "min_to_publish", "weights", "tiers", "floor_ai_missing", "max_per_topic", "max_links"),
         }.items():
             block = data.get(section)

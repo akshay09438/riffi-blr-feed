@@ -36,6 +36,13 @@ def tax():
     return Taxonomy.load(p.categories, p.needs, p.topics)
 
 
+def two_per_topic(cfg):
+    """The near-duplicate tests check the merging, not the per-topic quota (1 a day since 29 Oct)."""
+    raw = json.loads(json.dumps(cfg.raw))
+    raw["picks"]["max_per_topic"] = 2
+    return FilterConfig(raw)
+
+
 FULL = {
     "daily_life": 14,
     "culture": 8,
@@ -147,7 +154,7 @@ def test_different_stories_on_the_same_topic_are_not_merged(db, tax, cfg, tmp_pa
     pair(
         db, "Tunnel road bids opened, Adani lowest", "Metro fares to rise from Monday for daily commuters", topic="O13"
     )
-    r, _ = run(db, tax, cfg, tmp_path, facts={"dupA": FULL, "dupB": FULL})
+    r, _ = run(db, tax, two_per_topic(cfg), tmp_path, facts={"dupA": FULL, "dupB": FULL})
     by = picks_by_id(r)
     assert by["dupA"].picked and by["dupB"].picked
 
@@ -177,7 +184,7 @@ def test_looser_matches_need_the_same_topic_and_the_same_day(db, tax, cfg, tmp_p
         db.execute("DELETE FROM story_clusters WHERE cluster_id = ?", (sid,))
     db.commit()
     pair(db, a, b, topic="O13", started_a=NOW - 3 * H, started_b=NOW - 30 * H)  # a day apart
-    r, _ = run(db, tax, cfg, tmp_path, facts={"dupA": FULL, "dupB": FULL})
+    r, _ = run(db, tax, two_per_topic(cfg), tmp_path, facts={"dupA": FULL, "dupB": FULL})
     assert sum(x.picked for x in picks_by_id(r).values()) == 2
 
 

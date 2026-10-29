@@ -42,7 +42,10 @@ def select(assessed: list[Assessed], taxonomy: Taxonomy, cfg: FilterConfig) -> S
 
     for a in assessed:
         if not a.gate1:
+            own = getattr(taxonomy.categories.get(a.category), "relevance_pass", None)
             bar = cfg["relevance"]["pass_ai_missing"] if a.ai_missing else cfg["relevance"]["pass"]
+            if own is not None:
+                bar = min(own, bar) if a.ai_missing else own
             a.reason = f"relevance {a.r} is below the pass mark {bar}" + (" (no AI judgement)" if a.ai_missing else "")
         elif not a.gate2:
             bar = cfg["content"]["pass_ai_missing"] if a.ai_missing else cfg["content"]["pass"]
@@ -53,10 +56,21 @@ def select(assessed: list[Assessed], taxonomy: Taxonomy, cfg: FilterConfig) -> S
             a.reason = f"first reported more than {cfg['freshness']['max_age_hours']:g} hours ago"
         elif a.framing_problem:
             a.reason = f"not picked: {a.framing_problem}"
+        elif a.source_problem:
+            a.reason = f"not picked: {a.source_problem}"
         elif a.p < floor_for(a):
             a.reason = f"pick score {a.p} is below {floor_for(a):g}" + (" (no AI judgement)" if a.ai_missing else "")
     eligible = sorted(
-        (a for a in assessed if a.gate1 and a.gate2 and a.fresh and not a.framing_problem and a.p >= floor_for(a)),
+        (
+            a
+            for a in assessed
+            if a.gate1
+            and a.gate2
+            and a.fresh
+            and not a.framing_problem
+            and not a.source_problem
+            and a.p >= floor_for(a)
+        ),
         key=_order,
     )
     dropped = near_duplicates(eligible, cfg)

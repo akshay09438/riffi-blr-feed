@@ -5,3 +5,6 @@ S147,PIB,Native publisher RSS/Atom,https://www.pib.gov.in/RssMain.aspx?ModId=6&L
 S174,Formula 1 latest,Native publisher RSS/Atom,https://www.formula1.com/en/latest/all.xml,"Entries carry no dates, so the engine can never count it healthy; Sports ""other"" is covered by The Hindu Sport and Indian Express Sports",2026-10-28
 S238,Koimoi Bollywood,Native publisher RSS/Atom,https://www.koimoi.com/category/bollywood-news/feed/,403: the site blocks automated requests; Bollywood has many other feeds,2026-10-28
 S281,GQ India,Native publisher RSS/Atom,https://www.gqindia.com/feed/rss,403: the site blocks automated requests; replaced by S282 (Google News query) so men's grooming keeps a source,2026-10-28
+S061,Reddit r/bangalore,Native publisher RSS/Atom,https://www.reddit.com/r/bangalore/.rss,Reddit RSS is being removed and Reddit posts are unverifiable user posts; founder decision 28 Oct to retire Reddit sources,2026-10-29
+S131,District upcoming movies,Web page monitor,https://www.district.in/movies/upcoming-hindi-movies,"HTTP 404 three runs in a row (29 Oct laptop run); ticketing listing page, not news",2026-10-29
+S244,Rolling Stone India,Native publisher RSS/Atom,https://rollingstoneindia.com/feed/,HTTP 404 on the 29 Oct laptop run; no working feed URL found,2026-10-29

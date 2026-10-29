@@ -28,6 +28,7 @@ class CategoryRule:
     quota_max: int
     prefilter_cap: int
     editor_only_until_safety: bool
+    relevance_pass: float | None = None  # this category's own Gate 1 pass mark (filter.yaml otherwise)
 
 
 @dataclass(frozen=True)
@@ -82,6 +83,7 @@ class Taxonomy:
                 quota_max=int(conf["quota_max"]),
                 prefilter_cap=int(conf["prefilter_cap"]),
                 editor_only_until_safety=bool(conf["editor_only_until_safety"]),
+                relevance_pass=float(conf["relevance_pass"]) if conf.get("relevance_pass") is not None else None,
             )
         needs = {
             r["need_id"].strip(): Need(

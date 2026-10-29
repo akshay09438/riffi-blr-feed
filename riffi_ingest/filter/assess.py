@@ -14,6 +14,7 @@ from .framing import advice_problem
 from .model import Assessed, StoryView
 from .relevance import best_topic, relevance, topic_points
 from .safety_state import safety_state
+from .sources_check import source_problem
 
 
 @dataclass
@@ -62,6 +63,9 @@ def assess(
         )
         missing = story.facts is None
         category = taxonomy.categories.get(top.category)
+        own = category.relevance_pass if category is not None else None
+        bar_r = own if own is not None else pass_r
+        bar_r_missing = min(own, pass_r_missing) if own is not None else pass_r_missing
         out.assessed.append(
             Assessed(
                 story=story,
@@ -76,9 +80,10 @@ def assess(
                 p=round(float(w["R"]) * r + float(w["K"]) * k, 1),
                 ai_missing=missing,
                 fresh=now - story.started_at <= max_age,
-                framing_problem=advice_problem(top.category, story.facts, cfg),
+                framing_problem=advice_problem(top.category, story.facts, cfg, story.headline),
+                source_problem=source_problem(story.links, cfg),
                 sides_withheld=bool(set(story.all_topic_ids) & editor_topics),
-                gate1=r >= (pass_r_missing if missing else pass_r),
+                gate1=r >= (bar_r_missing if missing else bar_r),
                 gate2=k >= (pass_missing if missing else pass_ok),
                 prefilter=float(topic_points(top, cfg)),
             )

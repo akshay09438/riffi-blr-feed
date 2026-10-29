@@ -30,8 +30,8 @@ CATEGORIES = {
 ROUTE_TYPES = {
     "Google News RSS": 125,  # 64 + 61 new (D-017: the PRD cap of 60, plus S282 replacing a blocked feed)
     "X/Instagram via RSS.app": 25,
-    "Web page monitor": 17,
-    "Native publisher RSS/Atom": 103,  # 19 + 90 new - 6 retired after the 28 Oct live test
+    "Web page monitor": 16,  # 17 - S131 retired 29 Oct
+    "Native publisher RSS/Atom": 101,  # 19 + 90 new - 6 retired after the 28 Oct live test - S061, S244 retired 29 Oct
     "RSSHub Telegram": 3,
     "YouTube Atom": 2,
     "Manual": 1,
@@ -47,12 +47,12 @@ def test_package_imports():
     assert riffi_ingest.__version__
 
 
-def test_feeds_has_276_sources_with_the_planned_route_types(repo_root):
+def test_feeds_has_273_sources_with_the_planned_route_types(repo_root):
     feeds = read(repo_root, "feeds.csv")
     retired = read(repo_root, "docs/prd/retired_sources.csv")
-    # 131 from the brief + 151 added for D-017 (Phase 1) = S001..S282; 6 of them retired after the 28 Oct live test
-    assert len(feeds) == 276
-    assert len({r["source_id"] for r in feeds}) == 276
+    # 131 from the brief + 151 added for D-017 (Phase 1) = S001..S282; 6 retired after the 28 Oct live test, 3 more on 29 Oct
+    assert len(feeds) == 273
+    assert len({r["source_id"] for r in feeds}) == 273
     assert sorted(r["source_id"] for r in feeds + retired) == [f"S{n:03d}" for n in range(1, 283)]
     assert {r["source_id"] for r in retired}.isdisjoint(r["source_id"] for r in feeds)
     assert all(r["reason"] for r in retired)

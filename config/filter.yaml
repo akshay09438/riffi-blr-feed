@@ -38,7 +38,7 @@ picks:
   weights: {R: 0.55, K: 0.45}
   tiers: {High: 75, Medium: 60}   # P at or above the Medium number is picked; below it is not
   floor_ai_missing: 50        # the same bar for a story with no AI judgement, which cannot earn those points
-  max_per_topic: 2
+  max_per_topic: 1           # 29 Oct: one pick per topic a day (two reworded PG-sealing stories both got through at 2)
   max_links: 3
 
 prefilter:                    # which stories go to the AI pass (an AI pass takes at most 400 stories)
@@ -65,7 +65,7 @@ similar:                      # near-duplicate stories (different clusters, same
 framing:                      # finance and markets: a debate about the system or the news, never advice (ai_pass.md)
   advice_categories: [Finance, Stock market]
   advice_patterns:
-    - '\bbuy now\b(?!\s+pay\s+later)'
+    - '\bbuy now\b(?!,?\s+pay\s+later)'
     - '\b(?:buy|sell|invest)\s+(?:today|before|on\s+dips?|the\s+dip)\b'
     - '\b(?:good|right|best)?\s*time\s+to\s+(?:buy|sell|invest)\b'
     - '\bshould\s+(?:you|i|we|investors)\s+(?:buy|sell|invest|hold)\b'
@@ -76,4 +76,16 @@ framing:                      # finance and markets: a debate about the system o
     - '\bshould\s+(?:\w+\s+){0,2}investors?\s+(?:buy|sell|invest|hold)\b'
     - '\b(?:can|how\s+can)\s+(?:\w+\s+){0,2}investors?\s+(?:get|buy|invest)\b'
     - '\b(?:hold\s+on\s+to|or\s+hold)\b'
+    - '\b(?:now|today)\s+or\s+wait\b'
     - '\b(?:multibaggers?|stock\s+picks?|target\s+price|buy\s+rating|sell\s+rating|accumulate|book\s+profits?)\b'
+
+# Added 29 Oct 2026 after the second real run: picks come from news articles, not from user posts, listings,
+# trackers or campaign sites (those stay in the digest). A story is not picked when EVERY link matches.
+pick_sources:
+  exclude_hosts: [reddit.com, redd.it, bookmyshow.com, district.in, insider.in, paytm.com, ticketmaster.com, skillboxes.com, allevents.in, wetheleader.org]
+  exclude_url_patterns:
+    - '/tickets?/'
+    - '/events?/[^/]+-tickets'
+    - 'box-?office-(?:collection|tracker)'
+    - 'live-?(?:score|updates?-score)'
+    - '/live-cricket-score'

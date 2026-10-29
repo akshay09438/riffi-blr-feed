@@ -4,6 +4,8 @@
 #   quota_min: the fewest picks a category gets when it has any story that passed every gate
 #   quota_max: the most picks it can get in one day
 #   prefilter_cap: how many of its stories go to the AI pass (keeps the AI pass under its 400-story cap)
+#   relevance_pass: optional; this category's own Gate 1 pass mark (filter.yaml relevance.pass otherwise).
+#                   Lifestyle stories rarely change daily life (rent, fares, jobs), so they get a lower bar.
 #   editor_only_until_safety: true = its picks are for the editor only until the safety filter (Gate 0)
 #                             has been built, approved and tested (D-017)
 
@@ -13,7 +15,7 @@ defaults: {quota_min: 1, quota_max: 4, prefilter_cap: 30, editor_only_until_safe
 
 categories:
   Bangalore:         {quota_min: 4, quota_max: 4, prefilter_cap: 60}
-  Politics:          {quota_min: 0, quota_max: 3, editor_only_until_safety: true}
+  Politics:          {quota_min: 1, quota_max: 3, editor_only_until_safety: true}
   Sports:            {}
   Entertainment:     {}
   Tech/AI:           {}
@@ -21,12 +23,12 @@ categories:
   Finance:           {}
   Stock market:      {}
   Education:         {}
-  College life:      {}
-  Relationships:     {}
+  College life:      {relevance_pass: 40}
+  Relationships:     {relevance_pass: 40}
   Social life:       {quota_min: 0, editor_only_until_safety: true}
   General:           {quota_min: 0, editor_only_until_safety: true}
-  Growth:            {}
-  Health & fitness:  {}
+  Growth:            {relevance_pass: 40}
+  Health & fitness:  {relevance_pass: 40}
   Travel:            {}
-  Fashion & style:   {}
-  Beauty & grooming: {}
+  Fashion & style:   {relevance_pass: 40}
+  Beauty & grooming: {relevance_pass: 40}
